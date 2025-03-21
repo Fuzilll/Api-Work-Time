@@ -6,7 +6,8 @@ const usuarioController = require('../controllers/usuarioController');
 // Rota para cadastrar usuário
 router.post('/cadastrar', usuarioController.cadastrarUsuario);
 
-// Rota para login
+// Rota para login no android
 router.post('/login', usuarioController.login);
+
 
 module.exports = router;

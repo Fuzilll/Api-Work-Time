@@ -1,8 +1,7 @@
 // db.js - Configuração da conexão com o banco de dados MySQL
 const mysql = require('mysql2');
-require('dotenv').config(); // Carrega variáveis de ambiente do arquivo .env
+require('dotenv').config();
 
-// Criação da conexão com o banco de dados
 const connection = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -10,11 +9,10 @@ const connection = mysql.createConnection({
     database: process.env.DB_DATABASE
 });
 
-// Conecta ao banco de dados
 connection.connect(err => {
     if (err) {
         console.error('Erro ao conectar no MySQL:', err.message);
-        process.exit(1); // Encerra o processo em caso de erro
+        process.exit(1);
     }
     console.log('Conectado ao MySQL');
 });
