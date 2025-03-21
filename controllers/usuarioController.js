@@ -1,17 +1,23 @@
-
-// usuarioController.js - Controlador responsável pelos usuários
 const db = require('../config/db');
 
+// Cadastrar Usuário
 exports.cadastrarUsuario = (req, res) => {
     const { nome, email, senha, nivel, id_empresa } = req.body;
+    console.log(`Cadastrando usuário: ${nome}, Nível: ${nivel}, Empresa ID: ${id_empresa || 'N/A'}`);  
+
     const sql = 'INSERT INTO USUARIOS (nome, email, senha, nivel, id_empresa) VALUES (?, ?, ?, ?, ?)';
+    
+    // A consulta SQL insere o novo usuário
     db.query(sql, [nome, email, senha, nivel, id_empresa || null], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        
+        if (err) {
+            console.log('Erro ao cadastrar usuário:', err); 
+            return res.status(500).json({ error: err.message });
+        }
+
         const id_usuario = result.insertId;
-        let tabela;
-        let sqlInsert;
-        let valores;
+        console.log(`Usuário cadastrado com ID: ${id_usuario}`); 
+        
+        let tabela, sqlInsert, valores;
 
         switch (nivel) {
             case 'IT_SUPPORT':
@@ -30,112 +36,65 @@ exports.cadastrarUsuario = (req, res) => {
                 valores = [id_usuario, nome, email, id_empresa];
                 break;
             default:
+                console.log('Nível de usuário inválido!'); 
                 return res.status(400).json({ error: 'Nível de usuário inválido!' });
         }
 
         db.query(sqlInsert, valores, (err) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.log('Erro ao cadastrar em tabela de nível:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            console.log(`Usuário ${nome} cadastrado com sucesso!`);  
             res.json({ message: 'Usuário cadastrado com sucesso!' });
         });
     });
 };
 
-exports.login = (req, res) => {
+// Realiza login Web
+exports.loginWeb = (req, res) => {
     const { email, senha } = req.body;
+    console.log('Tentativa de login web:', req.body);  
     const sql = 'SELECT * FROM USUARIO WHERE email = ? AND senha = ?';
-
     db.query(sql, [email, senha], (err, results) => {
         if (err) {
-            console.error('Erro no login:', err);
+            console.error('Erro no login web:', err); 
             return res.status(500).json({ message: 'Erro interno do servidor' });
         }
 
         if (results.length > 0) {
             const usuario = results[0];
-            console.log('Login bem-sucedido:', usuario);
-
+            console.log('Login web bem-sucedido:', usuario); 
             return res.json({ 
                 message: 'Login realizado com sucesso!', 
                 usuario: usuario,
                 nivel: usuario.nivel
             });
         } else {
-            console.warn('Tentativa de login com credenciais inválidas:', email);
+            console.warn('Tentativa de login com credenciais inválidas:', email);  
             return res.status(401).json({ message: 'Email ou senha inválidos!' });
         }
-    });
-};
-
-/*
-// Cadastra um novo usuário
-exports.cadastrarUsuario = (req, res) => {
-    const { nome, email, senha, nivel, id_empresa } = req.body;
-
-    // O ID da empresa é opcional (para IT_SUPPORT, será NULL)
-    const sql = 'INSERT INTO USUARIOS (nome, email, senha, nivel, id_empresa) VALUES (?, ?, ?, ?, ?)';
-    db.query(sql, [nome, email, senha, nivel, id_empresa || null], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Usuário cadastrado com sucesso!' });
     });
 };
 
 // Realiza login Mobile
 exports.login = (req, res) => {
     const { email, senha } = req.body;
-    console.log('Tentativa de login:', req.body);
+    console.log('Tentativa de login mobile:', req.body);  
 
     const sql = 'SELECT * FROM usuarios WHERE email = ? AND senha = ?';
     db.query(sql, [email, senha], (err, results) => {
         if (err) {
-            console.error('Erro no login:', err.message);
+            console.error('Erro no login mobile:', err.message);  
             return res.status(500).json({ error: err.message });
         }
+
         if (results.length > 0) {
-            console.log('Login realizado com sucesso!', results[0]);
+            console.log('Login mobile realizado com sucesso:', results[0]);  
             res.json({ message: 'Login realizado com sucesso!', usuario: results[0] });
         } else {
+            console.warn('Tentativa de login com credenciais inválidas (mobile):', email); 
             res.status(401).json({ message: 'Email ou senha inválidos!' });
         }
     });
 };
-
-// Login Web 
-exports.loginWeb = (req, res) => {
-    const { email, senha } = req.body;
-
-    const sql = 'SELECT * FROM usuarios WHERE email = ? AND senha = ?';
-    db.query(sql, [email, senha], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (results.length > 0) {
-            const usuario = results[0];
-            res.json({ 
-                message: 'Login realizado com sucesso!', 
-                nivel: usuario.nivel,
-                token: "TOKEN_EXEMPLO" 
-            });
-        } else {
-            res.status(401).json({ message: 'Email ou senha inválidos!' });
-        }
-    });
-};
-
-exports.loginWeb = (req, res) => {
-    const { email, senha } = req.body;
-
-    const sql = 'SELECT * FROM USUARIOS WHERE email = ? AND senha = ?';
-    db.query(sql, [email, senha], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (results.length > 0) {
-            const usuario = results[0];
-            res.json({ 
-                message: 'Login realizado!', 
-                usuario: usuario,
-                nivel: usuario.nivel
-            });
-        } else {
-            res.status(401).json({ message: 'Email ou senha inválidos!' });
-        }
-    });
-};
-
-*/

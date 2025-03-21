@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Empresas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/dash_it.css">
+</head>
+
+<body>
+    <div class="sidebar">
+        <h4 class="text-white text-center">Work Time</h4>
+        <div class="logo-container text-center">
+            <img src="/images/logo.png">
+        </div>
+        <div id="menu"></div>
+        <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sair</a>
+    </div>
+    <div class="container mt-4">
+        <h2>Empresas Cadastradas</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Ramo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-empresas">
+                <!-- Empresas serão carregadas via JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal para adicionar administrador -->
+    <div class="modal fade" id="modalAdicionarAdmin" tabindex="-1" aria-labelledby="modalAdminLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAdminLabel">Adicionar Administrador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAdicionarAdmin">
+                        <div class="mb-3">
+                            <label for="nomeAdmin" class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="nomeAdmin" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="emailAdmin" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="emailAdmin" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="senhaAdmin" class="form-label">Senha</label>
+                            <input type="password" class="form-control" id="senhaAdmin" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="empresaAdmin" class="form-label">Empresa</label>
+                            <select class="form-control" id="empresaAdmin" required>
+                                <!-- Empresas serão carregadas via JavaScript -->
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Cadastrar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/dashboard_it_suport.js"></script>
+    <script src="/js/menu_it_suport.js"></script>
+</body>
+
+</html>

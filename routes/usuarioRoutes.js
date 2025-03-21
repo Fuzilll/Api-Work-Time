@@ -7,7 +7,7 @@ const usuarioController = require('../controllers/usuarioController');
 router.post('/cadastrar', usuarioController.cadastrarUsuario);
 
 // Rota para login no android
-router.post('/login', usuarioController.login);
+router.post('/login', usuarioController.loginWeb);
 
 
 module.exports = router;

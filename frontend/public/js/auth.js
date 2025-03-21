@@ -11,13 +11,13 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
         });
 
         const data = await response.json();
-        console.log('Resposta do backend:', data); // <-- Adicionado para depuração
+        console.log('Resposta do backend:', data); 
 
         if (response.ok) {
             localStorage.setItem('nivel', data.nivel);
             
             if (data.nivel === 'IT_SUPPORT') {
-                window.location.href = 'dashboard.html';
+                window.location.href = 'it_suport.html';
             } else if (data.nivel === 'ADMIN') {
                 window.location.href = 'dashboard.html';
             } else {
