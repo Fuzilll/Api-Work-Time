@@ -12,8 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     } else if (nivel === 'FUNCIONARIO') {
         menuItems = `
-            <a href="#" data-page="registros_ponto"><i class="fas fa-users"></i> Meus Registros</a>
-            <a href="#" data-page="perfil_funcionario"><i class="fas fa-clock"></i> Perfil</a>
+            <a href="registros_ponto.html"><i class="fas fa-users"></i> Meus Registros</a>
+            <a href="perfil_funcionario.html"><i class="fas fa-clock"></i> Perfil</a>
         `;
     } else {
         menuItems = `<a href="index.html"><i class="fas fa-home"></i> Home</a>`;

@@ -1,40 +1,30 @@
-document.addEventListener("DOMContentLoaded", function () {
-    carregarPerfil();
+document.addEventListener('DOMContentLoaded', async () => {
+    await carregarPerfilFuncionario();
 });
 
-// Carregar os dados do funcionário
-function carregarPerfil() {
-    fetch("/api/perfil")
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById("nomeFuncionario").value = data.nome;
-            document.getElementById("emailFuncionario").value = data.email;
-            document.getElementById("cpfFuncionario").value = data.cpf;
-            document.getElementById("funcaoFuncionario").value = data.funcao;
-        })
-        .catch(error => console.error("Erro ao carregar perfil:", error));
-}
+async function carregarPerfilFuncionario() {
+    const perfilDiv = document.getElementById('perfil');
 
-// Atualizar a senha do funcionário
-document.getElementById("formPerfil").addEventListener("submit", function (event) {
-    event.preventDefault();
+    try {
+        const response = await fetch('/api/funcionario/perfil', { method: 'GET' });
+        const perfil = await response.json();
 
-    const novaSenha = document.getElementById("senhaFuncionario").value;
+        if (!response.ok) {
+            throw new Error(perfil.message || 'Erro ao carregar perfil');
+        }
 
-    if (!novaSenha) {
-        alert("Digite uma nova senha.");
-        return;
+        perfilDiv.innerHTML = `
+            <ul class="list-group">
+                <li class="list-group-item"><strong>Nome:</strong> ${perfil.nome}</li>
+                <li class="list-group-item"><strong>Email:</strong> ${perfil.email}</li>
+                <li class="list-group-item"><strong>CPF:</strong> ${perfil.cpf}</li>
+                <li class="list-group-item"><strong>Função:</strong> ${perfil.funcao}</li>
+                <li class="list-group-item"><strong>Registro:</strong> ${perfil.registro_emp}</li>
+                <li class="list-group-item"><strong>Data de Admissão:</strong> ${new Date(perfil.data_admissao).toLocaleDateString()}</li>
+                <li class="list-group-item"><strong>Empresa:</strong> ${perfil.empresa_nome}</li>
+            </ul>
+        `;
+    } catch (error) {
+        console.error('Erro ao carregar perfil:', error);
     }
-
-    fetch("/api/atualizar_senha", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senha: novaSenha })
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.mensagem);
-        document.getElementById("senhaFuncionario").value = "";
-    })
-    .catch(error => console.error("Erro ao atualizar senha:", error));
-});
+}

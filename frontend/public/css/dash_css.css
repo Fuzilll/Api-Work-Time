@@ -1,4 +1,3 @@
-/* styles.css */
 body {
     font-family: 'Roboto', sans-serif;
     background-color: #f0f4f3;
@@ -6,7 +5,7 @@ body {
     height: 100vh; /* Altura total da tela */
     margin: 0;
     padding: 0;
-}
+} 
 /* Estilo para o contêiner da logo */
 .logo-container {
     margin-bottom: 30px;

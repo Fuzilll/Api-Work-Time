@@ -4,7 +4,7 @@ const db = require('../config/db');
 exports.cadastrarRegistro = (req, res) => {
     const { userId, latitude, longitude, fotoBase64 } = req.body;
     console.log('Req recebida:', req.body); 
-
+ 
     // Verifica se o usuário existe no banco
     const verificarUsuarioSQL = 'SELECT id FROM usuarios WHERE id = ?';
     db.query(verificarUsuarioSQL, [userId], (err, results) => {
@@ -28,7 +28,7 @@ exports.cadastrarRegistro = (req, res) => {
             res.json({ message: 'Registro de ponto cadastrado com sucesso!', id: result.insertId });
         });
     });
-};
+}
 
 // Busca todos os registros de ponto de um usuário
 exports.buscarRegistrosDoUsuario = (req, res) => {

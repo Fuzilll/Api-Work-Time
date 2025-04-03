@@ -49,33 +49,54 @@ exports.cadastrarUsuario = (req, res) => {
             res.json({ message: 'Usuário cadastrado com sucesso!' });
         });
     });
-};
+}
 
 // Realiza login Web
 exports.loginWeb = (req, res) => {
     const { email, senha } = req.body;
-    console.log('Tentativa de login web:', req.body);  
-    const sql = 'SELECT * FROM USUARIO WHERE email = ? AND senha = ?';
-    db.query(sql, [email, senha], (err, results) => {
+    console.log('Tentativa de login web:', req.body);
+
+    // Busca os dados do usuário pelo email
+    const sql = 'SELECT id, email, senha, nivel FROM USUARIO WHERE email = ?';
+
+    db.query(sql, [email], (err, results) => {
         if (err) {
-            console.error('Erro no login web:', err); 
+            console.error('Erro no login web:', err);
             return res.status(500).json({ message: 'Erro interno do servidor' });
         }
 
-        if (results.length > 0) {
-            const usuario = results[0];
-            console.log('Login web bem-sucedido:', usuario); 
-            return res.json({ 
-                message: 'Login realizado com sucesso!', 
-                usuario: usuario,
-                nivel: usuario.nivel
-            });
-        } else {
-            console.warn('Tentativa de login com credenciais inválidas:', email);  
+        if (results.length === 0) {
+            console.warn('Tentativa de login com credenciais inválidas:', email);
             return res.status(401).json({ message: 'Email ou senha inválidos!' });
         }
+
+        const usuario = results[0];
+
+        // Comparação direta da senha (NÃO RECOMENDADO EM PRODUÇÃO)
+        if (senha !== usuario.senha) {
+            console.warn('Senha incorreta para:', email);
+            return res.status(401).json({ message: 'Email ou senha inválidos!' });
+        }
+
+        console.log('Login web bem-sucedido:', usuario);
+
+        // Armazena ID do usuário na sessão
+        req.session.id_usuario = usuario.id;
+        req.session.email = usuario.email;
+
+        return res.json({
+            message: 'Login realizado com sucesso!',
+            usuario: {
+                id: usuario.id,
+                email: usuario.email,
+                nivel: usuario.nivel,
+                id_empresa: usuario.id_empresa
+            },
+            nivel: usuario.nivel
+        });
     });
 };
+
 
 // Realiza login Mobile
 exports.login = (req, res) => {

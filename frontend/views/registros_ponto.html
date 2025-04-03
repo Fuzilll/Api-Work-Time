@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Pontos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="/css/dashboard_admin.css">
+</head>
+
+<body>
+    <div class="sidebar">
+        <h4 class="text-white text-center">Work Time</h4>
+        <div class="logo-container text-center">
+            <img src="/images/logo.png" alt="Logo">
+        </div>
+        <div id="menu"></div>
+        <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sair</a>
+    </div>
+    <div class="container mt-4">
+        <h3>Histórico de Pontos</h3>
+        <table class="table table-bordered" id="tabela-pontos">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Os registros de pontos serão carregados aqui -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal de Solicitação de Alteração -->
+    <div class="modal fade" id="modalAlteracao" tabindex="-1" aria-labelledby="modalAlteracaoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAlteracaoLabel">Solicitar Alteração de Ponto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formSolicitarAlteracao">
+                        <input type="hidden" id="idRegistro" name="idRegistro">
+                        <div class="mb-3">
+                            <label for="novoHorario" class="form-label">Novo Horário</label>
+                            <input type="text" class="form-control" id="novoHorario" name="novoHorario" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="motivoAlteracao" class="form-label">Motivo da Alteração</label>
+                            <textarea class="form-control" id="motivoAlteracao" name="motivoAlteracao"
+                                required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enviar Solicitação</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/menu.js"></script>
+    <script src="/js/buscar_registros_funcionario.js"></script>
+
+</body>
+
+</html>

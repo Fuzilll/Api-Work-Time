@@ -19,74 +19,34 @@
         <div id="menu"></div>
         <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sair</a>
     </div>
+    
     <div class="container mt-4">
-        <div class="container mt-4">
+        <h2>Gerenciar Pontos</h2>
+        <p>Aprovar ou rejeitar registros de ponto dos funcionários.</p>
 
-            <h2>Gerenciar Pontos</h2>
-            <p>Aprovar ou rejeitar registros de ponto dos funcionários.</p>
-
-            <!-- Filtro de pesquisa -->
-            <div class="mb-4">
-                <label for="filtro-pontos" class="form-label">Pesquisar por Funcionário</label>
-                <input type="text" id="filtro-pontos" class="form-control"
-                    placeholder="Digite o nome do funcionário...">
-            </div>
-
-            <!-- Tabela de registros de ponto -->
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Funcionário</th>
-                        <th>Data</th>
-                        <th>Hora de Entrada</th>
-                        <th>Hora de Saída</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>João Silva</td>
-                        <td>20/03/2025</td>
-                        <td>08:00</td>
-                        <td>17:00</td>
-                        <td><span class="badge bg-warning">Pendente</span></td>
-                        <td>
-                            <button class="btn btn-success btn-sm" onclick="aprovarPonto('João Silva')">Aprovar</button>
-                            <button class="btn btn-danger btn-sm"
-                                onclick="rejeitarPonto('João Silva')">Rejeitar</button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Maria Oliveira</td>
-                        <td>20/03/2025</td>
-                        <td>09:00</td>
-                        <td>18:00</td>
-                        <td><span class="badge bg-warning">Pendente</span></td>
-                        <td>
-                            <button class="btn btn-success btn-sm"
-                                onclick="aprovarPonto('Maria Oliveira')">Aprovar</button>
-                            <button class="btn btn-danger btn-sm"
-                                onclick="rejeitarPonto('Maria Oliveira')">Rejeitar</button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Pedro Souza</td>
-                        <td>19/03/2025</td>
-                        <td>08:30</td>
-                        <td>17:30</td>
-                        <td><span class="badge bg-danger">Rejeitado</span></td>
-                        <td>
-                            <button class="btn btn-success btn-sm"
-                                onclick="aprovarPonto('Pedro Souza')">Aprovar</button>
-                            <button class="btn btn-danger btn-sm"
-                                onclick="rejeitarPonto('Pedro Souza')">Rejeitar</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Filtro de pesquisa -->
+        <div class="mb-4">
+            <label for="filtro-pontos" class="form-label">Pesquisar por Funcionário</label>
+            <input type="text" id="filtro-pontos" class="form-control" placeholder="Digite o nome do funcionário...">
         </div>
+
+        <!-- Tabela de registros de ponto -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Hora</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-pontos">
+                <!-- Linhas de registros de ponto serão inseridas dinamicamente -->
+            </tbody>
+        </table>
     </div>
+
     <script src="/js/menu.js"></script>
     <script src="/js/gerenciar_pontos.js"></script>
 </body>

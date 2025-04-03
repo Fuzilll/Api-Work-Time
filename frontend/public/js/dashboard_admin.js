@@ -39,8 +39,6 @@ function fetchUltimosRegistrosPonto() {
                 row.innerHTML = `
                     <td>${registro.funcionario}</td>
                     <td>${registro.data}</td>
-                    <td>${registro.hora_entrada}</td>
-                    <td>${registro.hora_saida}</td>
                     <td>${registro.status}</td>
                 `;
                 tabelaPontos.appendChild(row);

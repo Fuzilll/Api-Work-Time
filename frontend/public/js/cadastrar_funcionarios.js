@@ -24,15 +24,13 @@ async function cadastrarFuncionario(event) {
         
         const result = await response.json();
 
-        if (result.success) {
-            alert('Funcionário cadastrado com sucesso!');
-            window.location.href = '/dashboard_admin';  // Redireciona para o dashboard após o cadastro
+        if (response.ok) { 
+            alert(result.message);
         } else {
-            alert('Erro ao cadastrar funcionário: ' + result.message);
+            alert('Erro ao cadastrar funcionário: ' + (result.error || result.message));
         }
     } catch (error) {
         console.error('Erro ao cadastrar funcionário', error);
-        alert('Erro ao cadastrar funcionário');
     }
 }
 

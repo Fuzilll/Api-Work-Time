@@ -1,4 +1,4 @@
-document.getElementById('loginForm').addEventListener('submit', async (event) => { 
+document.getElementById('loginForm').addEventListener('submit', async (event) => {  
     event.preventDefault();
     const email = document.getElementById('email').value;
     const senha = document.getElementById('senha').value;
@@ -15,11 +15,16 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
 
         if (response.ok) {
             localStorage.setItem('nivel', data.nivel);
+            localStorage.setItem('id_usuario', data.usuario.id);
+
+            if (data.nivel === 'ADMIN' || data.nivel === 'FUNCIONARIO') {
+                localStorage.setItem('id_empresa', data.usuario.id_empresa);
+                localStorage.setItem('id_usuario', data.usuario.id);
+
+            }
             
             if (data.nivel === 'IT_SUPPORT') {
                 window.location.href = 'it_suport.html';
-            } else if (data.nivel === 'ADMIN') {
-                window.location.href = 'dashboard.html';
             } else {
                 window.location.href = 'dashboard.html';
             }

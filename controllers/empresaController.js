@@ -2,14 +2,13 @@ const db = require('../config/db');
 
 // Cadastrar Empresa
 exports.cadastrarEmpresa = (req, res) => {
-    const { nome, cnpj, cidade, cep, rua, numero, id_estado, ramo_de_atuacao, email, id_it_support } = req.body;
+    const { nome, cnpj, cidade, cep, rua, numero, id_estado, ramo_de_atuacao, email} = req.body;
     
     console.log(`Cadastrando empresa: ${nome}, CNPJ: ${cnpj}`);  // Depuração
 
-    const sql = 'INSERT INTO EMPRESA (nome, cnpj, cidade, cep, rua, numero, id_estado, ramo_de_atuacao, email, id_it_support) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    const sql = 'INSERT INTO EMPRESA (nome, cnpj, cidade, cep, rua, numero, id_estado, ramo_de_atuacao, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
-    // A consulta SQL insere os dados passados para o banco
-    db.query(sql, [nome, cnpj, cidade, cep, rua, numero, id_estado, ramo_de_atuacao, email, id_it_support], (err) => {
+    db.query(sql, [nome, cnpj, cidade, cep, rua, numero, id_estado, ramo_de_atuacao, email], (err) => {
         if (err) {
             console.log('Erro ao cadastrar empresa:', err); 
             return res.status(500).json({ error: err.message });
@@ -30,7 +29,7 @@ exports.removerEmpresa = (req, res) => {
     // A consulta SQL deleta a empresa com o ID informado
     db.query(sql, [id], (err, result) => {
         if (err) {
-            console.log('Erro ao remover empresa:', err); // Depuração
+            console.log('Erro ao remover empresa:', err.message); // Depuração
             return res.status(500).json({ error: err.message });
         }
         
@@ -48,35 +47,38 @@ exports.removerEmpresa = (req, res) => {
 // Cadastrar Administrador
 exports.cadastrarAdmin = (req, res) => {
     const { nome, email, senha, id_empresa } = req.body;
-    
-    console.log(`Cadastrando administrador: ${nome}, Empresa ID: ${id_empresa}`);  // Depuração
-    
+
+    console.log(`Cadastrando administrador: ${nome}, Empresa ID: ${id_empresa}`); 
+
+    if (!id_empresa) {
+        return res.status(400).json({ error: "ID da empresa é obrigatório." });
+    }
+
     const sqlUsuario = 'INSERT INTO USUARIO (nome, email, senha, nivel, status) VALUES (?, ?, ?, "ADMIN", "Ativo")';
     
-    // A consulta SQL insere o novo usuário com o nível ADMIN
     db.query(sqlUsuario, [nome, email, senha], (err, result) => {
         if (err) {
-            console.log('Erro ao cadastrar usuário:', err);  // Depuração
+            console.error('Erro ao cadastrar usuário:', err);
             return res.status(500).json({ error: err.message });
         }
-        
+
         const id_usuario = result.insertId;
-        console.log(`Usuário cadastrado com ID: ${id_usuario}`); // Depuração
-        
+        console.log(`Usuário cadastrado com ID: ${id_usuario}`);
+
         const sqlAdmin = 'INSERT INTO ADMIN (id_usuario, id_empresa) VALUES (?, ?)';
-        
-        // A consulta SQL insere o administrador relacionado à empresa
+
         db.query(sqlAdmin, [id_usuario, id_empresa], (err) => {
             if (err) {
-                console.log('Erro ao cadastrar administrador:', err); // Depuração
+                console.error('Erro ao cadastrar administrador:', err);
                 return res.status(500).json({ error: err.message });
             }
-            
-            console.log('Administrador cadastrado com sucesso!');  // Depuração
+
+            console.log('Administrador cadastrado com sucesso!');
             res.json({ message: 'Administrador cadastrado com sucesso!' });
         });
     });
 };
+
 
 // Remover Administrador
 exports.removerAdmin = (req, res) => {
@@ -121,5 +123,29 @@ exports.listarEmpresas = (req, res) => {
         
         console.log(`Empresas encontradas: ${results.length}`);  // Depuração
         res.status(200).json(results);
+    });
+};
+
+//alterando status
+exports.alternarStatusEmpresa = (req, res) => {
+    const { id } = req.params;
+
+    console.log(`Alternando status da empresa com ID: ${id}`); // Depuração
+
+    const sql = 'UPDATE EMPRESA SET status = IF(status = "Ativo", "Inativo", "Ativo") WHERE id = ?';
+
+    db.query(sql, [id], (err, result) => {
+        if (err) {
+            console.error('Erro ao alternar status da empresa:', err);
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (result.affectedRows === 0) {
+            console.log('Empresa não encontrada');
+            return res.status(404).json({ message: 'Empresa não encontrada' });
+        }
+
+        console.log('Status da empresa atualizado com sucesso!');
+        res.json({ message: 'Status atualizado com sucesso!' });
     });
 };
