@@ -28,7 +28,7 @@ async function carregarEmpresas() {
             row.innerHTML = `
                 <td>${empresa.nome}</td>
                 <td>${empresa.email}</td>
-                <td>${empresa.ramo_de_atuacao}</td>
+                <td>${empresa.ramo_atuacao}</td>
                 <td class="status-${empresa.id}">${empresa.status}</td>
                 <td>
                     <button class="btn btn-info btn-sm btn-toggle-status" data-id="${empresa.id}">

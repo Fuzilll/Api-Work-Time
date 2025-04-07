@@ -1,12 +1,27 @@
-// registroRoutes.js - Rotas para os registros de ponto
 const express = require('express');
 const router = express.Router();
 const registroController = require('../controllers/registroController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Rota para cadastrar um novo registro de ponto
-router.post('/cadastrar', registroController.cadastrarRegistro);
+// Registrar ponto (acessível para funcionários)
+router.post('/registrar', 
+    authMiddleware.verificarNivel('FUNCIONARIO'),
+    registroController.cadastrarRegistro
+);
 
-// Rota para buscar registros de um usuário específico
-router.get('/usuario/:userId', registroController.buscarRegistrosDoUsuario);
+// Buscar registros (com validações diferentes para cada nível)
+router.get('/meus-registros', (req, res, next) => {
+    if (req.nivel === 'FUNCIONARIO') {
+        // Funcionário só pode ver os próprios registros
+        req.params.userId = req.id_usuario;
+        return registroController.buscarRegistrosDoUsuario(req, res, next);
+    } else if (req.nivel === 'ADMIN') {
+        // Admin pode ver registros da sua empresa
+        return registroController.buscarRegistrosPorEmpresa(req, res, next);
+    } else {
+        // IT Support pode ver todos os registros
+        return registroController.buscarTodosRegistros(req, res, next);
+    }
+});
 
 module.exports = router;

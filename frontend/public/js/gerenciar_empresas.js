@@ -28,7 +28,7 @@ async function carregarEmpresas() {
             row.innerHTML = `
                 <td>${empresa.nome}</td>
                 <td>${empresa.email}</td>
-                <td>${empresa.ramo_de_atuacao}</td>
+                <td>${empresa.ramo_atuacao}</td>
                 <td>${empresa.status}</td>
                 <td>
                     <button class="btn btn-primary btn-sm btn-cadastrar-admin"
