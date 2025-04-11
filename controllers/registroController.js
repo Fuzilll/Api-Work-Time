@@ -1,129 +1,87 @@
-const db = require('../config/db');
+// Importa o serviço de registros, onde a lógica de negócios de criação e recuperação de registros é executada
+const RegistroService = require('../services/registroService');
+// Importa o erro personalizado que será utilizado para capturar exceções específicas
+const { AppError } = require('../errors');
 
-// Cadastra um novo registro de ponto
-exports.cadastrarRegistro = (req, res) => {
-    const { id_funcionario, tipo, foto_url, latitude, longitude, precisao_geolocalizacao, dispositivo } = req.body;
-    console.log('Req recebida:', req.body);
+class RegistroController {
+  // Método para cadastrar um novo registro
+  // Recebe a requisição (req), a resposta (res), e o próximo middleware (next)
+  static async cadastrarRegistro(req, res, next) {
+    try {
+      // Chama o serviço de registro para cadastrar o novo registro, passando os dados do corpo da requisição
+      const registro = await RegistroService.cadastrarRegistro(req.body);
 
-    // Verifica se o funcionário existe no banco
-    const verificarFuncionarioSQL = 'SELECT id FROM FUNCIONARIO WHERE id = ?';
-    db.query(verificarFuncionarioSQL, [id_funcionario], (err, results) => {
-        if (err) {
-            console.error('Erro ao verificar funcionário:', err.message);
-            return res.status(500).json({ error: 'Erro ao verificar funcionário.' });
-        }
-        if (results.length === 0) {
-            console.warn(`Funcionário não encontrado: ${id_funcionario}`);
-            return res.status(400).json({ error: 'Funcionário não encontrado.' });
-        }
+      // Se o cadastro for bem-sucedido, retorna a resposta com status 201 e os dados do registro
+      res.status(201).json({
+        success: true,  // Indica que a operação foi bem-sucedida
+        data: registro  // Retorna o registro cadastrado
+      });
+    } catch (err) {
+      // Em caso de erro, passa o erro para o próximo middleware de tratamento de erros
+      next(err);
+    }
+  }
 
-        // Verifica configurações da empresa para ver o que é obrigatório
-        const verificarConfigSQL = `
-            SELECT cp.requer_foto, cp.requer_geolocalizacao 
-            FROM CONFIGURACAO_PONTO cp
-            JOIN FUNCIONARIO f ON f.id_empresa = cp.id_empresa
-            WHERE f.id = ?`;
-        
-        db.query(verificarConfigSQL, [id_funcionario], (err, configResults) => {
-            if (err) {
-                console.error('Erro ao verificar configurações:', err.message);
-                return res.status(500).json({ error: 'Erro ao verificar configurações da empresa.' });
-            }
+  // Método para buscar os registros de um funcionário específico
+  // A identificação do funcionário é passada via parâmetro da URL
+  static async buscarRegistrosFuncionario(req, res, next) {
+    try {
+      // Chama o serviço de registro para buscar os registros do funcionário com base no id fornecido
+      const registros = await RegistroService.buscarRegistrosFuncionario(
+        req.params.id_funcionario // Pega o id do funcionário da URL
+      );
 
-            if (configResults.length > 0) {
-                const config = configResults[0];
-                
-                // Validações conforme configuração da empresa
-                if (config.requer_foto && !foto_url) {
-                    return res.status(400).json({ error: 'Foto é obrigatória para registro de ponto nesta empresa.' });
-                }
-                
-                if (config.requer_geolocalizacao && (!latitude || !longitude)) {
-                    return res.status(400).json({ error: 'Geolocalização é obrigatória para registro de ponto nesta empresa.' });
-                }
-            }
+      // Retorna os registros encontrados
+      res.json({
+        success: true,  // Indica que a operação foi bem-sucedida
+        data: registros  // Retorna a lista de registros encontrados
+      });
+    } catch (err) {
+      // Em caso de erro, passa o erro para o próximo middleware de tratamento de erros
+      next(err);
+    }
+  }
 
-            // Insere o novo registro de ponto
-            const sql = `
-                INSERT INTO REGISTRO_PONTO 
-                (id_funcionario, tipo, foto_url, latitude, longitude, precisao_geolocalizacao, dispositivo, hash_registro)
-                VALUES (?, ?, ?, ?, ?, ?, ?, SHA2(CONCAT(?, ?, ?, ?, ?, NOW()), 256))`;
-            
-            db.query(sql, [
-                id_funcionario, 
-                tipo, 
-                foto_url, 
-                latitude, 
-                longitude, 
-                precisao_geolocalizacao, 
-                dispositivo,
-                id_funcionario,
-                tipo,
-                foto_url,
-                latitude,
-                longitude
-            ], (err, result) => {
-                if (err) {
-                    console.error('Erro ao cadastrar registro de ponto:', err.message);
-                    return res.status(500).json({ error: 'Erro ao cadastrar registro de ponto.' });
-                }
-                
-                console.log('Registro de ponto cadastrado com sucesso:', result);
-                res.json({ 
-                    message: 'Registro de ponto cadastrado com sucesso!', 
-                    id: result.insertId,
-                    status: 'Pendente' // Status inicial conforme definição da tabela
-                });
-            });
-        });
-    });
+  // Método para buscar os registros de todos os funcionários de uma empresa
+  // A identificação da empresa é extraída do objeto do usuário (req.usuario) e os parâmetros de consulta são passados como query string
+  static async buscarRegistrosEmpresa(req, res, next) {
+    try {
+      // Chama o serviço de registro para buscar os registros com base no id da empresa e nos parâmetros de consulta fornecidos
+      const registros = await RegistroService.buscarRegistrosEmpresa(
+        req.usuario.id_empresa,  // Pega o id da empresa do usuário autenticado
+        req.query               // Pega os parâmetros de consulta da URL
+      );
+
+      // Retorna os registros encontrados
+      res.json({
+        success: true,  // Indica que a operação foi bem-sucedida
+        data: registros  // Retorna a lista de registros encontrados
+      });
+    } catch (err) {
+      // Em caso de erro, passa o erro para o próximo middleware de tratamento de erros
+      next(err);
+    }
+  }
+
+  // Método para buscar todos os registros de acordo com os parâmetros fornecidos na query string
+  static async buscarTodosRegistros(req, res, next) {
+    try {
+      // Chama o serviço de registro para buscar todos os registros com base nos parâmetros de consulta fornecidos
+      const registros = await RegistroService.buscarTodosRegistros(
+        req.query // Pega os parâmetros de consulta da URL
+      );
+
+      // Retorna os registros encontrados
+      res.json({
+        success: true,  // Indica que a operação foi bem-sucedida
+        data: registros  // Retorna a lista de registros encontrados
+      });
+    } catch (err) {
+      // Em caso de erro, passa o erro para o próximo middleware de tratamento de erros
+      next(err);
+    }
+  }
 }
 
-// Busca todos os registros de ponto de um funcionário
-exports.buscarRegistrosDoUsuario = (req, res) => {
-    const { id_funcionario } = req.params;
-    console.log(`Buscando registros do funcionário: ${id_funcionario}`);
-
-    // Verifica se o funcionário existe
-    const verificarFuncionarioSQL = 'SELECT id FROM FUNCIONARIO WHERE id = ?';
-    db.query(verificarFuncionarioSQL, [id_funcionario], (err, results) => {
-        if (err) {
-            console.error('Erro ao verificar funcionário:', err.message);
-            return res.status(500).json({ error: 'Erro ao verificar funcionário.' });
-        }
-        if (results.length === 0) {
-            console.warn(`Funcionário não encontrado: ${id_funcionario}`);
-            return res.status(400).json({ error: 'Funcionário não encontrado.' });
-        }
-
-        // Busca os registros de ponto
-        const sql = `
-            SELECT 
-                rp.id,
-                rp.tipo,
-                rp.foto_url,
-                rp.latitude,
-                rp.longitude,
-                rp.endereco_registro,
-                rp.data_hora,
-                rp.status,
-                rp.precisao_geolocalizacao,
-                rp.dispositivo,
-                u.nome AS nome_funcionario
-            FROM REGISTRO_PONTO rp
-            JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
-            JOIN USUARIO u ON f.id_usuario = u.id
-            WHERE rp.id_funcionario = ?
-            ORDER BY rp.data_hora DESC`;
-        
-        db.query(sql, [id_funcionario], (err, results) => {
-            if (err) {
-                console.error('Erro ao buscar registros:', err.message);
-                return res.status(500).json({ error: 'Erro ao buscar registros de ponto.' });
-            }
-            
-            console.log(`Resposta enviada com ${results.length} registros.`);
-            res.json(results);
-        });
-    });
-};
+// Exporta o controlador para que ele possa ser usado em outras partes da aplicação
+module.exports = RegistroController;

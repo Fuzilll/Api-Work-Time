@@ -1,170 +1,97 @@
-const db = require('../config/db');
+// Importação do serviço 'FuncionarioService' que contém as lógicas de negócios
+// e da classe 'AppError' para tratamento de erros personalizados.
+const FuncionarioService = require('../services/funcionarioService'); 
+const { AppError } = require('../errors');
 
-// Listar histórico de pontos do funcionário
-exports.listarHistoricoPontos = (req, res) => {
-    const id_funcionario = req.session.id_usuario;
-
-    if (!id_funcionario) {
-        console.log('ID do funcionário não encontrado na sessão.');
-        return res.status(401).json({ message: 'Usuário não autenticado' });
+// A classe 'FuncionarioController' é responsável por gerenciar as requisições relacionadas
+// aos funcionários, manipulando as interações com os serviços e retornando as respostas
+// apropriadas para o cliente.
+class FuncionarioController {
+  
+  // Método assíncrono para obter o perfil do funcionário
+  // Contextualização: Este método vai pegar o 'id' do funcionário da requisição e
+  // buscar as informações do perfil por meio do 'FuncionarioService'.
+  static async obterPerfil(req, res, next) {
+    try {
+      // O 'id' do usuário é extraído do objeto 'usuario' na requisição (req.usuario)
+      const perfil = await FuncionarioService.obterPerfil(req.usuario.id);
+      
+      // Resposta de sucesso, enviando o perfil obtido.
+      res.json({
+        success: true,
+        data: perfil
+      });
+    } catch (err) {
+      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
+      next(err);
     }
+  }
 
-    console.log(`Buscando histórico de pontos para o funcionário com ID: ${id_funcionario}`);
-
-    const sql = 'SELECT * FROM registros_ponto WHERE funcionario_id = ? ORDER BY data_ponto DESC';
-
-    db.query(sql, [id_funcionario], (err, results) => {
-        if (err) {
-            console.error('Erro ao buscar histórico de pontos:', err);
-            return res.status(500).json({ error: err.message });
-        }
-
-        if (results.length === 0) {
-            console.log('Nenhum ponto encontrado para o funcionário');
-            return res.status(404).json({ message: 'Nenhum ponto encontrado' });
-        }
-
-        console.log(`Registros de ponto encontrados: ${results.length}`);
-        res.json(results);
-    });
-};
-
-// Carregar dados do perfil do funcionário
-exports.carregarPerfil = (req, res) => {
-    const id_funcionario = req.session.id_usuario;
-
-    if (!id_funcionario) {
-        console.log('ID do funcionário não encontrado na sessão.');
-        return res.status(401).json({ message: 'Usuário não autenticado' });
+  // Método assíncrono para listar o histórico de pontos do funcionário
+  // Contextualização: Este método usa o 'id' do funcionário e os filtros fornecidos na query 
+  // para retornar o histórico de pontos por meio do serviço.
+  static async listarHistoricoPontos(req, res, next) {
+    try {
+      // Aqui, 'req.query' está sendo usado para passar filtros adicionais para a busca do histórico.
+      const historico = await FuncionarioService.listarHistoricoPontos(
+        req.usuario.id, // 'id' do funcionário da requisição
+        req.query // Filtros adicionais que podem ser passados na URL
+      );
+      
+      // Resposta de sucesso, retornando o histórico de pontos do funcionário.
+      res.json({
+        success: true,
+        data: historico
+      });
+    } catch (err) {
+      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
+      next(err);
     }
+  }
 
-    console.log(`Buscando dados do perfil para o funcionário com ID: ${id_funcionario}`);
-
-    const sql = `SELECT U.nome, U.email, F.cpf, F.registro_emp, F.funcao, F.data_admissao, E.nome AS empresa_nome
-                 FROM USUARIO U
-                 JOIN FUNCIONARIO F ON U.id = F.id_usuario
-                 JOIN EMPRESA E ON F.id_empresa = E.id
-                 WHERE U.id = ?`;
-
-    db.query(sql, [id_funcionario], (err, results) => {
-        if (err) {
-            console.error('Erro ao carregar perfil do funcionário:', err);
-            return res.status(500).json({ error: err.message });
-        }
-
-        if (results.length === 0) {
-            console.log('Funcionário não encontrado');
-            return res.status(404).json({ message: 'Funcionário não encontrado' });
-        }
-
-        console.log('Perfil do funcionário carregado com sucesso');
-        res.json(results[0]);
-    });
-};
-
-/**
- * Solicitar alteração/correção em registro de ponto
-  * @param {Object} req - Requisição HTTP (deve conter id_registro, tipo_solicitacao, motivo)
-  * @param {Object} res - Resposta HTTP
-  */
-exports.solicitarAlteracaoPonto = (req, res) => {
-    const id_funcionario = req.session.id_usuario;
-    const { id_registro, tipo_solicitacao, motivo } = req.body;
-
-    // Validações básicas
-    if (!id_funcionario) {
-        console.log('ID do funcionário não encontrado na sessão.');
-        return res.status(401).json({ 
-            error: 'Usuário não autenticado',
-            code: 'UNAUTHORIZED'
-        });
+  // Método assíncrono para solicitar alteração de ponto
+  // Contextualização: Esse método recebe dados no corpo da requisição e usa
+  // o serviço para solicitar alteração no ponto do funcionário.
+  static async solicitarAlteracaoPonto(req, res, next) {
+    try {
+      // 'req.body' contém as informações sobre a solicitação de alteração de ponto
+      const resultado = await FuncionarioService.solicitarAlteracaoPonto(
+        req.usuario.id, // 'id' do funcionário da requisição
+        req.body // Dados do corpo da requisição que especificam a solicitação de alteração
+      );
+      
+      // Retorna um status 201 de sucesso com o resultado da solicitação de alteração.
+      res.status(201).json({
+        success: true,
+        data: resultado
+      });
+    } catch (err) {
+      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
+      next(err);
     }
+  }
 
-    if (!id_registro || !tipo_solicitacao || !motivo) {
-        console.log('Dados obrigatórios não fornecidos.');
-        return res.status(400).json({ 
-            error: 'Todos os campos são obrigatórios (id_registro, tipo_solicitacao, motivo)',
-            code: 'MISSING_FIELDS'
-        });
+  // Método assíncrono para listar todas as solicitações do funcionário
+  // Contextualização: Este método retorna todas as solicitações feitas por um funcionário
+  // por meio do 'FuncionarioService'.
+  static async listarSolicitacoes(req, res, next) {
+    try {
+      // Busca todas as solicitações feitas pelo funcionário com o 'id' da requisição.
+      const solicitacoes = await FuncionarioService.listarSolicitacoes(
+        req.usuario.id
+      );
+      
+      // Resposta de sucesso, retornando a lista de solicitações.
+      res.json({
+        success: true,
+        data: solicitacoes
+      });
+    } catch (err) {
+      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
+      next(err);
     }
+  }
+}
 
-    if (!['Correcao', 'Justificativa'].includes(tipo_solicitacao)) {
-        console.log('Tipo de solicitação inválido:', tipo_solicitacao);
-        return res.status(400).json({ 
-            error: 'Tipo de solicitação inválido. Deve ser "Correcao" ou "Justificativa"',
-            code: 'INVALID_REQUEST_TYPE'
-        });
-    }
-
-    console.log(`Solicitação de ${tipo_solicitacao} para registro ${id_registro} pelo funcionário ${id_funcionario}`);
-
-    // 1. Verificar se o registro de ponto pertence ao funcionário
-    const sqlVerificaRegistro = `
-        SELECT id FROM REGISTRO_PONTO 
-        WHERE id = ? AND id_funcionario = ?
-    `;
-
-    db.query(sqlVerificaRegistro, [id_registro, id_funcionario], (err, results) => {
-        if (err) {
-            console.error('Erro ao verificar registro de ponto:', err);
-            return res.status(500).json({ 
-                error: 'Erro ao verificar registro de ponto',
-                code: 'DB_ERROR'
-            });
-        }
-
-        if (results.length === 0) {
-            console.log('Registro de ponto não encontrado ou não pertence ao funcionário');
-            return res.status(404).json({ 
-                error: 'Registro de ponto não encontrado ou você não tem permissão para acessá-lo',
-                code: 'RECORD_NOT_FOUND'
-            });
-        }
-
-        // 2. Inserir a solicitação de alteração
-        const sqlInsereSolicitacao = `
-            INSERT INTO SOLICITACAO_ALTERACAO (
-                id_registro, 
-                id_funcionario, 
-                tipo_solicitacao, 
-                motivo,
-                status
-            ) VALUES (?, ?, ?, ?, 'Pendente')
-        `;
-
-        db.query(sqlInsereSolicitacao, 
-            [id_registro, id_funcionario, tipo_solicitacao, motivo], 
-            (err, result) => {
-                if (err) {
-                    console.error('Erro ao registrar solicitação:', err);
-                    return res.status(500).json({ 
-                        error: 'Erro ao registrar solicitação',
-                        code: 'DB_ERROR'
-                    });
-                }
-
-                console.log('Solicitação registrada com ID:', result.insertId);
-                
-                // 3. (Opcional) Atualizar status do registro de ponto para "Pendente"
-                const sqlAtualizaStatus = `
-                    UPDATE REGISTRO_PONTO 
-                    SET status = 'Pendente' 
-                    WHERE id = ?
-                `;
-
-                db.query(sqlAtualizaStatus, [id_registro], (err) => {
-                    if (err) {
-                        console.error('Erro ao atualizar status do registro (não crítico):', err);
-                        // Não falha a operação por causa disso, apenas registra
-                    }
-
-                    res.status(201).json({
-                        message: 'Solicitação registrada com sucesso!',
-                        id_solicitacao: result.insertId,
-                        status: 'Pendente'
-                    });
-                });
-            }
-        );
-    });
-};
+// Exporte a classe para que seja utilizada em outras partes da aplicação
+module.exports = FuncionarioController;

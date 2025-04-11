@@ -2,17 +2,30 @@ const express = require('express');
 const router = express.Router();
 const funcionarioController = require('../controllers/funcionarioController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { validate } = require('../middlewares/validators');
+const funcionarioSchema = require('../validators/funcionarioSchema');
 
-// Todas as rotas exigem autenticação
+// Middleware de autenticação para todas as rotas
+router.use(authMiddleware.autenticacao);
 router.use(authMiddleware.verificarNivel('FUNCIONARIO'));
 
-// Rotas de funcionário
-router.get('/perfil', funcionarioController.carregarPerfil);
-router.get('/historico-pontos', funcionarioController.listarHistoricoPontos);
+// Rotas de perfil
+router.get('/perfil', funcionarioController.obterPerfil);
 
-// Rota para solicitar alteração de ponto
-router.post('/solicitar-alteracao-ponto', 
-    funcionarioController.solicitarAlteracaoPonto
+// Rotas de histórico
+router.get(
+  '/historico-pontos',
+  validate(funcionarioSchema.filtrosHistorico, 'query'),
+  funcionarioController.listarHistoricoPontos
 );
+
+// Rotas de solicitações
+router.post(
+  '/solicitar-alteracao-ponto',
+  validate(funcionarioSchema.solicitarAlteracaoPonto),
+  funcionarioController.solicitarAlteracaoPonto
+);
+
+router.get('/solicitacoes', funcionarioController.listarSolicitacoes);
 
 module.exports = router;

@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="content-language" content="pt-br" />
+    <meta name="robots" content="index, follow" />
+    <link rel="stylesheet" href="/css/boot.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/fonts-icones.css">
+    <link rel="shortcut icon" href="/images/logo.png" type="image/ico" />
+    
+    <title></title>
+</head>
+
+<body>
+    <header class="main_header container">
+        <div class="content">
+            <div class="main_header_logo">
+                <a href="/" title="Página Inicial">
+                    <img src="/images/logo.png" alt="Logo">
+                </a>
+            </div>
+            <nav>
+                <ul class="main_header_nav">
+                    <li class="main_header_nav_item"><a href="#inicio">Início</a></li>
+                    <li class="main_header_nav_item"><a href="#contato">Contato</a></li>
+                    <li class="main_header_nav_item">
+                        <a href="/login.html" id="loginLink" onclick="event.preventDefault(); window.location.href='/login.html';">Login</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main_content container">
+        <section id="inicio" class="section-chamada container">
+            <div class="content">
+                <article class="topoPag">
+                    <div class="mascara">
+                        <div class="centraliza"></div>
+                        <img src="uploads/capa/banner-home.jpg" alt="" title="" />
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section id="cardapio" class="section-cardapio container">
+            <div class="content">
+                <h1 class="title center laranja">Registros de Ponto</h1>
+                <article class="card">
+                    <div class="fundo-card"><img src="/frontend/uploads/RelogiodePontos/camarao.jpg" alt="Camarão"></div>
+                    <div class="title-content">
+                        <h3><a href="#">Cartão de Ponto</a></h3>
+                        <div class="intro"><a href="#">Funções Inteligentes</a></div>
+                    </div>
+                    <div class="info">
+                        Digite aqui a descrição do produto acima.
+                    </div>
+                </article>
+                <article class="card">
+                    <div class="fundo-card"><img src="/frontend/uploads/RelogiodePontos/sobremesas.jpg" alt="Sobremesa"></div>
+                    <div class="title-content">
+                        <h3><a href="#">Ponto Facial</a></h3>
+                        <div class="intro"><a href="#">Marcadores com facial</a></div>
+                    </div>
+                    <div class="info">
+                        Digite aqui a descrição do produto acima.
+                    </div>
+                </article>
+                <article class="card">
+                    <div class="fundo-card"><img src="/frontend/uploads/RelogiodePontos/bebidas.jpg" alt="Bebidas"></div>
+                    <div class="title-content">
+                        <h3><a href="#">Marcador de Ponto</a></h3>
+                        <div class="intro"><a href="#">Através do Smartphone</a></div>
+                    </div>
+                    <div class="info">
+                        Digite aqui a descrição do produto acima.
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section id="faq" class="section-faq container">
+            <div class="content">
+                <!-- FAQ content aqui -->
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer" id="contato">
+        <div class="left">
+            <h4 class="title-footer"><span></span></h4>
+            <p class="links">
+                <a href="index.html" title="Inicio">Início</a>
+                <a href="/login">Login</a>
+                <a href="#faq" title="Perguntas Frequentes">Perguntas Frequentes</a>
+            </p>
+            <p class="Copyright">Copyright &copy; 2023 - Todos os Direitos Reservados.</p>
+        </div>
+        <div class="right">
+            <h4 class="title-footer">Contato</h4>
+            <form class="formulario" action="#" method="post">
+                <input type="text" class="campo" name="nome" placeholder="Nome" required="" />
+                <input type="email" class="campo" name="email" placeholder="E-mail" required="" />
+                <input type="text" class="campo" name="assunto" placeholder="Assunto" required="" />
+                <textarea name="mensagem" class="campo-textarea" placeholder="Mensagem" rows="5" required=""></textarea>
+                <button class="btn">Enviar</button>
+            </form>
+        </div>
+    </footer>
+
+    <script src="/frontend/js/index_jquery.js"></script>
+    <script src="/frontend/js/index_scripts.js"></script>
+    <script>
+        // Garante que o link de login funciona mesmo com JavaScript
+        document.getElementById('loginLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = '/login.html';
+        });
+    </script>
+</body>
+
+</html>

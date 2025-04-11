@@ -1,319 +1,102 @@
-const db = require('../config/db');
+// Importação dos módulos necessários
+const EmpresaService = require('../services/empresaService'); // Importa o serviço de empresa para manipular as operações no banco de dados.
+const { AppError } = require('../errors'); // Importa o modelo de erro personalizado para tratar exceções.
 
-exports.cadastrarEmpresa = (req, res) => {
-    const { 
-        nome, 
-        cnpj, 
-        cidade, 
-        cep, 
-        rua, 
-        numero, 
-        id_estado, 
-        ramo_atuacao, 
-        email,
-        telefone
-    } = req.body;
-
-    // Validação completa
-    if (!nome || !cnpj || !cidade || !cep || !rua || !numero || !id_estado || !ramo_atuacao || !email || !telefone) {
-        return res.status(400).json({ 
-            error: 'Todos os campos obrigatórios devem ser preenchidos!',
-            camposObrigatorios: ['nome', 'cnpj', 'cidade', 'cep', 'rua', 'numero', 'id_estado', 'ramo_atuacao', 'email','telefone']
-        });
+class EmpresaController {
+  // Método estático para cadastrar uma nova empresa
+  static async cadastrarEmpresa(req, res, next) {
+    try {
+      // Chama o serviço para cadastrar a empresa, passando os dados do corpo da requisição (req.body)
+      const empresa = await EmpresaService.cadastrarEmpresa(req.body); 
+      
+      // Retorna uma resposta com status 201 (Criado), contendo os dados da empresa cadastrada
+      res.status(201).json({
+        success: true, // Indica que a operação foi bem-sucedida
+        data: empresa   // Retorna os dados da empresa cadastrada
+      });
+    } catch (err) {
+      // Caso ocorra um erro, passa o erro para o próximo middleware de tratamento (next)
+      next(err);
     }
+  }
 
-    // Validação específica do ramo de atuação
-    if (ramo_atuacao.length < 2) {
-        return res.status(400).json({ 
-            error: 'O ramo de atuação deve ter pelo menos 2 caracteres!'
-        });
+  // Método estático para listar todas as empresas
+  static async listarEmpresas(req, res, next) {
+    try {
+      // Chama o serviço para listar todas as empresas cadastradas
+      const empresas = await EmpresaService.listarEmpresas();
+      
+      // Retorna uma resposta com status 200 (OK), contendo a lista de empresas
+      res.json({
+        success: true, // Indica que a operação foi bem-sucedida
+        data: empresas // Retorna a lista de empresas
+      });
+    } catch (err) {
+      // Caso ocorra um erro, passa o erro para o próximo middleware de tratamento (next)
+      next(err);
     }
+  }
 
-    // Formatar CNPJ (remover caracteres não numéricos)
-    const cnpjFormatado = cnpj.replace(/\D/g, '');
-
-    // Query SQL com todos os campos, incluindo telefone
-    const sql = `
-        INSERT INTO EMPRESA (
-            nome, cnpj, cidade, cep, rua, numero, 
-            id_estado, ramo_atuacao, email, telefone
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    db.query(sql, [
-        nome, 
-        cnpjFormatado, 
-        cidade, 
-        cep, 
-        rua, 
-        numero, 
-        id_estado, 
-        ramo_atuacao, 
-        email, 
-        telefone
-    ], (err, result) => {
-        if (err) {
-            console.error('Erro ao cadastrar empresa:', err);
-            
-            if (err.code === 'ER_DUP_ENTRY') {
-                const field = err.message.includes('cnpj') ? 'CNPJ' : 'Email';
-                return res.status(400).json({ 
-                    error: `${field} já cadastrado!`,
-                    campoDuplicado: field.toLowerCase()
-                });
-            }
-            
-            return res.status(500).json({ 
-                error: 'Erro ao cadastrar empresa',
-                detalhes: err.message 
-            });
-        }
-
-        res.status(201).json({ 
-            message: 'Empresa cadastrada com sucesso!',
-            id: result.insertId,
-            nome,
-            cnpj: cnpjFormatado
-        });
-    });
-};
-
-// Listar Empresas (com callback)
-exports.listarEmpresas = (req, res) => {
-    db.query(`
-        SELECT e.*, es.nome as estado_nome 
-        FROM EMPRESA e
-        JOIN ESTADO es ON e.id_estado = es.id
-    `, (err, empresas) => {
-        if (err) {
-            console.error('Erro ao buscar empresas:', err);
-            return res.status(500).json({ error: 'Erro ao buscar empresas' });
-        }
-
-        if (empresas.length === 0) {
-            return res.status(404).json({ message: 'Nenhuma empresa encontrada' });
-        }
-        
-        res.status(200).json(empresas);
-    });
-};
-
-// Remover Empresa (com callback)
-exports.removerEmpresa = (req, res) => {
-    const { id } = req.params;
-    
-    // Verificar se existe funcionários primeiro
-    db.query('SELECT id FROM FUNCIONARIO WHERE id_empresa = ?', [id], (err, funcionarios) => {
-        if (err) {
-            console.error('Erro ao verificar funcionários:', err);
-            return res.status(500).json({ error: 'Erro ao verificar funcionários' });
-        }
-
-        if (funcionarios.length > 0) {
-            return res.status(400).json({ error: 'Empresa possui funcionários vinculados' });
-        }
-
-        // Se não tiver funcionários, pode remover
-        db.query('DELETE FROM EMPRESA WHERE id = ?', [id], (err, result) => {
-            if (err) {
-                console.error('Erro ao remover empresa:', err);
-                return res.status(500).json({ error: 'Erro ao remover empresa' });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ message: 'Empresa não encontrada' });
-            }
-
-            res.json({ message: 'Empresa removida com sucesso!' });
-        });
-    });
-};
-// Cadastrar Administrador com Permissões Específicas
-exports.cadastrarAdmin = (req, res) => {
-    const { 
-        nome, 
-        email, 
-        senha, 
-        id_empresa,
-        cpf = null,
-        foto_perfil_url = null,
-        permissoes = {
-            fechar_ponto: true,
-            cadastrar_funcionario: true,
-            aprovar_pontos: true,
-            excluir_funcionario: true,
-            desativar_funcionario: true
-            ,visualizar_relatorios:true
-        }
-    } = req.body;
-    
-    console.log(`Cadastrando administrador: ${nome}, Empresa ID: ${id_empresa}`);
-
-    // Validações básicas
-    if (!nome || !email || !senha || !id_empresa) {
-        return res.status(400).json({ error: 'Campos obrigatórios faltando!' });
+  // Método estático para remover uma empresa com base no ID
+  static async removerEmpresa(req, res, next) {
+    try {
+      // Desestrutura o parâmetro id da requisição
+      const { id } = req.params;
+      
+      // Chama o serviço para remover a empresa, passando o ID
+      const resultado = await EmpresaService.removerEmpresa(id);
+      
+      // Retorna uma resposta com status 200 (OK), indicando que a empresa foi removida
+      res.json({
+        success: true, // Indica que a operação foi bem-sucedida
+        data: resultado // Retorna o resultado da remoção (geralmente um objeto com o status da operação)
+      });
+    } catch (err) {
+      // Caso ocorra um erro, passa o erro para o próximo middleware de tratamento (next)
+      next(err);
     }
+  }
 
-    // 1. Verificar se empresa existe
-    db.query('SELECT id FROM EMPRESA WHERE id = ?', [id_empresa], (err, empresaResult) => {
-        if (err) {
-            console.error('Erro ao verificar empresa:', err);
-            return res.status(500).json({ error: 'Erro ao verificar empresa' });
-        }
+  // Método estático para alternar o status de uma empresa (ex.: ativo/inativo)
+  static async alternarStatus(req, res, next) {
+    try {
+      // Desestrutura o parâmetro id da requisição
+      const { id } = req.params;
+      
+      // Chama o serviço para alternar o status da empresa, passando o ID
+      const resultado = await EmpresaService.alternarStatus(id);
+      
+      // Retorna uma resposta com status 200 (OK), indicando que o status foi alterado
+      res.json({
+        success: true, // Indica que a operação foi bem-sucedida
+        data: resultado // Retorna o resultado da alteração de status
+      });
+    } catch (err) {
+      // Caso ocorra um erro, passa o erro para o próximo middleware de tratamento (next)
+      next(err);
+    }
+  }
 
-        if (empresaResult.length === 0) {
-            return res.status(400).json({ error: 'Empresa não encontrada!' });
-        }
-
-        // 2. Verificar email único
-        db.query('SELECT id FROM USUARIO WHERE email = ?', [email], (err, emailResult) => {
-            if (err) {
-                console.error('Erro ao verificar email:', err);
-                return res.status(500).json({ error: 'Erro ao verificar email' });
-            }
-
-            if (emailResult.length > 0) {
-                return res.status(400).json({ error: 'Email já cadastrado!' });
-            }
-
-            // 3. Inserir usuário
-            db.query(
-                `INSERT INTO USUARIO (
-                    nome, email, senha, nivel, cpf, foto_perfil_url, status
-                ) VALUES (?, ?, SHA2(?, 256), 'ADMIN', ?, ?, 'Ativo')`,
-                [nome, email, senha, cpf, foto_perfil_url],
-                (err, usuarioResult) => {
-                    if (err) {
-                        console.error('Erro ao cadastrar usuário:', err);
-                        return res.status(500).json({ error: 'Erro ao cadastrar usuário' });
-                    }
-
-                    // 4. Inserir admin com permissões
-                    const permissoesJSON = JSON.stringify(permissoes);
-                    db.query(
-                        `INSERT INTO ADMIN (
-                            id_usuario, id_empresa, permissoes
-                        ) VALUES (?, ?, ?)`,
-                        [usuarioResult.insertId, id_empresa, permissoesJSON],
-                        (err) => {
-                            if (err) {
-                                console.error('Erro ao cadastrar administrador:', err);
-                                return res.status(500).json({ error: 'Erro ao cadastrar administrador' });
-                            }
-
-                            res.status(201).json({ 
-                                message: 'Administrador cadastrado com sucesso!',
-                                id: usuarioResult.insertId,
-                                permissoes: permissoes
-                            });
-                        }
-                    );
-                }
-            );
-        });
-    });
-};
-
-// Alternar Status Empresa (com callback)
-exports.alternarStatusEmpresa = (req, res) => {
-    const { id } = req.params;
-
-    // 1. Primeiro obter o status atual
-    db.query('SELECT id, status FROM EMPRESA WHERE id = ?', [id], (err, empresaResult) => {
-        if (err) {
-            console.error('Erro ao buscar empresa:', err);
-            return res.status(500).json({ error: 'Erro ao buscar empresa' });
-        }
-
-        if (empresaResult.length === 0) {
-            return res.status(404).json({ message: 'Empresa não encontrada' });
-        }
-
-        const novoStatus = empresaResult[0].status === 'Ativo' ? 'Inativo' : 'Ativo';
-
-        // 2. Atualizar o status
-        db.query(
-            'UPDATE EMPRESA SET status = ? WHERE id = ?',
-            [novoStatus, id],
-            (err, result) => {
-                if (err) {
-                    console.error('Erro ao atualizar status:', err);
-                    return res.status(500).json({ error: 'Erro ao atualizar status' });
-                }
-
-                res.json({ 
-                    message: 'Status atualizado com sucesso!',
-                    novoStatus 
-                });
-            }
-        );
-    });
-};
-
-//metodos para serem implementados futuramente
-
-// Obter Permissões do Administrador
-exports.obterPermissoesAdmin = (req, res) => {
-    const { id_admin } = req.params;
-
-    db.query(
-        'SELECT permissoes FROM ADMIN WHERE id = ?',
-        [id_admin],
-        (err, results) => {
-            if (err) {
-                console.error('Erro ao obter permissões:', err);
-                return res.status(500).json({ error: 'Erro ao obter permissões' });
-            }
-
-            if (results.length === 0) {
-                return res.status(404).json({ error: 'Administrador não encontrado' });
-            }
-
-            try {
-                const permissoes = JSON.parse(results[0].permissoes);
-                res.json({ permissoes });
-            } catch (e) {
-                console.error('Erro ao parsear permissões:', e);
-                res.status(500).json({ error: 'Erro ao interpretar permissões' });
-            }
-        }
-    );
-};
-
-// Middleware de verificação de permissões
-function verificarPermissao(permissaoRequerida) {
-    return (req, res, next) => {
-        const id_admin = req.user.id; // Supondo que o ID do admin está no token JWT
-
-        db.query(
-            'SELECT permissoes FROM ADMIN WHERE id_usuario = ?',
-            [id_admin],
-            (err, results) => {
-                if (err) {
-                    console.error('Erro ao verificar permissões:', err);
-                    return res.status(500).json({ error: 'Erro ao verificar permissões' });
-                }
-
-                if (results.length === 0) {
-                    return res.status(403).json({ error: 'Administrador não encontrado' });
-                }
-
-                try {
-                    const permissoes = JSON.parse(results[0].permissoes);
-                    
-                    if (permissoes[permissaoRequerida] !== true) {
-                        return res.status(403).json({ 
-                            error: 'Acesso negado: permissão insuficiente',
-                            permissaoRequerida
-                        });
-                    }
-
-                    next();
-                } catch (e) {
-                    console.error('Erro ao parsear permissões:', e);
-                    res.status(500).json({ error: 'Erro ao interpretar permissões' });
-                }
-            }
-        );
-    };
+  // Método estático para obter os dados de uma empresa específica com base no ID
+  static async obterEmpresa(req, res, next) {
+    try {
+      // Desestrutura o parâmetro id da requisição
+      const { id } = req.params;
+      
+      // Chama o serviço para obter os dados da empresa, passando o ID
+      const empresa = await EmpresaService.obterEmpresa(id);
+      
+      // Retorna uma resposta com status 200 (OK), contendo os dados da empresa
+      res.json({
+        success: true, // Indica que a operação foi bem-sucedida
+        data: empresa  // Retorna os dados da empresa obtida
+      });
+    } catch (err) {
+      // Caso ocorra um erro, passa o erro para o próximo middleware de tratamento (next)
+      next(err);
+    }
+  }
 }
+
+// Exporta o controlador para ser utilizado em outras partes da aplicação
+module.exports = EmpresaController;

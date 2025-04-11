@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Recuperação de Senha</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white !important;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Recuperação de Senha</h2>
+        <p>Olá {{nome}},</p>
+        <p>Recebemos uma solicitação para redefinir sua senha no Work Time System.</p>
+        <p>Clique no botão abaixo para criar uma nova senha:</p>
+        
+        <a href="{{resetUrl}}" class="button">Redefinir Senha</a>
+        
+        <p>Se você não solicitou esta alteração, por favor ignore este email.</p>
+        <p>Este link expirará em {{expiracao}}.</p>
+        
+        <p>Atenciosamente,<br>Equipe Work Time</p>
+    </div>
+</body>
+</html>

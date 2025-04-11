@@ -1,101 +1,145 @@
-const idEmpresa = localStorage.getItem('id_empresa');
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    mostrarLoading();
 
-// Verificar autenticação antes de fazer as requisições
-document.addEventListener('DOMContentLoaded', function () {
-    if (!idEmpresa || !localStorage.getItem('id_usuario')) {
-        window.location.href = 'login.html';
-        return;
-    }
-    fetchResumoFuncionarios();
-    fetchRelatorioPontos();
-    fetchUltimosRegistrosPonto();
+    const dados = await buscarDados('/api/dashboard');
+    console.log('🔍 Dados recebidos do /api/dashboard:', dados);
+
+    if (!dados || !dados.data) throw new Error('Dados inválidos do dashboard');
+
+    carregarResumo(dados.data.resumoFuncionarios);
+    carregarRelatorioPontos(dados.data.relatorioPontos);
+    carregarRegistrosRecentes(dados.data.pontosPendentes);
+
+  } catch (erro) {
+    console.error('Erro ao carregar o dashboard:', erro);
+    exibirErro('Erro ao carregar o painel. Tente recarregar a página.');
+  } finally {
+    esconderLoading();
+  }
 });
 
-// Função para buscar o resumo de funcionários
-function fetchResumoFuncionarios() {
-    
-    const url = `http://localhost:3000/api/empresas/${idEmpresa}/admin/resumo`;
-
-    fetch(url, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}` // Adicione se usar token
-        }
-    })
-    .then(response => {
-      console.log('Resposta recebida, status:', response.status);
-      if (!response.ok) throw new Error('Erro na requisição: ' + response.status);
-      return response.json();
-    })
-    .then(data => {
-        document.getElementById('total-funcionarios').textContent = data.total_funcionarios || 0;
-        document.getElementById('funcionarios-ativos').textContent = data.funcionarios_ativos || 0;
-        document.getElementById('funcionarios-inativos').textContent = data.funcionarios_inativos || 0;
-    })
-    .catch(error => {
-        console.error('Erro ao buscar resumo de funcionários:', error);
-        if (error.message.includes('401')) {
-            window.location.href = 'login.html';
-        }
-    });
+// Utils: loading
+function mostrarLoading() {
+  const loadingElement = document.getElementById('loading-overlay');
+  if (loadingElement) loadingElement.style.display = 'flex';
 }
 
-// Função para buscar o relatório de pontos
-function fetchRelatorioPontos() {
-    fetch(`/api/empresas/${idEmpresa}/admin/relatorios/pontos`, {
-        credentials: 'include'
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Erro na requisição');
-        return response.json();
-    })
-    .then(data => {
-        document.getElementById('total-pontos').textContent = data.total_pontos || 0;
-        document.getElementById('pontos-aprovados').textContent = data.pontos_aprovados || 0;
-        document.getElementById('pontos-pendentes').textContent = data.pontos_pendentes || 0;
-    })
-    .catch(error => {
-        console.error('Erro ao buscar relatório de pontos:', error);
-    });
+function esconderLoading() {
+  const loadingElement = document.getElementById('loading-overlay');
+  if (loadingElement) loadingElement.style.display = 'none';
 }
 
-// Função para buscar os últimos registros de ponto
-function fetchUltimosRegistrosPonto() {
-    fetch(`/api/empresas/${idEmpresa}/admin/registros-recentes`, {
-        credentials: 'include'
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Erro na requisição');
-        return response.json();
-    })
-    .then(data => {
-        const tabelaPontos = document.getElementById('tabela-pontos');
-        tabelaPontos.innerHTML = '';
-
-        // Verifica se os dados estão no formato esperado
-        const registros = Array.isArray(data) ? data : (data.registros || []);
-        
-        if (registros.length === 0) {
-            tabelaPontos.innerHTML = '<tr><td colspan="3">Nenhum registro encontrado</td></tr>';
-            return;
-        }
-
-        registros.forEach(registro => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${registro.funcionario || 'N/A'}</td>
-                <td>${registro.data || 'N/A'}</td>
-                <td>${registro.status || 'N/A'}</td>
-            `;
-            tabelaPontos.appendChild(row);
-        });
-    })
-    .catch(error => {
-        console.error('Erro ao buscar últimos registros de ponto:', error);
-        document.getElementById('tabela-pontos').innerHTML = 
-            '<tr><td colspan="3">Erro ao carregar registros</td></tr>';
-    });
+// Utils: mensagens
+function exibirErro(mensagem) {
+  const errorDiv = document.getElementById('error-message');
+  if (errorDiv) {
+    errorDiv.style.display = 'block';
+    errorDiv.innerText = mensagem;
+    setTimeout(() => errorDiv.style.display = 'none', 5000);
+  }
 }
+
+// Funções principais
+function carregarResumo(resumo) {
+  console.log('➡️ Dados recebidos para carregarResumo():', resumo);
+
+  if (!resumo) {
+    console.warn('⚠️ Resumo de funcionários ausente ou inválido:', resumo);
+    return;
+  }
+
+  const { totalFuncionarios, funcionariosAtivos, funcionariosInativos } = resumo;
+
+  console.log('✅ Resumo recebido do backend:', {
+    totalFuncionarios,
+    funcionariosAtivos,
+    funcionariosInativos
+  });
+
+  atualizarTexto('total-funcionarios', totalFuncionarios);
+  atualizarTexto('funcionarios-ativos', funcionariosAtivos);
+  atualizarTexto('funcionarios-inativos', funcionariosInativos);
+}
+
+function carregarRelatorioPontos(relatorio = {}) {
+  atualizarTexto('total-pontos', relatorio.totalPontos || 0);
+  atualizarTexto('pontos-aprovados', relatorio.pontosAprovados || 0);
+  atualizarTexto('pontos-pendentes', relatorio.pontosPendentes || 0);
+}
+
+function carregarRegistrosRecentes(pontosPendentes = []) {
+  const tabela = document.getElementById('tabela-pontos');
+  if (!tabela) return;
+
+  tabela.innerHTML = '';
+
+  pontosPendentes.forEach(registro => {
+    const linha = document.createElement('tr');
+    linha.innerHTML = `
+      <td>${registro.nomeFuncionario || 'Desconhecido'}</td>
+      <td>${formatarDataHora(registro.dataHora)}</td>
+      <td>${formatarStatus(registro.status)}</td>
+    `;
+    tabela.appendChild(linha);
+  });
+}
+
+// Funções auxiliares
+async function buscarDados(url) {
+  try {
+    const resposta = await fetch(url, {
+      credentials: 'include'
+    });
+
+    if (!resposta.ok) {
+      throw new Error(`Erro HTTP: ${resposta.status}`);
+    }
+
+    const json = await resposta.json();
+    return json;
+  } catch (erro) {
+    console.error(`❌ Erro ao buscar dados de ${url}:`, erro);
+    throw erro;
+  }
+}
+
+function atualizarTexto(id, valor) {
+  const elemento = document.getElementById(id);
+  if (elemento) {
+    elemento.textContent = valor ?? 0;
+  }
+}
+
+function formatarStatus(status) {
+  if (!status) status = 'DESCONHECIDO';
+
+  const mapa = {
+    'APROVADO': { classe: 'success', texto: 'Aprovado' },
+    'PENDENTE': { classe: 'warning', texto: 'Pendente' },
+    'REJEITADO': { classe: 'danger', texto: 'Rejeitado' }
+  };
+
+  const item = mapa[status.toUpperCase()] || { classe: 'secondary', texto: 'Desconhecido' };
+  return `<span class="badge bg-${item.classe}">${item.texto}</span>`;
+}
+
+function formatarDataHora(data) {
+  if (!data) return 'Data não informada';
+
+  try {
+    const dataObj = new Date(data);
+    if (isNaN(dataObj.getTime())) return 'Data inválida';
+
+    return dataObj.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return 'Data inválida';
+  }
+}
+
