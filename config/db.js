@@ -26,6 +26,7 @@ class Database {
         this.testConnection();
     }
 
+    
     /**
      * Método privado usado para verificar se a conexão com o banco foi estabelecida corretamente.
      * Caso não consiga conectar, o processo é encerrado com erro.
