@@ -161,6 +161,7 @@ static async carregarDashboardAdmin(idEmpresa) {
       this.carregarPontosPendentes(idEmpresa)
     ]);
 
+    
     return {
       resumoFuncionarios: resumoFuncionarios[0],
       relatorioPontos: relatorioPontos[0],

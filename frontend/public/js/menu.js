@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    
     const menu = document.getElementById('menu');
     let menuItems = '';
 

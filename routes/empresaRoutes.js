@@ -12,6 +12,7 @@ router.post(
   empresaController.cadastrarEmpresa
 );
 
+
 // Rotas protegidas
 router.use(authMiddleware.autenticacao);
 

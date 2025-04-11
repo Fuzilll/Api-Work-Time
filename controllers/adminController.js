@@ -151,6 +151,7 @@ class AdminController {
     }
   }
 
+  
   /**
    * Exclui um funcionário definitivamente
    * - Usar com cautela. Verificar se há dados dependentes antes

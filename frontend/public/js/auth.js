@@ -32,6 +32,8 @@ class AuthService {
                 throw new Error(data.error || 'Erro no login');
             }
 
+  
+            
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('userData', JSON.stringify(data.usuario));
             

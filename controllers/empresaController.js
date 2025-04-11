@@ -77,6 +77,7 @@ class EmpresaController {
     }
   }
 
+  
   // Método estático para obter os dados de uma empresa específica com base no ID
   static async obterEmpresa(req, res, next) {
     try {

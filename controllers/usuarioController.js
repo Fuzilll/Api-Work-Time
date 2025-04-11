@@ -43,6 +43,7 @@ class UsuarioController {
     }
   }
 
+  
   // Método para solicitar a recuperação de senha
   static async solicitarRecuperacaoSenha(req, res, next) {
     try {

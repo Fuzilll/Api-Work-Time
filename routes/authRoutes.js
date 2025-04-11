@@ -6,6 +6,7 @@ const { validate } = require('../middlewares/validators');
 const authSchema = require('../validators/authSchema');
 const authMiddleware = require('../middlewares/authMiddleware');
 
+
 /**
  * @swagger
  * /auth/login:

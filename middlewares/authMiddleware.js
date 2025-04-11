@@ -232,5 +232,6 @@ class AuthMiddleware {
     }
 }
 
+
 // Exporta a classe AuthMiddleware para ser utilizada em outras partes do código
 module.exports = AuthMiddleware;

@@ -60,3 +60,4 @@ router.route('/:id/status')
 
 // Exporta o roteador para ser usado na aplicação principal
 module.exports = router;
+

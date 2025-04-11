@@ -7,6 +7,7 @@ class AppError extends Error {
     }
 }
 
+
 class UnauthorizedError extends AppError {
     constructor(message = 'Não autorizado') {
         super(message, 401);

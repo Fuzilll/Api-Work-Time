@@ -85,6 +85,7 @@ class App {
     this.app.use('/css', express.static(path.join(__dirname, 'frontend/public/css')));
   }
 
+  
   configureSessionStore() {
     if (process.env.NODE_ENV === 'production') {
       const MySQLStore = require('express-mysql-session')(session);

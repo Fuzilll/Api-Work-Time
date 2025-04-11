@@ -22,6 +22,7 @@ module.exports = {
         mensagem: err.message // A mensagem de erro retornada pela validação (o que é inválido)
       }));
 
+      
       // Retorna uma resposta JSON com o status 422 (Unprocessable Entity), indicando que houve erros de validação
       // A resposta inclui um array de erros com o campo e a mensagem de erro para cada falha de validação.
       return res.status(422).json({

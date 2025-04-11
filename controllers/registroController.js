@@ -71,6 +71,7 @@ class RegistroController {
         req.query // Pega os parâmetros de consulta da URL
       );
 
+   
       // Retorna os registros encontrados
       res.json({
         success: true,  // Indica que a operação foi bem-sucedida

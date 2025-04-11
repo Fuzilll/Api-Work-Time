@@ -77,6 +77,7 @@ class AdminService {
     }
   }
 
+  
   /**
    * Gera resumo estatístico dos funcionários da empresa
    * - Útil para dashboards gerenciais

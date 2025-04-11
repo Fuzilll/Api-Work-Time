@@ -129,6 +129,7 @@ class UsuarioService {
       [email]
     );
 
+    
     // Verifica se o usuário não existe ou se a senha não confere.
     if (!usuario || !(await bcrypt.compare(senha, usuario.senha))) {
       throw new UnauthorizedError('Credenciais inválidas');

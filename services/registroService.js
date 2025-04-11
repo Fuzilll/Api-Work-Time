@@ -205,3 +205,4 @@ class RegistroService {
 
 // Exporta o serviço de registro para ser utilizado em outras partes da aplicação
 module.exports = RegistroService;
+

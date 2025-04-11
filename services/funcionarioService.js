@@ -133,3 +133,4 @@ class FuncionarioService {
 
 // Exporta o serviço para que seja utilizado em outras partes da aplicação
 module.exports = FuncionarioService;
+

@@ -36,6 +36,7 @@ class AuthController {
         req.session.id_empresa = resultado.usuario.id_empresa;
         console.log('[BACKEND] Sessão configurada:', req.session); // LOG E
 
+        
         const token = jwt.sign(
             {
                 id: resultado.usuario.id,

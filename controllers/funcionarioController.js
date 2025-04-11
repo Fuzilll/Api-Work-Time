@@ -79,6 +79,7 @@ class FuncionarioController {
       // Busca todas as solicitações feitas pelo funcionário com o 'id' da requisição.
       const solicitacoes = await FuncionarioService.listarSolicitacoes(
         req.usuario.id
+ 
       );
       
       // Resposta de sucesso, retornando a lista de solicitações.

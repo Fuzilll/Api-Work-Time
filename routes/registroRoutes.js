@@ -30,6 +30,7 @@ router.get(
   registroController.buscarRegistrosEmpresa
 );
 
+
 // Rotas para IT Support
 router.get(
   '/todos',

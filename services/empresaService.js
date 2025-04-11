@@ -132,3 +132,4 @@ class EmpresaService {
 
 // Exportação do serviço para que possa ser utilizado em outras partes do código
 module.exports = EmpresaService;
+

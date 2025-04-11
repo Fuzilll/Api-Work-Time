@@ -33,6 +33,7 @@ async function obterResumoEmpresa(idEmpresa) {
   }
 }
 
+
 async function obterRelatorioPontos(idEmpresa) {
   try {
     const query = `

@@ -8,6 +8,7 @@ const {
 } = require('../services/dashboardService');
 const { AppError } = require('../errors');
 
+
 class DashboardController {
   async carregarDashboardAdmin(req, res, next) {
     try {

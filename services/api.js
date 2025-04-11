@@ -5,6 +5,7 @@ const api = axios.create({
   withCredentials: true // Para cookies de sessão
 });
 
+
 // Interceptar respostas para tratamento global de erros
 api.interceptors.response.use(
   response => response,
