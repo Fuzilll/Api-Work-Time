@@ -3,7 +3,7 @@ const Joi = require('joi');  // Joi é utilizado para validar os dados que chega
 
 // Exporte o objeto de validação para ser utilizado em outras partes do código
 module.exports = {
-  
+
   // Validação para o cadastro de uma nova empresa
   cadastro: Joi.object({
     // Validação do campo 'nome', com mínimo de 3 caracteres e máximo de 150
@@ -43,6 +43,13 @@ module.exports = {
 
     // Validação do campo 'telefone', deve ter entre 10 e 15 caracteres
     telefone: Joi.string().min(10).max(15).required()  // O número de telefone deve ter entre 10 e 15 caracteres, incluindo DDD
+  }), 
+  cadastroAdmin: Joi.object({
+    nome: Joi.string().required().max(150),
+    email: Joi.string().email().required().max(150),
+    senha: Joi.string().required().min(6),
+    id_empresa: Joi.number().integer().required(),
+    cpf: Joi.string().length(11).required()
   }),
 
   // Validação para atualização dos dados de uma empresa
@@ -74,5 +81,6 @@ module.exports = {
     // Validação do campo 'telefone', com as mesmas regras que o cadastro, mas não obrigatório
     telefone: Joi.string().min(10).max(15)  // O número de telefone é opcional, mas se presente, deve ter entre 10 e 15 caracteres
   })
-  .min(1)  // A atualização deve ter pelo menos um campo presente. Isso significa que ao menos um campo precisa ser fornecido para a atualização ser válida.
+    .min(1)  // A atualização deve ter pelo menos um campo presente. Isso significa que ao menos um campo precisa ser fornecido para a atualização ser válida.
 };
+

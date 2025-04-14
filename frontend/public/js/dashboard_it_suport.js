@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    carregarEmpresas();
+    await carregarEmpresas();
 });
 
 async function carregarEmpresas() {
@@ -11,16 +11,29 @@ async function carregarEmpresas() {
     }
 
     try {
-        const response = await fetch('/api/empresas/listar-empresas');
-        const empresas = await response.json();
-
+        const response = await fetch('/api/empresas/listar');
+        
         if (!response.ok) {
-            throw new Error(empresas.message || 'Erro ao carregar empresas');
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Erro ao carregar empresas');
         }
 
+        const result = await response.json();
+        
+        // Verifica se a resposta contém um array de empresas
+        if (!Array.isArray(result.data)) {
+            throw new Error('Formato de dados inválido');
+        }
+
+        const empresas = result.data;
         console.log('Empresas carregadas:', empresas);
 
         tabelaEmpresas.innerHTML = ''; 
+
+        if (empresas.length === 0) {
+            tabelaEmpresas.innerHTML = `<tr><td colspan="5" class="text-center">Nenhuma empresa cadastrada</td></tr>`;
+            return;
+        }
 
         empresas.forEach(empresa => {
             const row = document.createElement('tr');
@@ -43,27 +56,38 @@ async function carregarEmpresas() {
         adicionarEventosBotoes();
     } catch (error) {
         console.error('Erro ao carregar empresas:', error);
-        tabelaEmpresas.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Erro ao carregar os dados</td></tr>`;
+        tabelaEmpresas.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar os dados: ${error.message}</td></tr>`;
     }
 }
 
-// Função para adicionar eventos aos botões de ativar/desativar
 function adicionarEventosBotoes() {
     document.querySelectorAll('.btn-toggle-status').forEach(botao => {
         botao.addEventListener('click', async () => {
             const empresaId = botao.getAttribute('data-id');
+            const acao = botao.textContent.trim();
+
+            if (!confirm(`Tem certeza que deseja ${acao} esta empresa?`)) {
+                return;
+            }
 
             try {
-                const response = await fetch(`/api/empresas/alternar-status/${empresaId}`, { method: 'PUT' });
+                const response = await fetch(`/api/empresas/${empresaId}/status`, { 
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
 
                 if (!response.ok) {
-                    throw new Error('Erro ao atualizar status da empresa');
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Erro ao atualizar status da empresa');
                 }
 
                 console.log(`Status da empresa ID ${empresaId} atualizado!`);
-                carregarEmpresas(); // Recarregar a lista de empresas
+                await carregarEmpresas();
             } catch (error) {
                 console.error('Erro ao alterar status:', error);
+                alert(`Erro ao alterar status: ${error.message}`);
             }
         });
     });

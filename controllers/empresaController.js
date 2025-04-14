@@ -97,6 +97,36 @@ class EmpresaController {
       next(err);
     }
   }
+  static async cadastrarAdmin(req, res, next) {
+    try {
+        const { nome, email, senha, id_empresa, cpf } = req.body;
+        
+        const adminData = {
+            nome,
+            email,
+            senha,
+            nivel: 'ADMIN',
+            cpf,
+            registro_emp: null,
+            funcao: 'Administrador',
+            data_admissao: new Date(),
+            id_empresa,
+            status: 'Ativo',
+            foto_url: null
+        };
+
+        const empresas = await EmpresaService.listarEmpresas();
+                
+        res.json({
+          success: true,
+          data: empresas,
+          message: 'Empresas listadas com sucesso'
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+
 }
 
 // Exporta o controlador para ser utilizado em outras partes da aplicação

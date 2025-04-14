@@ -11,7 +11,6 @@ router.use(authMiddleware.autenticacao);
 router.use(authMiddleware.verificarNivel('ADMIN'));
 
 
-
 // Rotas de funcionários
 router.post(
   '/funcionarios',

@@ -22,14 +22,14 @@ body {
     height: 60px;
     background-color: #f2f7f5;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding: 0 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 200;
 }
 
-/* Sidebar abaixo da topbar - Transições aprimoradas */
+/* Sidebar */
 .sidebar {
     background-color: #f2f7f5;
     color: #00473e;
@@ -87,13 +87,13 @@ body {
     transform: translateX(5px);
 }
 
+
 .sidebar a i {
     margin-right: 10px;
     min-width: 20px;
     text-align: center;
     transition: margin-right 0.5s ease;
 }
-
 .sidebar.closed a i {
     margin-right: 0;
 }
@@ -104,13 +104,13 @@ body {
     transition: opacity 0.3s ease, width 0.3s ease 0.2s;
 }
 
-/* Logo container - Transição suavizada */
+
+/* Logo container */
 .logo-container {
     margin: 20px 0;
     text-align: center;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    
 }
 
 .logo-container img {
@@ -121,14 +121,12 @@ body {
     border: 3px solid #f2f7f5;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
 }
 
 .sidebar.closed .logo-container img {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    /* Mantém redondo mesmo fechado */
     margin-bottom: 0;
 }
 
@@ -136,7 +134,7 @@ body {
     margin: 15px 0;
 }
 
-/* Conteúdo - Transição sincronizada */
+/* Conteúdo principal */
 .content {
     margin-left: 240px;
     margin-top: 60px;
@@ -149,14 +147,13 @@ body {
     height: calc(100vh - 60px);
 }
 
-.sidebar.closed~.content {
-    margin-left: 60px;
+.sidebar.closed ~ .content {
+    margin-left: 75px;
 }
 
-/* Restante do CSS permanece igual */
+/* Botão de ajuda */
 .help-btn {
     width: auto;
-    max-width: 70px;
     height: 36px;
     background: #faae2b;
     color: #00473e;
@@ -169,8 +166,6 @@ body {
     align-items: center;
     padding: 0 15px;
     transition: background 0.3s;
-    margin-left: auto;
-    margin-right: 10px;
     font-weight: bold;
 }
 
@@ -178,8 +173,9 @@ body {
     background: #e69d22;
 }
 
+/* Formulário */
 .container {
-    max-height: 100vh;
+    max-width: 800px;
     background: #f2f7f5;
     padding: 30px;
     border-radius: 10px;
@@ -191,6 +187,11 @@ body {
 h2 {
     text-align: center;
     color: #00473e;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+.form-group {
     margin-bottom: 20px;
 }
 
@@ -198,36 +199,60 @@ label {
     font-weight: bold;
     color: #00473e;
     display: block;
-    margin-bottom: 5px;
-}
-
-input,
-select {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #d1e0db;
-    border-radius: 5px;
+    margin-bottom: 8px;
     font-size: 16px;
-    color: #f2f7f5;
 }
 
-button {
+input, select {
     width: 100%;
     padding: 12px;
+    margin-bottom: 5px;
+    border: 1px solid #d1e0db;
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: #ffffff;
+    color: #475d5b;
+    transition: border-color 0.3s;
+}
+
+input:focus, select:focus {
+    border-color: #faae2b;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(250, 174, 43, 0.2);
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 14px;
     background: #faae2b;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     color: #00473e;
     font-size: 18px;
     cursor: pointer;
-    transition: background 0.3s ease-in-out;
+    transition: all 0.3s ease-in-out;
     font-weight: bold;
+    margin-top: 20px;
 }
 
-button:hover {
+.btn-submit:hover {
     background: #00473e;
     color: #f2f7f5;
+}
+
+/* Mensagens de erro e loading */
+#error-message {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 400px;
+    background-color: #fa5246;
+    color: #f2f7f5;
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 #loading-overlay {
@@ -242,190 +267,25 @@ button:hover {
     justify-content: center;
     align-items: center;
     color: #f2f7f5;
-    font-size: 1.5rem;
 }
 
-
-.updated {
-    animation: highlight 1s;
-}
-
-@keyframes highlight {
-    from {
-        background-color: rgba(74, 222, 128, 0.3);
-    }
-
-    to {
-        background-color: transparent;
-    }
-}
-/* Tabelas com estilo mais moderno */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
-    background-color: #f2f7f5;
-    border-radius: 18px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-th {
-    background-color: #00473e;
-    color: #00473e;
-    font-weight: bold;
-}
-
-tr:hover {
-    background-color: #faae2b;
-}
-
-tr:nth-child(even) {
-    background-color: #f2f7f5;
-}
-
-td {
-    color: #475d5b;
-}
-
-/* Estilo para tags dentro da tabela */
-td .tag {
-    display: inline-block;
-    padding: 5px 10px;
-    background-color: #faae2b;
-    color: #00473e;
-    border-radius: 3px;
-    font-weight: bold;
-}
-
-
-.status-aprovado {
-    color: #10b981;
-    font-weight: bold;
-}
-
-.status-pendente {
-    color: #faae2b;
-    font-weight: bold;
-}
-
-.status-rejeitado {
-    color: #fa5246;
-    font-weight: bold;
-}
-/* Estilos para os Cards */
-.card {
-    background-color: #f2f7f5;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    transition: all 0.3s ease-in-out;
-}
-
-.card-header {
-    background-color: #00473e;
-    color: white;
-    padding: 15px;
-    border-radius: 10px 10px 0 0;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-.card-body {
-    padding: 20px;
-    color: #475d5b;
-    font-size: 16px;
-}
-
-.card-body p {
-    margin-bottom: 10px;
-}
-
-/* Card Tag (Se houver tags dentro do card) */
-.card .tag {
-    display: inline-block;
-    background-color: #faae2b;
-    color: #00473e;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-weight: bold;
-    margin-top: 10px;
-}
-
-/* Hover do Card */
-.card:hover {
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
-    transform: translateY(-5px);
-}
-
-/* Estilo para o título dos cards */
-.card-header h4 {
-    font-size: 20px;
-    margin: 0;
-    font-weight: 600;
-}
-
-/* Subtítulo do Card */
-.card-body h5 {
-    color: #00473e;
-    font-size: 18px;
-    margin-bottom: 15px;
-}
-
-/* Títulos dentro do Card */
-.card-body h6 {
-    color: #2b4842;
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-
-/* Adicionando um destaque mais forte ao card */
-.card.highlight {
-    border: 2px solid #faae2b;
-    background-color: #fff7e6;
-}
-
-.card.highlight .card-header {
-    background-color: #faae2b;
-    color: #00473e;
-}
-
-#error-message {
-    display: none;
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    max-width: 400px;
-    background-color: #fa5246;
-    color: #f2f7f5;
-    padding: 10px 15px;
-    border-radius: 5px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
+/* Responsividade */
 @media (max-width: 768px) {
     .sidebar {
         width: 200px;
     }
-
+    
     .sidebar.closed {
         width: 60px;
     }
-
+    
     .content {
         margin-left: 60px;
-        padding: 20px;
+        padding: 15px;
     }
-
-    .topbar {
-        margin-left: 0;
+    
+    .container {
+        padding: 20px;
     }
 }
 
@@ -438,28 +298,27 @@ td .tag {
         justify-content: space-around;
         padding: 10px;
     }
-
+    
     .sidebar.closed {
         width: 100%;
     }
-
+    
     .sidebar a span {
         display: inline;
         opacity: 1;
         width: auto;
     }
-
+    
     .content {
         margin-left: 0;
+        margin-top: 120px;
     }
-
-    .topbar {
-        margin-left: 0;
+    
+    .container {
+        margin-top: 0;
     }
-
-    .card.highlight .card-header {
-        background-color: #ffa8ba;
-        /* Rosa claro para contraste em mobile */
-        color: #00473e;
+    
+    .help-btn {
+        max-width: none;
     }
 }

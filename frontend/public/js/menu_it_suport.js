@@ -1,14 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const menu = document.getElementById('menu');
-    const nivel = localStorage.getItem('nivel'); // Obtém o nível do usuário
-    
+    const userData = JSON.parse(localStorage.getItem('userData'));
+    if (!userData) {
+        window.location.href = 'login.html';
+        return;
+    }
+
     let menuItems = '';
 
-    if (nivel === 'IT_SUPPORT') {
+    if (userData.nivel === 'IT_SUPPORT') {
         menuItems = `
-            <a href="it_suport.html"><i class="fas fa-home"></i> Dashboard</a>
-            <a href="cadastrar_empresas.html"><i class="fas fa-users"></i> Cadastrar Empresas</a>
-            <a href="gerenciar_empresas.html"><i class="fas fa-clock"></i> Gerenciar Empresas</a>
+                <a href="it_support.html"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+                <a href="gerenciar_empresas.html"><i class="fas fa-building"></i><span>Cadastrar Empresas</span></a>
+                <a href="gerenciar_usuarios.html"><i class="fas fa-users-cog"></i><span>Gerenciar Empresas</span></a>
         `;
     } else {
         menuItems = `<a href="index.html"><i class="fas fa-home"></i> Home</a>`;

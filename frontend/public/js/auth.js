@@ -32,8 +32,6 @@ class AuthService {
                 throw new Error(data.error || 'Erro no login');
             }
 
-  
-            
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('userData', JSON.stringify(data.usuario));
             
@@ -59,7 +57,7 @@ class AuthService {
         
         const pages = {
             'ADMIN': '/dashboard_admin.html',
-            'FUNCIONARIO': '/dashboard.html',
+            'FUNCIONARIO': '/dashboard_funcionario.html',
             'IT_SUPPORT': '/it_suport.html'
         };
         

@@ -20,8 +20,10 @@ router.use(authMiddleware.autenticacao);
 router.use(authMiddleware.verificarNivel('IT_SUPPORT'));
 
 router.get('/listar', empresaController.listarEmpresas);
+
 router.delete('/:id/remover', empresaController.removerEmpresa);
 router.put('/:id/status', empresaController.alternarStatus);
 router.get('/:id', empresaController.obterEmpresa);
+router.post('/cadastrar-admin', validate(empresaSchema.cadastroAdmin), empresaController.cadastrarAdmin);
 
 module.exports = router;

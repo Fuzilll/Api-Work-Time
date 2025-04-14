@@ -21,7 +21,7 @@ class Database {
             supportBigNumbers: true,             // Suporte a valores numéricos grandes (BigInt)
             bigNumberStrings: true               // Retorna BigInt como string para evitar perda de precisão
         });
-
+//
         // Testa a conexão assim que a instância é criada
         this.testConnection();
     }

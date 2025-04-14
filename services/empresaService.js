@@ -6,9 +6,9 @@ class EmpresaService {
   // Método para cadastrar uma nova empresa
   static async cadastrarEmpresa(dados) {
     // Desestruturação dos dados recebidos para fácil acesso às propriedades
-    const { 
-      nome, cnpj, cidade, cep, rua, numero, 
-      id_estado, ramo_atuacao, email, telefone 
+    const {
+      nome, cnpj, cidade, cep, rua, numero,
+      id_estado, ramo_atuacao, email, telefone
     } = dados;
 
     try {
@@ -29,8 +29,8 @@ class EmpresaService {
           nome, cnpj, cidade, cep, rua, numero, 
           id_estado, ramo_atuacao, email, telefone, status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo')`,  // A consulta SQL insere os dados na tabela EMPRESA
-        [nome, cnpj, cidade, cep, rua, numero, 
-         id_estado, ramo_atuacao, email, telefone]  // Parâmetros passados para a consulta
+        [nome, cnpj, cidade, cep, rua, numero,
+          id_estado, ramo_atuacao, email, telefone]  // Parâmetros passados para a consulta
       );
 
       // Retorna o id gerado e os dados principais da empresa
@@ -127,6 +127,92 @@ class EmpresaService {
 
     // Retorna os dados completos da empresa
     return empresa;
+  }
+
+  
+  static async cadastrarAdmin(adminData) {
+    const {
+      nome,
+      email,
+      senha,
+      nivel,
+      cpf,
+      registro_emp,
+      funcao,
+      data_admissao,
+      id_empresa,
+      status,
+      foto_url
+    } = adminData;
+
+    try {
+      // Verificar se a empresa existe
+      const [empresa] = await db.query('SELECT id FROM EMPRESA WHERE id = ?', [id_empresa]);
+      if (!empresa) {
+        throw new AppError('Empresa não encontrada', 404);
+      }
+
+      // Verificar se email ou CPF já existem
+      const [existente] = await db.query(
+        'SELECT id FROM USUARIO WHERE email = ? OR cpf = ?',
+        [email, cpf]
+      );
+
+      if (existente) {
+        throw new AppError('Email ou CPF já cadastrado', 409);
+      }
+
+      // Hash da senha
+      const saltRounds = 10;
+      const senhaHash = await bcrypt.hash(senha, saltRounds);
+
+      // Iniciar transação
+      await db.beginTransaction();
+
+      try {
+        // Inserir usuário
+        const [usuarioResult] = await db.query(
+          `INSERT INTO USUARIO (
+                    nome, email, senha, nivel, status, cpf, foto_perfil_url
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [nome, email, senhaHash, nivel, status, cpf, foto_url]
+        );
+
+        const usuarioId = usuarioResult.insertId;
+
+        // Inserir admin
+        await db.query(
+          `INSERT INTO ADMIN (
+                    id_usuario, id_empresa, permissoes
+                ) VALUES (?, ?, ?)`,
+          [usuarioId, id_empresa, JSON.stringify({
+            gerenciar_usuarios: true,
+            gerenciar_pontos: true,
+            aprovar_pontos: true,
+            visualizar_relatorios: true
+          })]
+        );
+
+        // Commit da transação
+        await db.commit();
+
+        return {
+          id: usuarioId,
+          nome,
+          email,
+          nivel,
+          id_empresa
+        };
+      } catch (err) {
+        await db.rollback();
+        throw err;
+      }
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY') {
+        throw new AppError('Email ou CPF já cadastrado', 409);
+      }
+      throw err;
+    }
   }
 }
 

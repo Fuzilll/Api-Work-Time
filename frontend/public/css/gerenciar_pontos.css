@@ -136,7 +136,7 @@ body {
     margin: 15px 0;
 }
 
-/* Conteúdo principal */
+/* Conteúdo - Transição sincronizada */
 .content {
     margin-left: 240px;
     margin-top: 60px;
@@ -152,7 +152,8 @@ body {
 .sidebar.closed~.content {
     margin-left: 60px;
 }
-/* Botão de ajuda */
+
+/* Restante do CSS permanece igual */
 .help-btn {
     width: auto;
     max-width: 70px;
@@ -187,142 +188,180 @@ body {
     border: 1px solid #d1e0db;
 }
 
-
 h2 {
-    color: #00473e;
-    margin-bottom: 20px;
     text-align: center;
-}
-
-.form-label {
-    font-weight: bold;
     color: #00473e;
-    margin-bottom: 5px;
-    display: block;
-}
-
-.form-control {
-    width: 100%;
-    padding: 10px;
     margin-bottom: 15px;
+    font-size: 28px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #475d5b;
+    margin-bottom: 30px;
+    font-size: 16px;
+}
+
+/* Estilo do filtro de pesquisa */
+.search-filter {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.search-input-container {
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #475d5b;
+}
+
+#filtro-pontos {
+    padding-left: 40px;
     border: 1px solid #d1e0db;
-    border-radius: 5px;
+    border-radius: 6px;
+    height: 45px;
     font-size: 16px;
-}
-
-.btn-primary {
-    background-color: #faae2b;
-    color: #00473e;
-    border: none;
-    padding: 12px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
     transition: all 0.3s;
-    width: 100%;
-    border-radius: 5px;
 }
 
-.btn-primary:hover {
-    background-color: #00473e;
-    color: #f2f7f5;
+#filtro-pontos:focus {
+    border-color: #faae2b;
+    box-shadow: 0 0 0 3px rgba(250, 174, 43, 0.2);
+    outline: none;
 }
 
-/* Tabelas */
-.table {
+/* Estilo da tabela */
+.points-table {
     width: 100%;
-    border-collapse: collapse;
-    background-color: #f2f7f5;
+    border-collapse: separate;
+    border-spacing: 0;
+    background-color: #ffffff;
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.table th {
+.points-table th {
     background-color: #00473e;
     color: #f2f7f5;
     padding: 15px;
     text-align: left;
+    font-weight: 600;
 }
 
-.table td {
+.points-table td {
     padding: 15px;
-    border-bottom: 1px solid #d1e0db;
+    border-bottom: 1px solid #e0e6e4;
     color: #475d5b;
 }
 
-.table tr:hover {
-    background-color: #e8f0ee;
+.points-table tr:last-child td {
+    border-bottom: none;
 }
 
-/* Status */
-.status-active {
+.points-table tr:hover {
+    background-color: #f8faf9;
+}
+
+/* Estilo dos status */
+.status-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-aprovado {
+    background-color: rgba(16, 185, 129, 0.1);
     color: #10b981;
-    font-weight: bold;
 }
 
-.status-inactive {
-    color: #fa5246;
-    font-weight: bold;
-}
-
-.status-pending {
+.status-pendente {
+    background-color: rgba(250, 174, 43, 0.1);
     color: #faae2b;
-    font-weight: bold;
 }
 
-/* Modal */
-.modal-content {
-    border-radius: 10px;
+.status-rejeitado {
+    background-color: rgba(250, 82, 70, 0.1);
+    color: #fa5246;
+}
+
+/* Estilo dos botões de ação */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-action {
+    padding: 8px 12px;
     border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
-.modal-header {
+.btn-approve {
+    background-color: #10b981;
+    color: white;
+}
+
+.btn-reject {
+    background-color: #fa5246;
+    color: white;
+}
+
+.btn-details {
     background-color: #00473e;
-    color: #f2f7f5;
-    border-radius: 10px 10px 0 0;
-    border: none;
+    color: white;
+}
+
+.btn-action:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
 }
 
 /* Responsividade */
 @media (max-width: 768px) {
-    .sidebar {
-        width: 200px;
+    .points-table {
+        display: block;
+        overflow-x: auto;
     }
     
-    .sidebar.closed {
-        width: 60px;
+    .action-buttons {
+        flex-direction: column;
+        gap: 5px;
     }
     
-    .content {
-        margin-left: 60px;
-        padding: 15px;
+    .btn-action {
+        width: 100%;
+        justify-content: center;
     }
 }
 
 @media (max-width: 576px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        flex-direction: row;
-        padding: 10px;
+    .container {
+        padding: 20px 15px;
     }
     
-    .sidebar a span {
-        display: inline;
+    h2 {
+        font-size: 24px;
     }
     
-    .content {
-        margin-left: 0;
-        margin-top: 120px;
-    }
-    
-    .sidebar.closed {
-        width: 100%;
-    }
-    
-    .sidebar.closed a span {
-        display: none;
+    .points-table th,
+    .points-table td {
+        padding: 12px 8px;
     }
 }
