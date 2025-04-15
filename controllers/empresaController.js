@@ -97,35 +97,34 @@ class EmpresaController {
       next(err);
     }
   }
+
   static async cadastrarAdmin(req, res, next) {
     try {
-        const { nome, email, senha, id_empresa, cpf } = req.body;
-        
-        const adminData = {
-            nome,
-            email,
-            senha,
-            nivel: 'ADMIN',
-            cpf,
-            registro_emp: null,
-            funcao: 'Administrador',
-            data_admissao: new Date(),
-            id_empresa,
-            status: 'Ativo',
-            foto_url: null
-        };
+      const { nome, email, senha, id_empresa, cpf } = req.body;
+      
+      if (!nome || !email || !senha || !id_empresa || !cpf) {
+        throw new AppError('Todos os campos são obrigatórios', 400);
+      }
 
-        const empresas = await EmpresaService.listarEmpresas();
-                
-        res.json({
-          success: true,
-          data: empresas,
-          message: 'Empresas listadas com sucesso'
+      const adminData = {
+        nome,
+        email,
+        senha,
+        cpf,
+        id_empresa
+      };
+
+      const admin = await EmpresaService.cadastrarAdmin(adminData);
+      
+      res.status(201).json({
+        success: true,
+        data: admin,
+        message: 'Administrador cadastrado com sucesso'
       });
-  } catch (err) {
+    } catch (err) {
       next(err);
+    }
   }
-}
 
 }
 

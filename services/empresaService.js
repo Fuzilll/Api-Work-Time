@@ -1,50 +1,55 @@
 // Importação da configuração do banco de dados e do erro personalizado 'AppError'
 const db = require('../config/db');  // O módulo de configuração do banco de dados (provavelmente usando um pool de conexões)
 const { AppError } = require('../errors');  // O módulo que exporta a classe de erro personalizada 'AppError'
+const bcrypt = require('bcrypt'); // Adicione esta linha
 
 class EmpresaService {
   // Método para cadastrar uma nova empresa
   static async cadastrarEmpresa(dados) {
-    // Desestruturação dos dados recebidos para fácil acesso às propriedades
     const {
       nome, cnpj, cidade, cep, rua, numero,
       id_estado, ramo_atuacao, email, telefone
     } = dados;
 
     try {
-      // Verificação se já existe uma empresa com o mesmo CNPJ ou email
-      const [existente] = await db.query(
-        'SELECT id FROM EMPRESA WHERE cnpj = ? OR email = ?',  // Consulta SQL que verifica duplicidade
-        [cnpj, email]  // Parâmetros passados para a consulta, substituindo os "?" na query
-      );
-
-      if (existente) {
-        // Se a empresa já existir, lança um erro indicando que o CNPJ ou email já estão cadastrados
-        throw new AppError('CNPJ ou Email já cadastrado', 409);  // 409 é o código HTTP de conflito
+      // Verifica se o estado existe
+      const estadoResult = await db.query('SELECT id FROM ESTADO WHERE id = ?', [id_estado]);
+      if (estadoResult.length === 0) {
+        throw new AppError('Estado inválido', 400);
       }
 
-      // Inserção dos dados da empresa no banco de dados
-      const [result] = await db.query(
+      // Verifica empresa existente
+      const existenteResult = await db.query(
+        'SELECT id FROM EMPRESA WHERE cnpj = ? OR email = ?',
+        [cnpj, email]
+      );
+
+      if (existenteResult.length > 0) {
+        throw new AppError('CNPJ ou Email já cadastrado', 409);
+      }
+
+      const insertResult = await db.query(
         `INSERT INTO EMPRESA (
           nome, cnpj, cidade, cep, rua, numero, 
           id_estado, ramo_atuacao, email, telefone, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo')`,  // A consulta SQL insere os dados na tabela EMPRESA
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo')`,
         [nome, cnpj, cidade, cep, rua, numero,
-          id_estado, ramo_atuacao, email, telefone]  // Parâmetros passados para a consulta
+          id_estado, ramo_atuacao, email, telefone]
       );
 
-      // Retorna o id gerado e os dados principais da empresa
-      return { id: result.insertId, nome, cnpj };
+      return {
+        id: insertResult.insertId,
+        nome,
+        cnpj,
+        status: 'Ativo'
+      };
     } catch (err) {
       if (err.code === 'ER_DUP_ENTRY') {
-        // Caso o erro seja de chave duplicada, retorna um erro específico
-        throw new AppError('CNPJ ou Email já cadastrado', 409);  // Trata o erro de duplicidade
+        throw new AppError('CNPJ ou Email já cadastrado', 409);
       }
-      // Em caso de outro tipo de erro, lança o erro original
       throw err;
     }
   }
-
   // Método para listar todas as empresas
   static async listarEmpresas() {
     // Consulta SQL que retorna todas as empresas com o nome e sigla do estado de cada uma
@@ -57,31 +62,54 @@ class EmpresaService {
 
   // Método para remover uma empresa, dado o seu id
   static async removerEmpresa(id) {
-    // Verifica se existem funcionários vinculados a essa empresa
-    const [funcionarios] = await db.query(
-      'SELECT id FROM FUNCIONARIO WHERE id_empresa = ?',  // Consulta para verificar se a empresa tem funcionários
-      [id]  // O id da empresa é passado como parâmetro
-    );
+    try {
+      return await db.transaction(async (conn) => {
+        // 1. Remover administradores vinculados
+        await conn.query(
+          `DELETE a FROM ADMIN a
+           JOIN USUARIO u ON a.id_usuario = u.id
+           WHERE a.id_empresa = ?`,
+          [id]
+        );
 
-    if (funcionarios.length > 0) {
-      // Se houver funcionários, lança um erro informando que a empresa não pode ser removida
-      throw new AppError('Empresa possui funcionários vinculados', 400);  // 400 é o código HTTP de erro de solicitação inválida
+        // 2. Remover usuários que eram apenas administradores desta empresa
+        await conn.query(
+          `DELETE u FROM USUARIO u
+           LEFT JOIN FUNCIONARIO f ON u.id = f.id_usuario
+           LEFT JOIN ADMIN a ON u.id = a.id_usuario
+           WHERE u.nivel = 'ADMIN' 
+           AND a.id_empresa = ? 
+           AND f.id_usuario IS NULL`,
+          [id]
+        );
+
+        // 3. Verificar se existem funcionários vinculados
+        const funcionarios = await conn.query(
+          'SELECT id FROM FUNCIONARIO WHERE id_empresa = ?',
+          [id]
+        );
+
+        if (funcionarios.length > 0) {
+          throw new AppError('Empresa possui funcionários vinculados', 400);
+        }
+
+        // 4. Remover a empresa
+        const result = await conn.query(
+          'DELETE FROM EMPRESA WHERE id = ?',
+          [id]
+        );
+
+        if (result.affectedRows === 0) {
+          throw new AppError('Empresa não encontrada', 404);
+        }
+
+        return { message: 'Empresa removida com sucesso' };
+      });
+    } catch (err) {
+      throw err;
     }
-
-    // Se não houver funcionários, procede com a remoção da empresa
-    const [result] = await db.query(
-      'DELETE FROM EMPRESA WHERE id = ?',  // Consulta para remover a empresa da tabela EMPRESA
-      [id]  // O id da empresa é passado como parâmetro
-    );
-
-    if (result.affectedRows === 0) {
-      // Se nenhuma linha for afetada, significa que a empresa não foi encontrada
-      throw new AppError('Empresa não encontrada', 404);  // 404 é o código HTTP de não encontrado
-    }
-
-    // Retorna uma mensagem de sucesso
-    return { message: 'Empresa removida com sucesso' };
   }
+
 
   // Método para alternar o status da empresa entre 'Ativo' e 'Inativo'
   static async alternarStatus(id) {
@@ -129,93 +157,144 @@ class EmpresaService {
     return empresa;
   }
 
-  
+
   static async cadastrarAdmin(adminData) {
-    const {
-      nome,
-      email,
-      senha,
-      nivel,
-      cpf,
-      registro_emp,
-      funcao,
-      data_admissao,
-      id_empresa,
-      status,
-      foto_url
-    } = adminData;
+    const { nome, email, senha, cpf, id_empresa } = adminData;
+
+    console.log('[DEBUG] Iniciando cadastro de admin com dados:', {
+        nome,
+        email: email.substring(0, 3) + '...',
+        cpf: cpf.substring(0, 3) + '...',
+        id_empresa
+    });
 
     try {
-      // Verificar se a empresa existe
-      const [empresa] = await db.query('SELECT id FROM EMPRESA WHERE id = ?', [id_empresa]);
-      if (!empresa) {
-        throw new AppError('Empresa não encontrada', 404);
-      }
+        return await db.transaction(async (conn) => {
+            console.log('[DEBUG] Transação iniciada');
 
-      // Verificar se email ou CPF já existem
-      const [existente] = await db.query(
-        'SELECT id FROM USUARIO WHERE email = ? OR cpf = ?',
-        [email, cpf]
-      );
+            // 1. Verificar empresa
+            console.log('[DEBUG] Verificando empresa ID:', id_empresa);
+            const [empresaRows] = await conn.query('SELECT id FROM EMPRESA WHERE id = ?', [id_empresa]);
+            
+            if (!empresaRows || empresaRows.length === 0) {
+                console.error('[DEBUG] Empresa não encontrada');
+                throw new AppError('Empresa não encontrada', 404);
+            }
+            console.log('[DEBUG] Empresa validada');
 
-      if (existente) {
-        throw new AppError('Email ou CPF já cadastrado', 409);
-      }
+            // 2. Verificar email existente - FORMA CORRIGIDA
+            console.log('[DEBUG] Verificando email:', email);
+            const [emailRows] = await conn.query('SELECT id FROM USUARIO WHERE email = ?', [email]);
+            
+            console.log('[DEBUG] Resultado verificação email:', emailRows);
+            
+            if (emailRows && emailRows.length > 0) {
+                console.error('[DEBUG] Email já cadastrado. ID do usuário existente:', emailRows[0].id);
+                throw new AppError('Email já cadastrado', 409);
+            }
+            console.log('[DEBUG] Email disponível');
 
-      // Hash da senha
-      const saltRounds = 10;
-      const senhaHash = await bcrypt.hash(senha, saltRounds);
+            // 3. Verificar CPF existente - FORMA CORRIGIDA
+            console.log('[DEBUG] Verificando CPF:', cpf);
+            const [cpfRows] = await conn.query('SELECT id FROM USUARIO WHERE cpf = ?', [cpf]);
+            
+            console.log('[DEBUG] Resultado verificação CPF:', cpfRows);
+            
+            if (cpfRows && cpfRows.length > 0) {
+                console.error('[DEBUG] CPF já cadastrado. ID do usuário existente:', cpfRows[0].id);
+                throw new AppError('CPF já cadastrado', 409);
+            }
+            console.log('[DEBUG] CPF disponível');
 
-      // Iniciar transação
-      await db.beginTransaction();
+            // 4. Criar hash da senha
+            console.log('[DEBUG] Criando hash da senha');
+            const saltRounds = 10;
+            const senhaHash = await bcrypt.hash(senha, saltRounds);
+            console.log('[DEBUG] Hash da senha criado');
 
-      try {
-        // Inserir usuário
-        const [usuarioResult] = await db.query(
-          `INSERT INTO USUARIO (
+            // 5. Inserir usuário
+            console.log('[DEBUG] Inserindo usuário na tabela USUARIO');
+            const [usuarioResult] = await conn.query(
+                `INSERT INTO USUARIO (
                     nome, email, senha, nivel, status, cpf, foto_perfil_url
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [nome, email, senhaHash, nivel, status, cpf, foto_url]
-        );
+                ) VALUES (?, ?, ?, 'ADMIN', 'Ativo', ?, NULL)`,
+                [nome, email, senhaHash, cpf]
+            );
 
-        const usuarioId = usuarioResult.insertId;
+            const usuarioId = usuarioResult.insertId;
+            console.log('[DEBUG] Usuário criado com ID:', usuarioId);
 
-        // Inserir admin
-        await db.query(
-          `INSERT INTO ADMIN (
+            // 6. Definir permissões
+            const permissoes = {
+                gerenciar_usuarios: true,
+                gerenciar_pontos: true,
+                fechar_ponto: true,
+                cadastrar_funcionario: true,
+                aprovar_pontos: true,
+                excluir_funcionario: true,
+                desativar_funcionario: true,
+                visualizar_relatorios: true,
+                gerenciar_empresa: true,
+                configurar_sistema: true,
+                gerenciar_ferias: true,
+                gerenciar_beneficios: true,
+                gerenciar_documentos: true,
+                gerenciar_cargos: true,
+                gerenciar_departamentos: true,
+                gerenciar_horarios: true,
+                gerenciar_escalas: true,
+                gerenciar_ocorrencias: true,
+                gerenciar_folha_pagamento: true
+            };
+            console.log('[DEBUG] Permissões definidas:', permissoes);
+
+            // 7. Inserir admin
+            console.log('[DEBUG] Inserindo registro na tabela ADMIN');
+            await conn.query(
+                `INSERT INTO ADMIN (
                     id_usuario, id_empresa, permissoes
                 ) VALUES (?, ?, ?)`,
-          [usuarioId, id_empresa, JSON.stringify({
-            gerenciar_usuarios: true,
-            gerenciar_pontos: true,
-            aprovar_pontos: true,
-            visualizar_relatorios: true
-          })]
-        );
+                [usuarioId, id_empresa, JSON.stringify(permissoes)]
+            );
+            console.log('[DEBUG] Admin cadastrado com sucesso');
 
-        // Commit da transação
-        await db.commit();
-
-        return {
-          id: usuarioId,
-          nome,
-          email,
-          nivel,
-          id_empresa
-        };
-      } catch (err) {
-        await db.rollback();
-        throw err;
-      }
+            return {
+                id: usuarioId,
+                nome,
+                email,
+                nivel: 'ADMIN',
+                id_empresa
+            };
+        });
     } catch (err) {
-      if (err.code === 'ER_DUP_ENTRY') {
-        throw new AppError('Email ou CPF já cadastrado', 409);
-      }
-      throw err;
-    }
-  }
-}
+        console.error('[DEBUG] Erro durante cadastro de admin:', {
+            message: err.message,
+            code: err.code,
+            stack: err.stack
+        });
 
+        if (err.code === 'ER_DUP_ENTRY') {
+            // Verificação adicional para identificar qual campo causou a duplicidade
+            try {
+                const [emailCheck] = await db.query('SELECT id FROM USUARIO WHERE email = ?', [email]);
+                const [cpfCheck] = await db.query('SELECT id FROM USUARIO WHERE cpf = ?', [cpf]);
+
+                if (emailCheck && emailCheck.length > 0) {
+                    throw new AppError('Email já cadastrado', 409);
+                } else if (cpfCheck && cpfCheck.length > 0) {
+                    throw new AppError('CPF já cadastrado', 409);
+                }
+            } catch (checkError) {
+                console.error('[DEBUG] Erro ao verificar duplicidade:', checkError);
+            }
+            
+            throw new AppError('Dados já cadastrados', 409);
+        }
+        
+        throw err;
+    }
+}
+}
 // Exportação do serviço para que possa ser utilizado em outras partes do código
 module.exports = EmpresaService;
 

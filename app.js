@@ -8,6 +8,7 @@ const session = require('express-session');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const estadosRoutes = require('./routes/estadosRoutes');
 
 // Importa módulos internos do projeto
 const { NotFoundError } = require('./errors');
@@ -103,53 +104,51 @@ class App {
   }
 
   initializeRoutes() {
-    // 1. Configuração de arquivos estáticos (DEVE vir antes das rotas)
+    // 1. Configuração de arquivos estáticos
     this.app.use(express.static(path.join(__dirname, 'frontend/public/views')));
     this.app.use('/js', express.static(path.join(__dirname, 'frontend/public/js')));
     this.app.use('/css', express.static(path.join(__dirname, 'frontend/public/css')));
 
-    // 2. Rota raiz - Página inicial
+    // 2. Rotas públicas (não requerem autenticação)
     this.app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'frontend/public/index.html'));
-    });
-
-    // 3. Rotas de API públicas
-    this.app.use('/api/auth', require('./routes/authRoutes'));
-    this.app.use('/api/usuarios', require('./routes/usuarioRoutes'));
-    
-    // Health check
-    this.app.get('/api/health', (req, res) => {
-        res.json({ status: 'healthy', timestamp: new Date() });
-    });
-
-    // 4. Rotas para páginas HTML (sem .html na URL)
-    this.app.get('/dashboard', (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard.html'));
-    });
-
-    this.app.get('/dashboard-admin', (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard_admin.html'));
-    });
-
-    this.app.get('/suporte-ti', (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/views/it_suport.html'));
     });
 
     this.app.get('/login', (req, res) => {
         res.sendFile(path.join(__dirname, 'frontend/public/views/login.html'));
     });
 
-    // 5. Middleware de autenticação (protege as rotas abaixo)
-    this.app.use(authMiddleware.autenticacao);
+    // 3. Rotas de API públicas
+    this.app.use('/api/auth', require('./routes/authRoutes'));
+    this.app.use('/api/usuarios', require('./routes/usuarioRoutes'));
+    this.app.use('/api/estados', require('./routes/estadosRoutes'));
 
-    // 6. Rotas de API privadas
-    this.app.use('/api/empresas', require('./routes/empresaRoutes'));
-    this.app.use('/api/funcionarios', require('./routes/funcionarioRoutes'));
-    this.app.use('/api/registros', require('./routes/registroRoutes'));
-    this.app.use('/api/admin', require('./routes/adminRoutes'));
-    this.app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+    // Health check
+    this.app.get('/api/health', (req, res) => {
+        res.json({ status: 'healthy', timestamp: new Date() });
+    });
 
-    // 7. Rota fallback (DEVE ser a última)
+    // 4. Rotas para páginas HTML (sem .html na URL)
+    this.app.get('/dashboard', authMiddleware.autenticacao, (req, res) => {
+        res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard.html'));
+    });
+
+    this.app.get('/dashboard-admin', authMiddleware.autenticacao, (req, res) => {
+        res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard_admin.html'));
+    });
+
+    this.app.get('/suporte-ti', authMiddleware.autenticacao, (req, res) => {
+        res.sendFile(path.join(__dirname, 'frontend/public/views/it_suport.html'));
+    });
+
+    // 5. Rotas de API privadas (protegidas por autenticação)
+    this.app.use('/api/empresas', authMiddleware.autenticacao, require('./routes/empresaRoutes'));
+    this.app.use('/api/funcionarios', authMiddleware.autenticacao, require('./routes/funcionarioRoutes'));
+    this.app.use('/api/registros', authMiddleware.autenticacao, require('./routes/registroRoutes'));
+    this.app.use('/api/admin', authMiddleware.autenticacao, require('./routes/adminRoutes'));
+    this.app.use('/api/dashboard', authMiddleware.autenticacao, require('./routes/dashboardRoutes'));
+
+    // 6. Rota fallback (DEVE ser a última)
     this.app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, 'frontend/public/index.html'));
     });

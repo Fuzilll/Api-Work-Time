@@ -9,7 +9,7 @@ class AuthService {
      */
     static async login(email, senha) {
         console.log('[FRONTEND] Iniciando processo de login...');
-        
+
         const loginButton = document.getElementById('loginButton');
         const loading = document.getElementById('loading');
         const errorElement = document.getElementById('login-error');
@@ -34,7 +34,7 @@ class AuthService {
 
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('userData', JSON.stringify(data.usuario));
-            
+
             // Redireciona baseado no nível do usuário
             this.redirectByUserLevel(data.usuario.nivel);
 
@@ -54,13 +54,13 @@ class AuthService {
  */
     static redirectByUserLevel(level) {
         console.log('[REDIRECT] Nível recebido:', level);
-        
+
         const pages = {
             'ADMIN': '/dashboard_admin.html',
             'FUNCIONARIO': '/dashboard_funcionario.html',
             'IT_SUPPORT': '/it_suport.html'
         };
-        
+
         const targetPage = pages[level] || '/login.html';
         console.log('[REDIRECT] Tentando acessar:', targetPage);
 
@@ -72,7 +72,7 @@ class AuthService {
             console.log('[REDIRECT] Já está na página correta');
         }
     }
-    
+
 
     static async makeAuthRequest(url, method = 'GET', body = null) {
         const token = localStorage.getItem('authToken');
@@ -119,13 +119,33 @@ class AuthService {
 
     static async logout() {
         try {
-            await fetch(`${API_BASE}/auth/logout`, {
+            // Envia requisição para o servidor para invalidar a sessão
+            const response = await fetch(`${API_BASE}/auth/logout`, {
                 method: 'POST',
-                credentials: 'include'
+                credentials: 'include', // Importante para enviar o cookie de sessão
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                }
             });
-        } finally {
-            localStorage.clear();
+
+            if (!response.ok) {
+                throw new Error('Falha ao fazer logout no servidor');
+            }
+
+            // Limpa todos os dados de autenticação localmente
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+
+            // Força um reload completo para limpar qualquer estado da aplicação
             window.location.href = 'login.html';
+        } catch (error) {
+            console.error('Erro durante logout:', error);
+            // Mesmo se falhar no servidor, fazemos o logout local
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            window.location.href = 'login.html';
+            throw error;
         }
     }
 }

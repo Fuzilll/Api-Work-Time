@@ -5,12 +5,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const { validate } = require('../middlewares/validators');
 const empresaSchema = require('../validators/empresaSchema');
 
-// Rotas públicas
-router.post(
-  '/cadastrar', 
-  validate(empresaSchema.cadastro), 
-  empresaController.cadastrarEmpresa
-);
+
 
 
 // Rotas protegidas
@@ -19,6 +14,11 @@ router.use(authMiddleware.autenticacao);
 // Rotas para IT Support
 router.use(authMiddleware.verificarNivel('IT_SUPPORT'));
 
+router.post(
+  '/cadastrar',
+  validate(empresaSchema.cadastro),
+  empresaController.cadastrarEmpresa
+);
 router.get('/listar', empresaController.listarEmpresas);
 
 router.delete('/:id/remover', empresaController.removerEmpresa);

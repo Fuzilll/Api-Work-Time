@@ -6,7 +6,6 @@ const { validate } = require('../middlewares/validators');
 const authSchema = require('../validators/authSchema');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-
 /**
  * @swagger
  * /auth/login:
@@ -50,10 +49,9 @@ router.get('/sessao',
   authController.verificarSessao  // Chama a função que verifica os dados da sessão do usuário
 );
 
-// Rota para logout - Requer autenticação, garantindo que somente o usuário autenticado possa sair
-router.post('/logout',
-  authMiddleware.autenticacao,  // Chama o middleware para garantir que o usuário esteja autenticado
-  authController.logout         // Chama a função que efetua o logout do usuário
+router.post('/logout', 
+  authMiddleware.autenticacao,  // Garante que apenas usuários autenticados podem fazer logout
+  authController.logout
 );
 
 // Exporta o roteador para ser utilizado na aplicação principal
