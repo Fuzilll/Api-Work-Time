@@ -1,87 +1,160 @@
-// Importa a instância de conexão com o banco de dados (MySQL, MariaDB ou similar)
+// Importa a instância de conexão com o banco de dados
 const db = require('../config/db');
-
-// Importa classe de erro personalizada para controle padronizado de exceções
+const bcrypt = require('bcrypt');
 const { AppError } = require('../errors');
+// const emailService = require('../services/emailService'); // descomente se necessário
 
 class AdminService {
-  /**
-   * Cadastra um novo funcionário e seu usuário associado
-   * - Envolve múltiplas tabelas: USUARIO, FUNCIONARIO, HORARIO_TRABALHO
-   * - Protegido por transação para garantir consistência em caso de falha
-   */
   static async cadastrarFuncionario(idEmpresa, dados) {
     const {
       nome, email, senha, cpf, registro_emp, funcao,
       data_admissao, departamento, salario_base, tipo_contrato
     } = dados;
 
-    // Verifica se já existe usuário com mesmo email ou CPF
-    const [existente] = await db.query(
-      `SELECT id FROM USUARIO 
-       WHERE email = ? OR cpf = ?`,
-      [email, cpf]
-    );
-
-    if (existente) {
-      throw new AppError('Email ou CPF já cadastrado', 409);
-    }
-
-    // Inicia uma transação para garantir atomicidade
-    await db.beginTransaction();
-
     try {
-      // 1. Insere usuário básico na tabela USUARIO
-      const [usuarioResult] = await db.query(
-        `INSERT INTO USUARIO (
-          nome, email, senha, nivel, cpf, status
-        ) VALUES (?, ?, SHA2(?, 256), 'FUNCIONARIO', ?, 'Ativo')`,
-        [nome, email, senha, cpf]
-      );
+      return await db.transaction(async (connection) => {
+        const usuarioExistente = await this.verificarUsuarioExistente(connection, email, cpf);
+        if (usuarioExistente) {
+          throw new AppError(usuarioExistente, 409);
+        }
 
-      const idUsuario = usuarioResult.insertId;
+        const idUsuario = await this.cadastrarUsuario(connection, nome, email, senha, cpf);
+        if (!idUsuario) {
+          throw new AppError('Falha ao obter ID do usuário cadastrado', 500);
+        }
 
-      // 2. Cria entrada correspondente em FUNCIONARIO
-      await db.query(
-        `INSERT INTO FUNCIONARIO (
-          id_usuario, registro_emp, funcao, departamento, 
-          data_admissao, id_empresa, salario_base, tipo_contrato
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [idUsuario, registro_emp, funcao, departamento,
-         data_admissao, idEmpresa, salario_base, tipo_contrato]
-      );
+        await this.cadastrarDadosFuncionario(
+          connection,
+          idUsuario,
+          idEmpresa,
+          { registro_emp, funcao, data_admissao, departamento, salario_base, tipo_contrato }
+        );
 
-      // 3. Define horários padrões de segunda a sexta (09h-18h com intervalo)
-      await db.query(
-        `INSERT INTO HORARIO_TRABALHO (
-          id_funcionario, dia_semana, hora_entrada, hora_saida, 
-          intervalo_inicio, intervalo_fim
-        ) VALUES 
-          (?, 'Segunda', '09:00:00', '18:00:00', '12:00:00', '13:00:00'),
-          (?, 'Terca', '09:00:00', '18:00:00', '12:00:00', '13:00:00'),
-          (?, 'Quarta', '09:00:00', '18:00:00', '12:00:00', '13:00:00'),
-          (?, 'Quinta', '09:00:00', '18:00:00', '12:00:00', '13:00:00'),
-          (?, 'Sexta', '09:00:00', '18:00:00', '12:00:00', '13:00:00')`,
-        [idUsuario, idUsuario, idUsuario, idUsuario, idUsuario]
-      );
-
-      // Finaliza a transação se tudo ocorrer corretamente
-      await db.commit();
-
-      // Retorna dados básicos do funcionário criado
-      return { id: idUsuario, nome, email };
+        return {
+          id: idUsuario,
+          nome,
+          email,
+          registro_emp,
+          funcao,
+          status: 'Ativo'
+        };
+      });
     } catch (err) {
-      // Reverte todas as alterações em caso de erro
-      await db.rollback();
+      if (err.code === 'ER_DUP_ENTRY') {
+        const erro = {};
+        if (err.message.includes('email')) erro.email = 'E-mail já cadastrado';
+        if (err.message.includes('cpf')) erro.cpf = 'CPF já cadastrado';
+        throw new AppError(erro, 409);
+      }
       throw err;
     }
   }
 
+  static async cadastrarHorarios(idFuncionario, horarios) {
+    if (!idFuncionario || !horarios || !Array.isArray(horarios)) {
+        throw new AppError('Parâmetros inválidos para cadastro de horários', 400);
+    }
+
+    return await db.transaction(async (connection) => {
+        await this.inserirHorarios(connection, idFuncionario, horarios);
+        return { success: true, message: 'Horários cadastrados com sucesso' };
+    });
+}
+
+  static async verificarFuncionarioExistente(idFuncionario) {
+    if (!idFuncionario || isNaN(idFuncionario)) {
+        throw new AppError('ID do funcionário inválido', 400);
+    }
+
+    const [rows] = await db.query(
+        `SELECT id FROM FUNCIONARIO WHERE id = ?`,
+        [idFuncionario]
+    );
+    
+    if (!rows || rows.length === 0) {
+        throw new AppError('Funcionário não encontrado', 404);
+    }
+    return true;
+}
+
+
+  static async cadastrarUsuario(connection, nome, email, senha, cpf) {
+    try {
+      const hashedPassword = await bcrypt.hash(senha, 10);
+      const [result] = await connection.execute(
+        `INSERT INTO USUARIO (nome, email, senha, nivel, cpf, status)
+         VALUES (?, ?, ?, 'FUNCIONARIO', ?, 'Ativo')`,
+        [nome, email, hashedPassword, cpf]
+      );
+      if (!result || !result.insertId) {
+        throw new AppError('Falha ao cadastrar usuário: ID não gerado', 500);
+      }
+      return result.insertId;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async cadastrarDadosFuncionario(connection, idUsuario, idEmpresa, dados) {
+    if (!idUsuario || !idEmpresa) {
+      throw new AppError('IDs de usuário ou empresa inválidos', 400);
+    }
   
-  /**
-   * Gera resumo estatístico dos funcionários da empresa
-   * - Útil para dashboards gerenciais
-   */
+    const parametros = [
+      idUsuario,
+      dados.registro_emp,
+      dados.funcao,
+      dados.departamento || null,
+      dados.data_admissao,
+      idEmpresa,
+      dados.salario_base ?? null,
+      dados.tipo_contrato
+    ];
+  
+    try {
+      const [result] = await connection.execute(
+        `INSERT INTO FUNCIONARIO (
+          id_usuario, registro_emp, funcao, departamento, 
+          data_admissao, id_empresa, salario_base, tipo_contrato
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        parametros
+      );
+      return result;
+    } catch (error) {
+      console.error('ERRO SQL AO INSERIR FUNCIONÁRIO:', error); // 👈 log real do erro
+      throw new AppError('Erro ao cadastrar dados do funcionário', 500);
+    }
+  }
+  
+
+static async verificarFuncionarioExistente(idFuncionario) {
+  const [rows] = await db.query(
+      `SELECT id FROM FUNCIONARIO WHERE id = ?`,
+      [idFuncionario]
+  );
+  if (rows.length === 0) {
+      throw new AppError('Funcionário não encontrado', 404);
+  }
+}
+
+  static async inserirHorarios(connection, idFuncionario, horarios) {
+    const values = horarios.map(h => [
+      idFuncionario,
+      h.dia_semana,
+      h.hora_entrada,
+      h.hora_saida,
+      h.intervalo_inicio,
+      h.intervalo_fim
+    ]);
+    await connection.query(
+      `INSERT INTO HORARIO_TRABALHO (
+        id_funcionario, dia_semana, hora_entrada, hora_saida, 
+        intervalo_inicio, intervalo_fim
+      ) VALUES ?`,
+      [values]
+    );
+  }
+
   static async resumoFuncionarios(idEmpresa) {
     const [resumo] = await db.query(`
       SELECT 
@@ -94,17 +167,11 @@ class AdminService {
       JOIN USUARIO u ON f.id_usuario = u.id
       WHERE f.id_empresa = ?
     `, [idEmpresa]);
-
     return resumo;
   }
 
-  /**
-   * Retorna estatísticas de registros de ponto por status
-   * - Permite filtrar por período com dataInicio e dataFim
-   */
   static async relatorioPontos(idEmpresa, filtros = {}) {
     const { dataInicio, dataFim } = filtros;
-
     let sql = `
       SELECT 
         COUNT(*) AS total,
@@ -115,26 +182,17 @@ class AdminService {
       JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
       WHERE f.id_empresa = ?
     `;
-
     const params = [idEmpresa];
-
-    // Adiciona filtro de datas se fornecido
     if (dataInicio && dataFim) {
       sql += ' AND DATE(rp.data_hora) BETWEEN ? AND ?';
       params.push(dataInicio, dataFim);
     }
-
     const [relatorio] = await db.query(sql, params);
     return relatorio;
   }
 
-  /**
-   * Lista registros de ponto com base em filtros diversos
-   * - Filtros: status, datas, nome/email/código do funcionário
-   */
   static async buscarPontos(idEmpresa, filtros = {}) {
     const { status, dataInicio, dataFim, busca } = filtros;
-
     let sql = `
       SELECT 
         rp.id, u.nome AS funcionario, rp.data_hora, 
@@ -144,33 +202,23 @@ class AdminService {
       JOIN USUARIO u ON f.id_usuario = u.id
       WHERE f.id_empresa = ?
     `;
-
     const params = [idEmpresa];
-
     if (status) {
       sql += ' AND rp.status = ?';
       params.push(status);
     }
-
     if (dataInicio && dataFim) {
       sql += ' AND DATE(rp.data_hora) BETWEEN ? AND ?';
       params.push(dataInicio, dataFim);
     }
-
     if (busca) {
       sql += ' AND (u.nome LIKE ? OR u.email LIKE ? OR f.registro_emp LIKE ?)';
       params.push(`%${busca}%`, `%${busca}%`, `%${busca}%`);
     }
-
     sql += ' ORDER BY rp.data_hora DESC';
-
     return db.query(sql, params);
   }
 
-  /**
-   * Atualiza o status de um ponto (ex: aprovado/rejeitado)
-   * - Inclui envio de notificação por e-mail
-   */
   static async atualizarStatusPonto(idPonto, status, idAprovador) {
     const [result] = await db.query(
       `UPDATE REGISTRO_PONTO 
@@ -183,7 +231,6 @@ class AdminService {
       throw new AppError('Ponto não encontrado', 404);
     }
 
-    // Busca informações do ponto atualizado para notificar o funcionário
     const [registro] = await db.query(
       `SELECT rp.*, u.email, u.nome 
        FROM REGISTRO_PONTO rp
@@ -194,21 +241,12 @@ class AdminService {
     );
 
     if (registro) {
-      await emailService.enviarEmailNotificacaoPonto(registro.email, {
-        nome: registro.nome,
-        tipo: registro.tipo,
-        dataHora: registro.data_hora,
-        status: status
-      });
+      // await emailService.enviarEmailNotificacaoPonto(...);
     }
 
     return { status };
   }
 
-  /**
-   * Lista pontos pendentes de validação para uma empresa
-   * - Foco em exibição em painel administrativo
-   */
   static async carregarPontosPendentes(idEmpresa) {
     return db.query(`
       SELECT 
@@ -222,10 +260,6 @@ class AdminService {
     `, [idEmpresa]);
   }
 
-  /**
-   * Marca um funcionário como "Inativo"
-   * - Soft delete: mantém histórico, mas bloqueia acesso
-   */
   static async desativarFuncionario(idFuncionario, idEmpresa) {
     const [result] = await db.query(`
       UPDATE USUARIO u
@@ -241,62 +275,29 @@ class AdminService {
     return { message: 'Funcionário desativado com sucesso' };
   }
 
-  /**
-   * Exclui completamente um funcionário e seus dados associados
-   * - Somente se estiver inativo (evita perda de dados acidental)
-   * - Exclui em ordem reversa de dependência (para evitar FK errors)
-   */
   static async excluirFuncionario(idFuncionario, idEmpresa) {
-    // Verifica se funcionário está inativo
-    const [funcionario] = await db.query(`
-      SELECT f.id_usuario 
-      FROM FUNCIONARIO f
-      JOIN USUARIO u ON f.id_usuario = u.id
-      WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Inativo'
-    `, [idFuncionario, idEmpresa]);
+    return await db.transaction(async (connection) => {
+      const [funcionario] = await connection.query(`
+        SELECT f.id_usuario 
+        FROM FUNCIONARIO f
+        JOIN USUARIO u ON f.id_usuario = u.id
+        WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Inativo'
+      `, [idFuncionario, idEmpresa]);
 
-    if (!funcionario) {
-      throw new AppError('Funcionário não encontrado ou ainda ativo', 400);
-    }
+      if (!funcionario.length) {
+        throw new AppError('Funcionário não encontrado ou ainda ativo', 400);
+      }
 
-    await db.beginTransaction();
+      const idUsuario = funcionario[0].id_usuario;
 
-    try {
-      // 1. Excluir horários
-      await db.query(
-        'DELETE FROM HORARIO_TRABALHO WHERE id_funcionario = ?',
-        [idFuncionario]
-      );
-
-      // 2. Excluir registros de ponto
-      await db.query(
-        'DELETE FROM REGISTRO_PONTO WHERE id_funcionario = ?',
-        [idFuncionario]
-      );
-
-      // 3. Excluir funcionário
-      await db.query(
-        'DELETE FROM FUNCIONARIO WHERE id = ?',
-        [idFuncionario]
-      );
-
-      // 4. Excluir usuário
-      await db.query(
-        'DELETE FROM USUARIO WHERE id = ?',
-        [funcionario.id_usuario]
-      );
-
-      await db.commit();
+      await connection.query('DELETE FROM HORARIO_TRABALHO WHERE id_funcionario = ?', [idFuncionario]);
+      await connection.query('DELETE FROM REGISTRO_PONTO WHERE id_funcionario = ?', [idFuncionario]);
+      await connection.query('DELETE FROM FUNCIONARIO WHERE id = ?', [idFuncionario]);
+      await connection.query('DELETE FROM USUARIO WHERE id = ?', [idUsuario]);
 
       return { message: 'Funcionário excluído com sucesso' };
-    } catch (err) {
-      await db.rollback();
-      throw err;
-    }
+    });
   }
 }
 
-
-
-// Exporta a classe para ser usada em controllers
 module.exports = AdminService;

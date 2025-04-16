@@ -133,19 +133,20 @@ class AuthService {
                 throw new Error('Falha ao fazer logout no servidor');
             }
 
-            // Limpa todos os dados de autenticação localmente
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userData');
+            // Limpa TODOS os dados de autenticação localmente
+            localStorage.clear(); // Limpa tudo, não apenas authToken e userData
+            sessionStorage.clear();
 
             // Força um reload completo para limpar qualquer estado da aplicação
             window.location.href = 'login.html';
+            window.location.reload(true); // Força reload sem cache
+
         } catch (error) {
             console.error('Erro durante logout:', error);
             // Mesmo se falhar no servidor, fazemos o logout local
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userData');
+            localStorage.clear();
+            sessionStorage.clear();
             window.location.href = 'login.html';
-            throw error;
         }
     }
 }

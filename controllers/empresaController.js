@@ -37,25 +37,25 @@ class EmpresaController {
     }
   }
 
-  // Método estático para remover uma empresa com base no ID
   static async removerEmpresa(req, res, next) {
     try {
-      // Desestrutura o parâmetro id da requisição
-      const { id } = req.params;
-      
-      // Chama o serviço para remover a empresa, passando o ID
-      const resultado = await EmpresaService.removerEmpresa(id);
-      
-      // Retorna uma resposta com status 200 (OK), indicando que a empresa foi removida
-      res.json({
-        success: true, // Indica que a operação foi bem-sucedida
-        data: resultado // Retorna o resultado da remoção (geralmente um objeto com o status da operação)
-      });
+        const { id } = req.params;
+        
+        if (!id || isNaN(id)) {
+            throw new AppError('ID da empresa inválido', 400);
+        }
+
+        const resultado = await EmpresaService.removerEmpresa(parseInt(id));
+        
+        res.json({
+            success: true,
+            data: resultado
+        });
     } catch (err) {
-      // Caso ocorra um erro, passa o erro para o próximo middleware de tratamento (next)
-      next(err);
+        console.error(`Erro ao remover empresa ID ${req.params.id}:`, err);
+        next(err);
     }
-  }
+}
 
   // Método estático para alternar o status de uma empresa (ex.: ativo/inativo)
   static async alternarStatus(req, res, next) {

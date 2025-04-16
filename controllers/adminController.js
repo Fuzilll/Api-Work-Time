@@ -8,30 +8,92 @@ const { AppError } = require('../errors');
 class AdminController {
 
   /**
-   * Cadastro de um novo funcionário
-   * - Contexto: Apenas administradores da empresa podem cadastrar funcionários
-   * - Entradas: dados do funcionário no corpo da requisição, id_empresa do usuário logado
-   * - Saída: objeto do funcionário criado
+   * @api {post} /funcionarios Cadastrar Funcionário
+   * @apiName CadastrarFuncionario
+   * @apiGroup Admin
+   * 
+   * @apiBody {String} nome Nome completo
+   * @apiBody {String} email E-mail válido
+   * @apiBody {String} senha Mínimo 8 caracteres
+   * @apiBody {String} cpf 11 dígitos
+   * @apiBody {String} registro_emp Registro na empresa
+   * @apiBody {String} funcao Função exercida
+   * @apiBody {Date} data_admissao Data de admissão
+   * @apiBody {String} departamento Departamento
+   * @apiBody {Number} salario_base Salário base
+   * @apiBody {String} tipo_contrato CLT/PJ/Estagiario/Temporario
    */
   static async cadastrarFuncionario(req, res, next) {
     try {
-      // Chama o serviço para cadastrar, passando o id da empresa e os dados do corpo da requisição
+      // Verificar campos obrigatórios
+      const camposObrigatorios = ['nome', 'email', 'senha', 'cpf', 'registro_emp',
+        'funcao', 'data_admissao', 'tipo_contrato'];
+
+      const faltantes = camposObrigatorios.filter(campo => !req.body[campo]);
+
+      if (faltantes.length > 0) {
+        throw new AppError(`Campos obrigatórios faltando: ${faltantes.join(', ')}`, 400);
+      }
+
+      // Converter valores numéricos
+      if (req.body.salario_base) {
+        req.body.salario_base = parseFloat(req.body.salario_base);
+      }
+
       const funcionario = await AdminService.cadastrarFuncionario(
         req.usuario.id_empresa,
         req.body
       );
 
-      // Retorna sucesso com status 201 (Created)
       res.status(201).json({
         success: true,
-        data: funcionario
+        data: funcionario,
+        id: funcionario.id_funcionario
       });
     } catch (err) {
-      // Encaminha erro para middleware de tratamento
       next(err);
     }
   }
 
+  /**
+ * @api {post} /funcionarios/:id/horarios Cadastrar Horários
+ * @apiName CadastrarHorarios
+ * @apiGroup Admin
+ * 
+ * @apiParam {Number} id ID do funcionário
+ * @apiBody {Array} horarios Array de objetos de horário
+ */
+  static async cadastrarHorariosFuncionario(req, res, next) {
+    try {
+        if (!req.body.horarios || !Array.isArray(req.body.horarios)) {
+            throw new AppError('Horários não fornecidos ou formato inválido', 400);
+        }
+
+        // Verificação mais robusta
+        if (!req.params.id || isNaN(req.params.id)) {
+            throw new AppError('ID do funcionário inválido', 400);
+        }
+
+        // Converter para número
+        const idFuncionario = parseInt(req.params.id);
+        
+        // Verificar existência
+        await AdminService.verificarFuncionarioExistente(idFuncionario);
+        
+        // Cadastrar horários
+        const resultado = await AdminService.cadastrarHorarios(
+            idFuncionario,
+            req.body.horarios
+        );
+
+        res.status(201).json({
+            success: true,
+            data: resultado
+        });
+    } catch (err) {
+        next(err);
+    }
+}
   /**
    * Retorna um resumo dos funcionários cadastrados
    * - Objetivo: fornecer visão agregada para o painel do admin
@@ -151,7 +213,7 @@ class AdminController {
     }
   }
 
-  
+
   /**
    * Exclui um funcionário definitivamente
    * - Usar com cautela. Verificar se há dados dependentes antes

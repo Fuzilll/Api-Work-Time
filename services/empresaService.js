@@ -60,55 +60,129 @@ class EmpresaService {
     );
   }
 
-  // Método para remover uma empresa, dado o seu id
   static async removerEmpresa(id) {
-    try {
-      return await db.transaction(async (conn) => {
-        // 1. Remover administradores vinculados
-        await conn.query(
-          `DELETE a FROM ADMIN a
-           JOIN USUARIO u ON a.id_usuario = u.id
-           WHERE a.id_empresa = ?`,
-          [id]
+    return await db.transaction(async (conn) => {
+        // 1. Verificar se a empresa existe
+        const [empresa] = await conn.query(
+            'SELECT id FROM EMPRESA WHERE id = ? FOR UPDATE',
+            [id]
         );
 
-        // 2. Remover usuários que eram apenas administradores desta empresa
-        await conn.query(
-          `DELETE u FROM USUARIO u
-           LEFT JOIN FUNCIONARIO f ON u.id = f.id_usuario
-           LEFT JOIN ADMIN a ON u.id = a.id_usuario
-           WHERE u.nivel = 'ADMIN' 
-           AND a.id_empresa = ? 
-           AND f.id_usuario IS NULL`,
-          [id]
-        );
-
-        // 3. Verificar se existem funcionários vinculados
-        const funcionarios = await conn.query(
-          'SELECT id FROM FUNCIONARIO WHERE id_empresa = ?',
-          [id]
-        );
-
-        if (funcionarios.length > 0) {
-          throw new AppError('Empresa possui funcionários vinculados', 400);
+        if (!empresa) {
+            throw new AppError('Empresa não encontrada', 404);
         }
 
-        // 4. Remover a empresa
+        // 2. Obter todos os funcionários da empresa
+        const [funcionarios] = await conn.query(
+            'SELECT id, id_usuario FROM FUNCIONARIO WHERE id_empresa = ?',
+            [id]
+        );
+
+        // 3. Para cada funcionário, remover registros relacionados
+        for (const funcionario of funcionarios) {
+            // Remover registros de ponto
+            await conn.query(
+                'DELETE FROM REGISTRO_PONTO WHERE id_funcionario = ?',
+                [funcionario.id]
+            );
+
+            // Remover solicitações de alteração
+            await conn.query(
+                'DELETE FROM SOLICITACAO_ALTERACAO WHERE id_funcionario = ?',
+                [funcionario.id]
+            );
+
+            // Remover horários de trabalho
+            await conn.query(
+                'DELETE FROM HORARIO_TRABALHO WHERE id_funcionario = ?',
+                [funcionario.id]
+            );
+
+            // Remover ocorrências
+            await conn.query(
+                'DELETE FROM OCORRENCIA WHERE id_funcionario = ?',
+                [funcionario.id]
+            );
+
+            // Remover fechamentos de folha
+            await conn.query(
+                'DELETE FROM FECHAMENTO_FOLHA WHERE id_funcionario = ?',
+                [funcionario.id]
+            );
+
+            // Remover o funcionário
+            await conn.query(
+                'DELETE FROM FUNCIONARIO WHERE id = ?',
+                [funcionario.id]
+            );
+
+            // Verificar se o usuário é apenas funcionário (não é admin)
+            const [admin] = await conn.query(
+                'SELECT id FROM ADMIN WHERE id_usuario = ?',
+                [funcionario.id_usuario]
+            );
+
+            if (!admin) {
+                // Remover o usuário se não for admin
+                await conn.query(
+                    'DELETE FROM USUARIO WHERE id = ?',
+                    [funcionario.id_usuario]
+                );
+            }
+        }
+
+        // 4. Remover administradores vinculados
+        const [admins] = await conn.query(
+            'SELECT id, id_usuario FROM ADMIN WHERE id_empresa = ?',
+            [id]
+        );
+
+        for (const admin of admins) {
+            // Remover o admin
+            await conn.query(
+                'DELETE FROM ADMIN WHERE id = ?',
+                [admin.id]
+            );
+
+            // Verificar se o usuário não está vinculado a outras empresas como admin/funcionário
+            const [outrosAdmins] = await conn.query(
+                'SELECT id FROM ADMIN WHERE id_usuario = ?',
+                [admin.id_usuario]
+            );
+
+            const [outrosFuncionarios] = await conn.query(
+                'SELECT id FROM FUNCIONARIO WHERE id_usuario = ?',
+                [admin.id_usuario]
+            );
+
+            if (outrosAdmins.length === 0 && outrosFuncionarios.length === 0) {
+                // Remover o usuário se não estiver vinculado a nenhuma outra empresa
+                await conn.query(
+                    'DELETE FROM USUARIO WHERE id = ?',
+                    [admin.id_usuario]
+                );
+            }
+        }
+
+        // 5. Remover configurações da empresa
+        await conn.query(
+            'DELETE FROM CONFIGURACAO_PONTO WHERE id_empresa = ?',
+            [id]
+        );
+
+        // 6. Finalmente, remover a empresa
         const result = await conn.query(
-          'DELETE FROM EMPRESA WHERE id = ?',
-          [id]
+            'DELETE FROM EMPRESA WHERE id = ?',
+            [id]
         );
 
         if (result.affectedRows === 0) {
-          throw new AppError('Empresa não encontrada', 404);
+            throw new AppError('Falha ao remover empresa', 500);
         }
 
-        return { message: 'Empresa removida com sucesso' };
-      });
-    } catch (err) {
-      throw err;
-    }
-  }
+        return { message: 'Empresa e todos os registros relacionados removidos com sucesso' };
+    });
+}
 
 
   // Método para alternar o status da empresa entre 'Ativo' e 'Inativo'

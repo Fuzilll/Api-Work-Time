@@ -14,14 +14,10 @@ router.use(authMiddleware.autenticacao);
 // Rotas para IT Support
 router.use(authMiddleware.verificarNivel('IT_SUPPORT'));
 
-router.post(
-  '/cadastrar',
-  validate(empresaSchema.cadastro),
-  empresaController.cadastrarEmpresa
-);
+router.post('/cadastrar',validate(empresaSchema.cadastro),empresaController.cadastrarEmpresa);
 router.get('/listar', empresaController.listarEmpresas);
 
-router.delete('/:id/remover', empresaController.removerEmpresa);
+router.delete('/:id', empresaController.removerEmpresa);
 router.put('/:id/status', empresaController.alternarStatus);
 router.get('/:id', empresaController.obterEmpresa);
 router.post('/cadastrar-admin', validate(empresaSchema.cadastroAdmin), empresaController.cadastrarAdmin);

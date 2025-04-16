@@ -35,4 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     menu.innerHTML = menuItems;
+
+        // Adiciona handler para o botão de logout
+        document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                await AuthService.logout();
+            } catch (error) {
+                console.error('Erro durante logout:', error);
+                // Força logout mesmo com erro
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
+        });
 });

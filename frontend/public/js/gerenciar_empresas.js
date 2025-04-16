@@ -38,19 +38,35 @@ class GerenciadorEmpresas {
     },
 
     remove: async (id) => {
-      const response = await fetch(`/api/empresas/remover/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          throw new Error('Authentication required. Please login again.');
         }
-      });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to remove company');
+        const response = await fetch(`/api/empresas/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          credentials: 'include' // Importante para enviar cookies de sessão
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.message ||
+            (response.status === 403 ? 'Permission denied' :
+              response.status === 404 ? 'Company not found' :
+                'Failed to remove company');
+          throw new Error(errorMessage);
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error('Remove company API error:', error);
+        throw error; // Re-throw para ser tratado pelo chamador
       }
-
-      return await response.json();
     },
 
     registerAdmin: async (data) => {
@@ -220,19 +236,23 @@ class GerenciadorEmpresas {
     },
 
     handleRemoveCompany: async (id, name) => {
-      if (!confirm(`Are you sure you want to permanently remove "${name}"? This action cannot be undone.`)) {
+      if (!confirm(`ATENÇÃO: Isso removerá permanentemente a empresa "${name}" e TODOS os dados associados (funcionários, registros de ponto, etc.). Deseja continuar?`)) {
         return;
       }
 
+      const loadingToast = this.showLoadingToast(`Removendo empresa ${name} e todos os dados relacionados...`);
+
       try {
-        const loadingToast = this.showLoadingToast('Removing company...');
-        await this.api.remove(id);
+        const result = await this.api.remove(id);
+
         loadingToast.hide();
-        this.showSuccessToast(`Company "${name}" removed successfully`);
+        this.showSuccessToast(result.message);
+
         await this.loadCompanies();
       } catch (error) {
-        console.error('Remove company error:', error);
-        this.showErrorToast(`Failed to remove company: ${error.message}`);
+        loadingToast.hide();
+        console.error('Error removing company:', error);
+        this.showErrorToast(`Falha ao remover empresa: ${error.message}`);
       }
     }
   };

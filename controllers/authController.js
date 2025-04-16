@@ -66,70 +66,58 @@ class AuthController {
     }
   }
 
-  /**
-   * POST /logout
-   * Realiza logout do usuário destruindo a sessão ativa
-   */
-  /**
-   * POST /logout
-   * Realiza logout do usuário destruindo a sessão ativa e removendo o token
-   * - Destrói a sessão do servidor
-   * - Remove o cookie de sessão do cliente
-   * - Invalida o token JWT quando aplicável
-   */
-  static async logout(req, res, next) {
-    console.log('[BACKEND] Requisição de logout recebida');
+/**
+ * POST /logout
+ * Realiza logout do usuário destruindo a sessão ativa e invalidando o token JWT
+ */
+static async logout(req, res, next) {
+  console.log('[BACKEND] Requisição de logout recebida');
 
-    try {
-      // Verifica se existe sessão ativa
-      if (!req.session) {
-        console.log('[BACKEND] Nenhuma sessão ativa encontrada');
-        return res.status(200).json({
-          success: true,
-          message: 'Nenhuma sessão ativa encontrada'
-        });
-      }
-
+  try {
+      const token = req.headers.authorization?.split(' ')[1];
       const userId = req.session.id_usuario || 'N/A';
+      
       console.log(`[BACKEND] Iniciando logout para usuário ${userId}`);
 
-      // Destrói a sessão de forma assíncrona
+      // 1. Destrói a sessão
       await new Promise((resolve, reject) => {
-        req.session.destroy(err => {
-          if (err) {
-            console.error(`[BACKEND] Erro ao destruir sessão:`, err);
-            reject(new AppError('Falha ao encerrar a sessão', 500));
-            return;
-          }
-          console.log(`[BACKEND] Sessão destruída com sucesso`);
-          resolve();
-        });
+          req.session.destroy(err => {
+              if (err) {
+                  console.error(`[BACKEND] Erro ao destruir sessão:`, err);
+                  reject(new AppError('Falha ao encerrar a sessão', 500));
+                  return;
+              }
+              console.log(`[BACKEND] Sessão destruída com sucesso`);
+              resolve();
+          });
       });
 
-      // Configurações para limpeza do cookie
+      // 2. Configurações para limpeza dos cookies
       const cookieOptions = {
-        path: '/',
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        domain: process.env.COOKIE_DOMAIN || undefined
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          domain: process.env.COOKIE_DOMAIN || undefined
       };
 
-      // Remove o cookie de sessão do cliente
+      // 3. Remove todos os cookies relacionados à autenticação
       res.clearCookie('connect.sid', cookieOptions);
-      console.log('[BACKEND] Cookie de sessão removido');
+      res.clearCookie('token', cookieOptions);
+      console.log('[BACKEND] Cookies de autenticação removidos');
 
-      // Resposta de sucesso
+      // 4. Resposta de sucesso
       res.json({
-        success: true,
-        message: 'Logout realizado com sucesso'
+          success: true,
+          message: 'Logout realizado com sucesso'
       });
 
-    } catch (err) {
+  } catch (err) {
       console.error('[BACKEND] Erro durante logout:', err);
       next(err);
-    }
   }
+}
+
   /**
    * GET /sessao
    * Verifica se há uma sessão ativa e retorna informações do usuário

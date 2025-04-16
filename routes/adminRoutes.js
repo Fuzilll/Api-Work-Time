@@ -8,7 +8,10 @@ const DashboardController = require('../controllers/dashboardController');
 
 // Middleware para verificar se é admin da empresa
 router.use(authMiddleware.autenticacao);
-router.use(authMiddleware.verificarNivel('ADMIN'));
+router.use(authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']));
+
+
+router.post('/funcionarios/:id/horarios',  adminController.cadastrarHorariosFuncionario);
 
 
 // Rotas de funcionários
@@ -58,4 +61,5 @@ router.put(
   adminController.atualizarStatusPonto
 );
 
+router.post('/funcionarios/:id/horarios', adminController.cadastrarHorariosFuncionario);
 module.exports = router;
