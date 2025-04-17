@@ -11,35 +11,25 @@ module.exports = {
    * - Garante formato, obrigatoriedade e limites dos dados recebidos
    */
   cadastroFuncionario: Joi.object({
-    // Nome deve ter no mínimo 3 e no máximo 100 caracteres
     nome: Joi.string().min(3).max(100).required(),
-
-    // E-mail deve ser válido e é obrigatório
     email: Joi.string().email().required(),
-
-    // Senha com no mínimo 8 caracteres, exigido por segurança
     senha: Joi.string().min(8).required(),
-
-    // CPF deve conter 11 dígitos numéricos (sem máscara), obrigatório
     cpf: Joi.string().length(11).pattern(/^\d+$/).required(),
-
-    // Registro interno da empresa (ex: matrícula), obrigatório
     registro_emp: Joi.string().required(),
-
-    // Função do colaborador (ex: Analista, Técnico), obrigatório
     funcao: Joi.string().required(),
-
-    // Data de admissão deve ser uma data válida
     data_admissao: Joi.date().required(),
-
-    // Departamento pode ser nulo ou string vazia (não obrigatório)
     departamento: Joi.string().allow(null, ''),
-
-    // Salário pode ser omitido, mas se informado, deve ser número positivo
     salario_base: Joi.number().positive().allow(null),
-
-    // Tipo de contrato com valores pré-definidos e 'CLT' como valor padrão
-    tipo_contrato: Joi.string().valid('CLT', 'PJ', 'Estagiario', 'Temporario').default('CLT')
+    tipo_contrato: Joi.string().valid('CLT', 'PJ', 'Estagiario', 'Temporario').default('CLT'),
+    horarios: Joi.array().items(
+      Joi.object({
+        dia_semana: Joi.string().valid('Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo').required(),
+        hora_entrada: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
+        hora_saida: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
+        intervalo_inicio: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).allow(null),
+        intervalo_fim: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).allow(null)
+      })
+    ).optional()
   }),
 
   /**

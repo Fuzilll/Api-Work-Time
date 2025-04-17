@@ -8,30 +8,44 @@ class AdminService {
   static async cadastrarFuncionario(idEmpresa, dados) {
     const {
       nome, email, senha, cpf, registro_emp, funcao,
-      data_admissao, departamento, salario_base, tipo_contrato
+      data_admissao, departamento, salario_base, tipo_contrato,
+      horarios
     } = dados;
 
     try {
       return await db.transaction(async (connection) => {
+        // 1. Verificar se usuário já existe
         const usuarioExistente = await this.verificarUsuarioExistente(connection, email, cpf);
         if (usuarioExistente) {
           throw new AppError(usuarioExistente, 409);
         }
 
+        // 2. Cadastrar usuário
         const idUsuario = await this.cadastrarUsuario(connection, nome, email, senha, cpf);
         if (!idUsuario) {
           throw new AppError('Falha ao obter ID do usuário cadastrado', 500);
         }
 
-        await this.cadastrarDadosFuncionario(
+        // 3. Cadastrar dados do funcionário
+        const funcionario = await this.cadastrarDadosFuncionario(
           connection,
           idUsuario,
           idEmpresa,
           { registro_emp, funcao, data_admissao, departamento, salario_base, tipo_contrato }
         );
 
+        // 4. Cadastrar horários (padrão ou personalizados)
+        if (!horarios || horarios.length === 0) {
+          // Cadastrar horário padrão se não for fornecido
+          await this.cadastrarHorarioPadrao(connection, funcionario.insertId);
+        } else {
+          // Cadastrar horários personalizados
+          await this.cadastrarHorarios(connection, funcionario.insertId, horarios);
+        }
+
         return {
           id: idUsuario,
+          id_funcionario: funcionario.insertId,
           nome,
           email,
           registro_emp,
@@ -50,32 +64,48 @@ class AdminService {
     }
   }
 
-  static async cadastrarHorarios(idFuncionario, horarios) {
+  static async cadastrarHorarioPadrao(connection, idFuncionario) {
+    const diasSemana = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta'];
+    const horariosPadrao = diasSemana.map(dia => ({
+      dia_semana: dia,
+      hora_entrada: '09:00',
+      hora_saida: '18:00',
+      intervalo_inicio: '12:00',
+      intervalo_fim: '13:00'
+    }));
+
+    await this.cadastrarHorarios(connection, idFuncionario, horariosPadrao);
+  }
+
+  static async cadastrarHorarios(connection, idFuncionario, horarios) {
     if (!idFuncionario || !horarios || !Array.isArray(horarios)) {
-        throw new AppError('Parâmetros inválidos para cadastro de horários', 400);
+      throw new AppError('Parâmetros inválidos para cadastro de horários', 400);
     }
 
-    return await db.transaction(async (connection) => {
-        await this.inserirHorarios(connection, idFuncionario, horarios);
-        return { success: true, message: 'Horários cadastrados com sucesso' };
-    });
-}
-
-  static async verificarFuncionarioExistente(idFuncionario) {
-    if (!idFuncionario || isNaN(idFuncionario)) {
-        throw new AppError('ID do funcionário inválido', 400);
+    // Validar cada horário
+    for (const horario of horarios) {
+      if (!horario.dia_semana || !horario.hora_entrada || !horario.hora_saida) {
+        throw new AppError('Dados de horário incompletos', 400);
+      }
     }
 
-    const [rows] = await db.query(
-        `SELECT id FROM FUNCIONARIO WHERE id = ?`,
-        [idFuncionario]
+    const values = horarios.map(h => [
+      idFuncionario,
+      h.dia_semana,
+      h.hora_entrada,
+      h.hora_saida,
+      h.intervalo_inicio || null,
+      h.intervalo_fim || null
+    ]);
+
+    await connection.query(
+      `INSERT INTO HORARIO_TRABALHO (
+        id_funcionario, dia_semana, hora_entrada, hora_saida, 
+        intervalo_inicio, intervalo_fim
+      ) VALUES ?`,
+      [values]
     );
-    
-    if (!rows || rows.length === 0) {
-        throw new AppError('Funcionário não encontrado', 404);
-    }
-    return true;
-}
+  }
 
 
   static async cadastrarUsuario(connection, nome, email, senha, cpf) {
@@ -99,7 +129,7 @@ class AdminService {
     if (!idUsuario || !idEmpresa) {
       throw new AppError('IDs de usuário ou empresa inválidos', 400);
     }
-  
+
     const parametros = [
       idUsuario,
       dados.registro_emp,
@@ -110,7 +140,7 @@ class AdminService {
       dados.salario_base ?? null,
       dados.tipo_contrato
     ];
-  
+
     try {
       const [result] = await connection.execute(
         `INSERT INTO FUNCIONARIO (
@@ -125,17 +155,36 @@ class AdminService {
       throw new AppError('Erro ao cadastrar dados do funcionário', 500);
     }
   }
-  
 
-static async verificarFuncionarioExistente(idFuncionario) {
-  const [rows] = await db.query(
-      `SELECT id FROM FUNCIONARIO WHERE id = ?`,
-      [idFuncionario]
-  );
-  if (rows.length === 0) {
-      throw new AppError('Funcionário não encontrado', 404);
+
+  static async verificarUsuarioExistente(connection, email, cpf) {
+    try {
+      // Verificar por email
+      const [emailExistente] = await connection.query(
+        'SELECT id FROM USUARIO WHERE email = ?',
+        [email]
+      );
+
+      if (emailExistente.length > 0) {
+        return { email: 'E-mail já cadastrado' };
+      }
+
+      // Verificar por CPF
+      const [cpfExistente] = await connection.query(
+        'SELECT id FROM USUARIO WHERE cpf = ?',
+        [cpf]
+      );
+
+      if (cpfExistente.length > 0) {
+        return { cpf: 'CPF já cadastrado' };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Erro ao verificar usuário existente:', error);
+      throw new AppError('Erro ao verificar usuário existente', 500);
+    }
   }
-}
 
   static async inserirHorarios(connection, idFuncionario, horarios) {
     const values = horarios.map(h => [

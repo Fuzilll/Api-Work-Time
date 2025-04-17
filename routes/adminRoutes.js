@@ -11,16 +11,6 @@ router.use(authMiddleware.autenticacao);
 router.use(authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']));
 
 
-router.post('/funcionarios/:id/horarios',  adminController.cadastrarHorariosFuncionario);
-
-
-// Rotas de funcionários
-router.post(
-  '/funcionarios',
-  validate(adminSchema.cadastroFuncionario),
-  adminController.cadastrarFuncionario
-);
-
 router.put(
   '/funcionarios/:id/desativar',
   adminController.desativarFuncionario
@@ -59,6 +49,13 @@ router.put(
   '/pontos/:id/status',
   validate(adminSchema.atualizarStatusPonto),
   adminController.atualizarStatusPonto
+);
+
+router.post('/funcionarios',
+  authMiddleware.autenticacao,
+  authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']),
+  validate(adminSchema.cadastroFuncionario),
+  adminController.cadastrarFuncionario
 );
 
 router.post('/funcionarios/:id/horarios', adminController.cadastrarHorariosFuncionario);

@@ -25,6 +25,11 @@ class AdminController {
    */
   static async cadastrarFuncionario(req, res, next) {
     try {
+      // Verificar se o usuário tem permissão (ADMIN ou IT_SUPPORT)
+      if (!['ADMIN', 'IT_SUPPORT'].includes(req.usuario.nivel)) {
+        throw new AppError('Acesso não autorizado', 403);
+      }
+
       // Verificar campos obrigatórios
       const camposObrigatorios = ['nome', 'email', 'senha', 'cpf', 'registro_emp',
         'funcao', 'data_admissao', 'tipo_contrato'];
@@ -42,7 +47,10 @@ class AdminController {
 
       const funcionario = await AdminService.cadastrarFuncionario(
         req.usuario.id_empresa,
-        req.body
+        {
+          ...req.body,
+          horarios: req.body.horarios // Inclui os horários no cadastro
+        }
       );
 
       res.status(201).json({

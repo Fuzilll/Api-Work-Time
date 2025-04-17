@@ -22,15 +22,12 @@ class FuncionarioCadastro {
         this.carregarDiasSemana();
     }
 
-
     configurarEventos() {
-        // Evento de submit do formulário principal
         this.form.addEventListener("submit", (e) => {
             e.preventDefault();
-            this.processarFormulario(e); // Passa o evento explicitamente
+            this.processarFormulario(e);
         });
 
-        // Evento para mostrar/ocultar modal de horários
         if (this.definirHorarioCheckbox) {
             this.definirHorarioCheckbox.addEventListener('change', (e) => {
                 if (e.target.checked) {
@@ -63,27 +60,27 @@ class FuncionarioCadastro {
         ];
 
         container.innerHTML = dias.map(({ nome, label }) => `
-            <div class="row mb-3">
-                <div class="col-md-12">
-                    <h6>${label}</h6>
-                </div>
-                <div class="col-md-3">
-                    <label>Entrada</label>
-                    <input type="time" class="form-control entrada-${nome}" value="09:00">
-                </div>
-                <div class="col-md-3">
-                    <label>Saída</label>
-                    <input type="time" class="form-control saida-${nome}" value="18:00">
-                </div>
-                <div class="col-md-3">
-                    <label>Início Intervalo</label>
-                    <input type="time" class="form-control intervalo-inicio-${nome}" value="12:00">
-                </div>
-                <div class="col-md-3">
-                    <label>Fim Intervalo</label>
-                    <input type="time" class="form-control intervalo-fim-${nome}" value="13:00">
-                </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <h6>${label}</h6>
             </div>
+            <div class="col-md-3">
+              <label>Entrada</label>
+              <input type="time" class="form-control entrada-${nome}" value="09:00">
+            </div>
+            <div class="col-md-3">
+              <label>Saída</label>
+              <input type="time" class="form-control saida-${nome}" value="18:00">
+            </div>
+            <div class="col-md-3">
+              <label>Início Intervalo</label>
+              <input type="time" class="form-control intervalo-inicio-${nome}" value="12:00">
+            </div>
+            <div class="col-md-3">
+              <label>Fim Intervalo</label>
+              <input type="time" class="form-control intervalo-fim-${nome}" value="13:00">
+            </div>
+          </div>
         `).join('');
     }
 
@@ -103,11 +100,6 @@ class FuncionarioCadastro {
             const intervaloInicioEl = document.querySelector(`.intervalo-inicio-${nome}`);
             const intervaloFimEl = document.querySelector(`.intervalo-fim-${nome}`);
 
-            if (!entradaEl || !saidaEl || !intervaloInicioEl || !intervaloFimEl) {
-                console.error(`Elementos de horário não encontrados para ${label}`);
-                return null;
-            }
-
             return {
                 dia_semana: label,
                 hora_entrada: entradaEl.value,
@@ -115,36 +107,30 @@ class FuncionarioCadastro {
                 intervalo_inicio: intervaloInicioEl.value,
                 intervalo_fim: intervaloFimEl.value
             };
-        }).filter(horario => horario !== null);
+        });
     }
 
     async processarFormulario(event) {
         try {
             event.preventDefault();
             this.mostrarLoading(true);
-    
-            // 1. Cadastrar funcionário
+
+            // 1. Obter dados do formulário
             const funcionario = this.obterDadosFormulario();
             if (!this.validarDados(funcionario)) return;
-    
-            const resultadoFuncionario = await this.salvarFuncionario(funcionario);
-            
-            // Verificar se temos o ID correto
-            if (!resultadoFuncionario.id && !resultadoFuncionario.id_funcionario) {
-                throw new Error('Não foi possível obter o ID do funcionário cadastrado');
-            }
-    
-            // Usar id_funcionario se existir, caso contrário usar id
-            const idFuncionario = resultadoFuncionario.id_funcionario || resultadoFuncionario.id;
-    
-            // 2. Cadastrar horários (se necessário)
+
+            // 2. Adicionar horários se checkbox estiver marcado
+            const dadosEnvio = { ...funcionario };
             if (this.definirHorarioCheckbox?.checked && this.horariosPersonalizados) {
-                await this.cadastrarHorarios(idFuncionario);
+                dadosEnvio.horarios = this.horariosPersonalizados;
             }
-    
+
+            // 3. Enviar para o servidor
+            const resultadoFuncionario = await this.salvarFuncionario(dadosEnvio);
+
             this.mostrarMensagemSucesso(resultadoFuncionario);
             this.resetarFormulario();
-    
+
         } catch (error) {
             console.error('Erro detalhado:', error);
             this.handleProcessarFormularioError(error);
@@ -152,6 +138,8 @@ class FuncionarioCadastro {
             this.mostrarLoading(false);
         }
     }
+
+
     obterDadosFormulario() {
         const getValue = (id) => {
             const element = document.getElementById(id);
@@ -266,7 +254,7 @@ class FuncionarioCadastro {
         if (!idFuncionario) {
             throw new Error('ID do funcionário não está definido');
         }
-    
+
         const token = localStorage.getItem('authToken');
         const response = await fetch(`${this.API_BASE_URL}/admin/funcionarios/${idFuncionario}/horarios`, {
             method: "POST",
@@ -276,7 +264,7 @@ class FuncionarioCadastro {
             },
             body: JSON.stringify({ horarios: this.horariosPersonalizados })
         });
-    
+
         if (!response.ok) {
             const error = await response.json().catch(() => ({}));
             throw new Error(error.message || 'Erro ao cadastrar horários');
