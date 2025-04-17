@@ -162,35 +162,84 @@ class AdminController {
     }
   }
 
-  /**
-   * Atualiza o status de um ponto (ex: de pendente para aprovado/rejeitado)
-   * - Contexto: validação de ponto por um superior
-   * - Segurança: precisa do id do ponto e do usuário autenticado
+   /**
+   * @api {get} /api/admin/pontos/analise Listar Pontos para Análise
+   * @apiName CarregarPontosParaAnalise
+   * @apiGroup Admin
+   * 
+   * @apiDescription Retorna pontos com possíveis irregularidades para análise manual
    */
-  static async atualizarStatusPonto(req, res, next) {
+   static async carregarPontosParaAnalise(req, res, next) {
     try {
-      const resultado = await AdminService.atualizarStatusPonto(
-        req.params.id,      // id do ponto
-        req.body.status,    // novo status
-        req.usuario.id      // quem está alterando
+      const pontos = await AdminService.carregarPontosParaAnalise(
+        req.usuario.id_empresa
       );
 
       res.json({
         success: true,
-        data: resultado
+        data: pontos
       });
     } catch (err) {
       next(err);
     }
   }
 
+
+ /**
+   * @api {put} /api/admin/pontos/:id/status Aprovar/Rejeitar Ponto
+   * @apiName AtualizarStatusPonto
+   * @apiGroup Admin
+   * 
+   * @apiParam {Number} id ID do registro de ponto
+   * @apiBody {String="Aprovado","Rejeitado"} status Novo status do ponto
+   * @apiBody {String} [justificativa] Justificativa para rejeição
+   */
+ static async atualizarStatusPonto(req, res, next) {
+  try {
+    // Validação dos dados de entrada
+    const { error } = validatePointApproval(req.body);
+    if (error) throw new AppError(error.details[0].message, 400);
+
+    // Verificar permissões
+    if (!req.usuario.permissoes.includes('aprovar_pontos')) {
+      throw new AppError('Acesso não autorizado', 403);
+    }
+
+    const resultado = await AdminService.atualizarStatusPonto(
+      req.params.id,
+      req.body.status,
+      req.usuario.id,
+      req.body.justificativa
+    );
+
+    res.json({
+      success: true,
+      data: resultado
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
   /**
-   * Carrega todos os pontos que ainda não foram validados
-   * - Usado em painéis de aprovação de ponto
+   * @api {get} /api/admin/pontos/pendentes Listar Pontos Pendentes
+   * @apiName CarregarPontosPendentes
+   * @apiGroup Admin
+   * 
+   * @apiQuery {String} [dataInicio] Data de início para filtro (YYYY-MM-DD)
+   * @apiQuery {String} [dataFim] Data de fim para filtro (YYYY-MM-DD)
+   * @apiQuery {String} [departamento] Filtro por departamento
    */
   static async carregarPontosPendentes(req, res, next) {
     try {
-      const pontos = await AdminService.carregarPontosPendentes(req.usuario.id_empresa);
+      const pontos = await AdminService.carregarPontosPendentes(
+        req.usuario.id_empresa,
+        {
+          dataInicio: req.query.dataInicio,
+          dataFim: req.query.dataFim,
+          departamento: req.query.departamento
+        }
+      );
 
       res.json({
         success: true,

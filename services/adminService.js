@@ -268,45 +268,151 @@ class AdminService {
     return db.query(sql, params);
   }
 
-  static async atualizarStatusPonto(idPonto, status, idAprovador) {
-    const [result] = await db.query(
-      `UPDATE REGISTRO_PONTO 
-       SET status = ?, id_aprovador = ?
-       WHERE id = ?`,
-      [status, idAprovador, idPonto]
-    );
+  static async atualizarStatusPonto(idPonto, status, idAprovador, justificativa = null) {
+    return await db.transaction(async (conn) => {
+      // 1. Verificar se o ponto existe e está pendente
+      const [ponto] = await conn.query(
+        `SELECT id, id_funcionario, status 
+         FROM REGISTRO_PONTO 
+         WHERE id = ? AND status = 'Pendente' FOR UPDATE`,
+        [idPonto]
+      );
 
-    if (result.affectedRows === 0) {
-      throw new AppError('Ponto não encontrado', 404);
-    }
+      if (!ponto.length) {
+        throw new AppError('Ponto não encontrado ou já processado', 404);
+      }
 
-    const [registro] = await db.query(
-      `SELECT rp.*, u.email, u.nome 
-       FROM REGISTRO_PONTO rp
-       JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
-       JOIN USUARIO u ON f.id_usuario = u.id
-       WHERE rp.id = ?`,
-      [idPonto]
-    );
+      // 2. Atualizar status do ponto
+      await conn.query(
+        `UPDATE REGISTRO_PONTO 
+         SET status = ?, id_aprovador = ?, justificativa = ?
+         WHERE id = ?`,
+        [status, idAprovador, justificativa, idPonto]
+      );
 
-    if (registro) {
-      // await emailService.enviarEmailNotificacaoPonto(...);
-    }
+      // 3. Registrar ocorrência se necessário
+      if (status === 'Rejeitado') {
+        await this.registrarOcorrencia(
+          conn,
+          ponto[0].id_funcionario,
+          'PontoRejeitado',
+          justificativa,
+          idAprovador
+        );
+      }
 
-    return { status };
+      return { status, idPonto };
+    });
   }
 
-  static async carregarPontosPendentes(idEmpresa) {
-    return db.query(`
-      SELECT 
-        rp.id, u.nome AS funcionario, rp.data_hora, 
-        rp.tipo, rp.foto_url, rp.justificativa
-      FROM REGISTRO_PONTO rp
-      JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
-      JOIN USUARIO u ON f.id_usuario = u.id
-      WHERE rp.status = 'Pendente' AND f.id_empresa = ?
-      ORDER BY rp.data_hora DESC
-    `, [idEmpresa]);
+    /**
+   * Registra uma ocorrência para um funcionário
+   * @param {Object} conn - Conexão de banco de dados
+   * @param {Number} idFuncionario - ID do funcionário
+   * @param {String} tipo - Tipo de ocorrência
+   * @param {String} descricao - Descrição da ocorrência
+   * @param {Number} idAdmin - ID do administrador responsável
+   */
+    static async registrarOcorrencia(conn, idFuncionario, tipo, descricao, idAdmin) {
+      await conn.query(
+        `INSERT INTO OCORRENCIA (
+          id_funcionario, tipo, descricao, id_admin_responsavel, data_ocorrencia
+        ) VALUES (?, ?, ?, ?, CURDATE())`,
+        [idFuncionario, tipo, descricao, idAdmin]
+      );
+    }
+  
+  /**
+    * Carrega pontos pendentes de aprovação
+    * @param {Number} idEmpresa - ID da empresa
+    * @param {Object} filtros - Filtros de busca
+    * @returns {Promise<Array>} - Lista de pontos pendentes
+    */
+  static async carregarPontosPendentes(idEmpresa, filtros = {}) {
+    let sql = `
+    SELECT 
+      rp.id,
+      u.nome AS funcionario,
+      f.departamento,
+      rp.tipo,
+      rp.data_hora,
+      rp.foto_url,
+      rp.latitude,
+      rp.longitude,
+      rp.endereco_registro,
+      rp.status,
+      rp.justificativa,
+      rp.dispositivo,
+      rp.precisao_geolocalizacao
+    FROM REGISTRO_PONTO rp
+    JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+    JOIN USUARIO u ON f.id_usuario = u.id
+    WHERE rp.status = 'Pendente' AND f.id_empresa = ?
+  `;
+
+    const params = [idEmpresa];
+
+    // Aplicar filtros
+    if (filtros.dataInicio && filtros.dataFim) {
+      sql += ` AND DATE(rp.data_hora) BETWEEN ? AND ?`;
+      params.push(filtros.dataInicio, filtros.dataFim);
+    }
+
+    if (filtros.departamento) {
+      sql += ` AND f.departamento = ?`;
+      params.push(filtros.departamento);
+    }
+
+    sql += ` ORDER BY rp.data_hora DESC`;
+
+    return await db.query(sql, params);
+  }
+  /**
+    * Carrega pontos com possíveis irregularidades para análise manual
+    * @param {Number} idEmpresa - ID da empresa
+    * @returns {Promise<Array>} - Lista de pontos para análise
+    */
+  static async carregarPontosParaAnalise(idEmpresa) {
+    // 1. Obter configurações da empresa
+    const [config] = await db.query(
+      `SELECT tolerancia_atraso, raio_geolocalizacao 
+     FROM CONFIGURACAO_PONTO 
+     WHERE id_empresa = ?`,
+      [idEmpresa]
+    );
+
+    // 2. Obter pontos com possíveis problemas
+    const pontos = await db.query(
+      `SELECT 
+      rp.id,
+      u.nome AS funcionario,
+      f.departamento,
+      rp.tipo,
+      rp.data_hora,
+      rp.status,
+      rp.foto_url,
+      rp.latitude,
+      rp.longitude,
+      rp.endereco_registro,
+      rp.precisao_geolocalizacao,
+      ht.hora_entrada AS hora_esperada_entrada,
+      ht.hora_saida AS hora_esperada_saida
+    FROM REGISTRO_PONTO rp
+    JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+    JOIN USUARIO u ON f.id_usuario = u.id
+    LEFT JOIN HORARIO_TRABALHO ht ON 
+      f.id = ht.id_funcionario AND 
+      ht.dia_semana = DAYNAME(rp.data_hora)
+    WHERE f.id_empresa = ? AND rp.status = 'Pendente'
+    ORDER BY rp.data_hora DESC`,
+      [idEmpresa]
+    );
+
+    // 3. Analisar cada ponto
+    return pontos.map(ponto => {
+      const analise = PointAnalyzer.analisarPonto(ponto, config[0]);
+      return { ...ponto, analise };
+    });
   }
 
   static async desativarFuncionario(idFuncionario, idEmpresa) {
