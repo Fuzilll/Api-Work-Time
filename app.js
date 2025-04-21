@@ -36,8 +36,45 @@ class App {
   }
 
   initializeMiddlewares() {
-    this.app.use(helmet());
+    // Configuração de CSP
+    const cspConfig = {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'", // Necessário para alguns componentes do Bootstrap
+          "https://cdn.jsdelivr.net", // Para Bootstrap CDN
+          "https://code.jquery.com" // Se usar jQuery
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'", // Necessário para alguns estilos inline
+          "https://cdn.jsdelivr.net", // Para Bootstrap CSS
+          "https://fonts.googleapis.com" // Se usar Google Fonts
+        ],
+        imgSrc: [
+          "'self'",
+          "data:", // Para imagens em base64
+          "https://*.cloudinary.com", // Se usar Cloudinary
+          "https://*.googleapis.com",
+          "https://*.gstatic.com"
+        ],
+        fontSrc: [
+          "'self'",
+          "https://cdn.jsdelivr.net",
+          "https://fonts.gstatic.com"
+        ],
+        connectSrc: ["'self'"],
+        frameSrc: ["https://www.google.com"] // Para mapas do Google
+      }
+    };
 
+    // Configuração de segurança com helmet
+    this.app.use(helmet({
+      contentSecurityPolicy: cspConfig
+    }));
+
+    // Restante das configurações permanecem iguais
     this.app.use(cors({
       origin: process.env.FRONTEND_URL || 'http://localhost:3000',
       credentials: true,
@@ -86,7 +123,7 @@ class App {
     this.app.use('/css', express.static(path.join(__dirname, 'frontend/public/css')));
   }
 
-  
+
   configureSessionStore() {
     if (process.env.NODE_ENV === 'production') {
       const MySQLStore = require('express-mysql-session')(session);
@@ -104,6 +141,8 @@ class App {
   }
 
   initializeRoutes() {
+
+
     // 1. Configuração de arquivos estáticos
     this.app.use(express.static(path.join(__dirname, 'frontend/public/views')));
     this.app.use('/js', express.static(path.join(__dirname, 'frontend/public/js')));
@@ -111,11 +150,11 @@ class App {
 
     // 2. Rotas públicas (não requerem autenticação)
     this.app.get('/', (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/index.html'));
+      res.sendFile(path.join(__dirname, 'frontend/public/index.html'));
     });
 
     this.app.get('/login', (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/views/login.html'));
+      res.sendFile(path.join(__dirname, 'frontend/public/views/login.html'));
     });
 
     // 3. Rotas de API públicas
@@ -125,20 +164,20 @@ class App {
 
     // Health check
     this.app.get('/api/health', (req, res) => {
-        res.json({ status: 'healthy', timestamp: new Date() });
+      res.json({ status: 'healthy', timestamp: new Date() });
     });
 
     // 4. Rotas para páginas HTML (sem .html na URL)
     this.app.get('/dashboard', authMiddleware.autenticacao, (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard.html'));
+      res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard.html'));
     });
 
     this.app.get('/dashboard-admin', authMiddleware.autenticacao, (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard_admin.html'));
+      res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard_admin.html'));
     });
 
     this.app.get('/suporte-ti', authMiddleware.autenticacao, (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/views/it_suport.html'));
+      res.sendFile(path.join(__dirname, 'frontend/public/views/it_suport.html'));
     });
 
     // 5. Rotas de API privadas (protegidas por autenticação)
@@ -150,9 +189,9 @@ class App {
 
     // 6. Rota fallback (DEVE ser a última)
     this.app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'frontend/public/index.html'));
+      res.sendFile(path.join(__dirname, 'frontend/public/index.html'));
     });
-}
+  }
 
   initializeErrorHandling() {
     this.app.use((req, res, next) => {

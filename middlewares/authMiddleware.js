@@ -19,7 +19,7 @@ class AuthMiddleware {
             // 1. Verificar métodos de autenticação
             const token = req.headers.authorization?.split(' ')[1];
             const sessionAuth = req.session?.id_usuario;
-            
+
             console.log('[AUTH] Token presente:', !!token);
             console.log('[AUTH] Sessão presente:', !!sessionAuth);
 
@@ -34,7 +34,7 @@ class AuthMiddleware {
                 try {
                     const decoded = jwt.verify(token, process.env.JWT_SECRET);
                     console.log('[AUTH] Token decodificado:', decoded);
-                    
+
                     req.usuario = {
                         id: decoded.id,
                         nivel: decoded.nivel,
@@ -50,19 +50,19 @@ class AuthMiddleware {
                 const usuario = await AuthMiddleware.loadUserData(sessionAuth);
                 req.usuario = AuthMiddleware.formatUserData(usuario);
             }
-    
+
             // 4. Verificações adicionais
             if (!req.usuario) {
                 console.log('[AUTH] Dados do usuário não encontrados');
                 throw new UnauthorizedError('Dados do usuário inválidos');
             }
-    
+
             console.log('[AUTH] Usuário autenticado:', {
                 id: req.usuario.id,
                 nivel: req.usuario.nivel,
                 empresa: req.usuario.id_empresa
             });
-    
+
             AuthMiddleware.logAccess(req.usuario);
             next();
 
@@ -77,7 +77,7 @@ class AuthMiddleware {
 
     static async loadUserData(userId) {
         console.log('[AUTH] Carregando dados do usuário ID:', userId);
-        
+
         try {
             const [usuario] = await db.query(`
                 SELECT 
@@ -110,7 +110,7 @@ class AuthMiddleware {
 
     static formatUserData(usuario) {
         console.log('[AUTH] Formatando dados do usuário:', usuario.id);
-        
+
         const userData = {
             id: usuario.id,
             nome: usuario.nome,
@@ -138,7 +138,7 @@ class AuthMiddleware {
     static parsePermissions(permissions) {
         try {
             console.log('[AUTH] Parseando permissões:', permissions);
-            return typeof permissions === 'string' ? 
+            return typeof permissions === 'string' ?
                 JSON.parse(permissions) : permissions;
         } catch (e) {
             console.error('[AUTH] Erro ao parsear permissões:', e);
@@ -159,7 +159,7 @@ class AuthMiddleware {
     static verificarNivel(niveisRequeridos) {
         return (req, res, next) => {
             try {
-                const niveis = Array.isArray(niveisRequeridos) ? 
+                const niveis = Array.isArray(niveisRequeridos) ?
                     niveisRequeridos : // Se os níveis requeridos não forem uma lista, transforma em lista
                     [niveisRequeridos];
 
@@ -175,6 +175,26 @@ class AuthMiddleware {
             }
         };
     }
+    
+    static checkPermission(permission) {
+        return (req, res, next) => {
+            try {
+                // IT_SUPPORT tem acesso total
+                if (req.usuario.nivel === 'IT_SUPPORT') return next();
+
+                // ADMIN precisa ter a permissão específica
+                if (req.usuario.nivel === 'ADMIN') {
+                    if (req.usuario.permissoes && req.usuario.permissoes[permission]) {
+                        return next();
+                    }
+                }
+
+                throw new ForbiddenError(`Permissão necessária: ${permission}`);
+            } catch (err) {
+                next(err);
+            }
+        };
+    }
 
     // Método de middleware para verificar se o usuário tem a permissão necessária para acessar uma rota
     static verificarPermissao(permissaoRequerida) {
@@ -184,7 +204,7 @@ class AuthMiddleware {
                 if (req.usuario.nivel === 'IT_SUPPORT') return next();
 
                 // Se o usuário for ADMIN e tiver a permissão, permite o acesso
-                if (req.usuario.nivel === 'ADMIN' && 
+                if (req.usuario.nivel === 'ADMIN' &&
                     req.usuario.permissoes?.[permissaoRequerida]) {
                     return next();
                 }
@@ -210,7 +230,7 @@ class AuthMiddleware {
                 if (req.usuario.nivel === 'IT_SUPPORT') return next();
 
                 // Se o usuário for ADMIN e a empresa for a mesma que ele tem acesso, permite o acesso
-                if (req.usuario.nivel === 'ADMIN' && 
+                if (req.usuario.nivel === 'ADMIN' &&
                     req.usuario.id_empresa == idEmpresaParam) {
                     return next();
                 }

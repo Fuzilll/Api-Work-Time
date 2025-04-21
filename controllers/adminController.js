@@ -73,35 +73,35 @@ class AdminController {
  */
   static async cadastrarHorariosFuncionario(req, res, next) {
     try {
-        if (!req.body.horarios || !Array.isArray(req.body.horarios)) {
-            throw new AppError('Horários não fornecidos ou formato inválido', 400);
-        }
+      if (!req.body.horarios || !Array.isArray(req.body.horarios)) {
+        throw new AppError('Horários não fornecidos ou formato inválido', 400);
+      }
 
-        // Verificação mais robusta
-        if (!req.params.id || isNaN(req.params.id)) {
-            throw new AppError('ID do funcionário inválido', 400);
-        }
+      // Verificação mais robusta
+      if (!req.params.id || isNaN(req.params.id)) {
+        throw new AppError('ID do funcionário inválido', 400);
+      }
 
-        // Converter para número
-        const idFuncionario = parseInt(req.params.id);
-        
-        // Verificar existência
-        await AdminService.verificarFuncionarioExistente(idFuncionario);
-        
-        // Cadastrar horários
-        const resultado = await AdminService.cadastrarHorarios(
-            idFuncionario,
-            req.body.horarios
-        );
+      // Converter para número
+      const idFuncionario = parseInt(req.params.id);
 
-        res.status(201).json({
-            success: true,
-            data: resultado
-        });
+      // Verificar existência
+      await AdminService.verificarFuncionarioExistente(idFuncionario);
+
+      // Cadastrar horários
+      const resultado = await AdminService.cadastrarHorarios(
+        idFuncionario,
+        req.body.horarios
+      );
+
+      res.status(201).json({
+        success: true,
+        data: resultado
+      });
     } catch (err) {
-        next(err);
+      next(err);
     }
-}
+  }
   /**
    * Retorna um resumo dos funcionários cadastrados
    * - Objetivo: fornecer visão agregada para o painel do admin
@@ -162,14 +162,14 @@ class AdminController {
     }
   }
 
-   /**
-   * @api {get} /api/admin/pontos/analise Listar Pontos para Análise
-   * @apiName CarregarPontosParaAnalise
-   * @apiGroup Admin
-   * 
-   * @apiDescription Retorna pontos com possíveis irregularidades para análise manual
-   */
-   static async carregarPontosParaAnalise(req, res, next) {
+  /**
+  * @api {get} /api/admin/pontos/analise Listar Pontos para Análise
+  * @apiName CarregarPontosParaAnalise
+  * @apiGroup Admin
+  * 
+  * @apiDescription Retorna pontos com possíveis irregularidades para análise manual
+  */
+  static async carregarPontosParaAnalise(req, res, next) {
     try {
       const pontos = await AdminService.carregarPontosParaAnalise(
         req.usuario.id_empresa
@@ -185,40 +185,36 @@ class AdminController {
   }
 
 
- /**
-   * @api {put} /api/admin/pontos/:id/status Aprovar/Rejeitar Ponto
-   * @apiName AtualizarStatusPonto
-   * @apiGroup Admin
-   * 
-   * @apiParam {Number} id ID do registro de ponto
-   * @apiBody {String="Aprovado","Rejeitado"} status Novo status do ponto
-   * @apiBody {String} [justificativa] Justificativa para rejeição
-   */
- static async atualizarStatusPonto(req, res, next) {
-  try {
-    // Validação dos dados de entrada
-    const { error } = validatePointApproval(req.body);
-    if (error) throw new AppError(error.details[0].message, 400);
+  /**
+    * @api {put} /api/admin/pontos/:id/status Aprovar/Rejeitar Ponto
+    * @apiName AtualizarStatusPonto
+    * @apiGroup Admin
+    * 
+    * @apiParam {Number} id ID do registro de ponto
+    * @apiBody {String="Aprovado","Rejeitado"} status Novo status do ponto
+    * @apiBody {String} [justificativa] Justificativa para rejeição
+    */
+  static async atualizarStatusPonto(req, res, next) {
+    try {
+      // Verifica se o usuário tem permissão (middleware já validou)
+      if (!req.usuario.permissoes?.aprovar_pontos && req.usuario.nivel !== 'ADMIN') {
+        throw new AppError('Você não tem permissão para aprovar/rejeitar pontos', 403);
+      }
 
-    // Verificar permissões
-    if (!req.usuario.permissoes.includes('aprovar_pontos')) {
-      throw new AppError('Acesso não autorizado', 403);
+      const resultado = await AdminService.atualizarStatusPonto(
+        req.params.id,       // ID do ponto
+        req.body.status,     // 'Aprovado' ou 'Rejeitado'
+        req.usuario.id,      // ID do usuário aprovador
+        req.body.justificativa // Justificativa (opcional)
+      );
+  
+      res.json({
+        success: true,
+        data: resultado
+      });
+    } catch (err) {
+      next(err);
     }
-
-    const resultado = await AdminService.atualizarStatusPonto(
-      req.params.id,
-      req.body.status,
-      req.usuario.id,
-      req.body.justificativa
-    );
-
-    res.json({
-      success: true,
-      data: resultado
-    });
-  } catch (err) {
-    next(err);
-  }
 }
 
   /**
@@ -270,6 +266,39 @@ class AdminController {
     }
   }
 
+/**
+ * @api {get} /api/admin/pontos/:id/detalhes Obter Detalhes do Ponto
+ * @apiName ObterDetalhesPonto
+ * @apiGroup Admin
+ * 
+ * @apiParam {Number} id ID do registro de ponto
+ * 
+ * @apiSuccess {Object} data Detalhes completos do ponto
+ */
+static async obterDetalhesPonto(req, res, next) {
+  try {
+    console.log(`[AdminController] Buscando detalhes do ponto ID: ${req.params.id}`);
+    
+    const detalhes = await AdminService.obterDetalhesPonto(
+      req.params.id,
+      req.usuario.id_empresa
+    );
+
+    if (!detalhes) {
+      console.log(`[AdminController] Ponto não encontrado: ${req.params.id}`);
+      throw new AppError('Ponto não encontrado', 404);
+    }
+
+    console.log(`[AdminController] Detalhes encontrados para o ponto: ${req.params.id}`);
+    res.json({
+      success: true,
+      data: detalhes
+    });
+  } catch (err) {
+    console.error(`[AdminController] Erro ao buscar detalhes do ponto: ${err.message}`);
+    next(err);
+  }
+}
 
   /**
    * Exclui um funcionário definitivamente

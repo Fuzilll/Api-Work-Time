@@ -17,54 +17,55 @@ class AuthController {
    * - Gera e retorna um token JWT para autenticação futura
    */
   static async login(req, res, next) {
-    console.log('[BACKEND] Requisição de login recebida'); // LOG A
-    console.log('[BACKEND] Corpo da requisição:', req.body); // LOG B
-
+    console.log('[BACKEND] Requisição de login recebida');
+    console.log('[BACKEND] Corpo da requisição:', req.body);
+  
     try {
       const { email, senha } = req.body;
-      console.log('[BACKEND] Credenciais recebidas - Email:', email); // LOG C
-
+      console.log('[BACKEND] Credenciais recebidas - Email:', email);
+  
       const resultado = await AuthService.login(email, senha, req.session);
-      console.log('[BACKEND] Resultado do AuthService:', {
-        id: resultado.usuario.id,
-        nivel: resultado.usuario.nivel,
-        empresa: resultado.usuario.id_empresa
-      }); // LOG D
-
-      req.session.id_usuario = resultado.usuario.id;
-      req.session.nivel = resultado.usuario.nivel;
-      req.session.id_empresa = resultado.usuario.id_empresa;
-      console.log('[BACKEND] Sessão configurada:', req.session); // LOG E
-
-
-      const token = jwt.sign(
-        {
-          id: resultado.usuario.id,
-          nivel: resultado.usuario.nivel,
-          id_empresa: resultado.usuario.id_empresa
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
-      );
-      console.log('[BACKEND] Token JWT gerado:', token); // LOG F
-
-      console.log('[BACKEND] Enviando resposta para frontend'); // LOG G
+      const { usuario, token } = resultado;
+  
+      req.session.id_usuario = usuario.id;
+      req.session.nivel = usuario.nivel;
+  
+      if (usuario.id_empresa) {
+        req.session.id_empresa = usuario.id_empresa;
+      }
+  
+      console.log('[BACKEND] Sessão configurada:', req.session);
+  
+      const jwtPayload = {
+        id: usuario.id,
+        nivel: usuario.nivel,
+        ...(usuario.id_empresa && { id_empresa: usuario.id_empresa })
+      };
+  
+      const jwtToken = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '1h'
+      });
+  
+      console.log('[BACKEND] Token JWT gerado:', jwtToken);
+      console.log('[BACKEND] Enviando resposta para frontend');
+  
       res.json({
-        token,
+        token: jwtToken,
         usuario: {
-          id: resultado.usuario.id,
-          nome: resultado.usuario.nome,
-          email: resultado.usuario.email,
-          nivel: resultado.usuario.nivel,
-          id_empresa: resultado.usuario.id_empresa
+          id: usuario.id,
+          nome: usuario.nome,
+          email: usuario.email,
+          nivel: usuario.nivel,
+          id_empresa: usuario.id_empresa
         }
       });
-
+  
     } catch (err) {
-      console.error('[BACKEND] Erro durante login:', err); // LOG H
+      console.error('[BACKEND] Erro durante login:', err);
       next(err);
     }
   }
+  
 
 /**
  * POST /logout

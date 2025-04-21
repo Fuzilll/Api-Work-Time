@@ -203,6 +203,61 @@ class AdminService {
       [values]
     );
   }
+  /**
+   * Obtém detalhes completos de um ponto específico
+   * @param {Number} idPonto - ID do ponto
+   * @param {Number} idEmpresa - ID da empresa (para validação)
+   * @returns {Promise<Object>} - Detalhes completos do ponto
+   */
+  static async obterDetalhesPonto(idPonto, idEmpresa) {
+    console.log(`[AdminService] Buscando detalhes do ponto ${idPonto} para empresa ${idEmpresa}`);
+
+    try {
+      const sql = `
+        SELECT 
+          rp.id,
+          u.nome AS funcionario,
+          f.departamento,
+          rp.tipo,
+          rp.data_hora,
+          rp.status,
+          rp.justificativa,
+          rp.foto_url,
+          rp.latitude,
+          rp.longitude,
+          rp.endereco_registro,
+          rp.dispositivo,
+          rp.precisao_geolocalizacao,
+          ht.hora_entrada AS hora_esperada_entrada,
+          ht.hora_saida AS hora_esperada_saida,
+          a.nome AS aprovador,
+          f.registro_emp AS matricula
+        FROM REGISTRO_PONTO rp
+        JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+        JOIN USUARIO u ON f.id_usuario = u.id
+        LEFT JOIN HORARIO_TRABALHO ht ON 
+          f.id = ht.id_funcionario AND 
+          ht.dia_semana = DAYNAME(rp.data_hora)
+        LEFT JOIN USUARIO a ON rp.id_aprovador = a.id
+        WHERE rp.id = ? AND (f.id_empresa = ? OR ? IS NULL)
+      `;
+
+      console.log(`[AdminService] Executando query: ${sql}`);
+      const resultado = await db.query(sql, [idPonto, idEmpresa, idEmpresa]);
+
+      if (!resultado || resultado.length === 0) {
+        console.log(`[AdminService] Ponto ${idPonto} não encontrado`);
+        return null;
+      }
+
+      console.log(`[AdminService] Ponto encontrado:`, resultado[0]);
+      return resultado[0];
+
+    } catch (error) {
+      console.error(`[AdminService] Erro ao buscar detalhes do ponto: ${error.message}`);
+      throw new AppError('Erro ao buscar detalhes do ponto', 500);
+    }
+  }
 
   static async resumoFuncionarios(idEmpresa) {
     const [resumo] = await db.query(`
@@ -268,60 +323,96 @@ class AdminService {
     return db.query(sql, params);
   }
 
-  static async atualizarStatusPonto(idPonto, status, idAprovador, justificativa = null) {
+  static async atualizarStatusPonto(idPonto, status, idUsuarioAprovador, justificativa = null) {
     return await db.transaction(async (conn) => {
       // 1. Verificar se o ponto existe e está pendente
       const [ponto] = await conn.query(
-        `SELECT id, id_funcionario, status 
-         FROM REGISTRO_PONTO 
-         WHERE id = ? AND status = 'Pendente' FOR UPDATE`,
+        `SELECT rp.id, rp.id_funcionario, rp.status, f.id_empresa
+         FROM REGISTRO_PONTO rp
+         JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+         WHERE rp.id = ? AND rp.status = 'Pendente' FOR UPDATE`,
         [idPonto]
       );
 
-      if (!ponto.length) {
+      if (!ponto || ponto.length === 0) {
         throw new AppError('Ponto não encontrado ou já processado', 404);
       }
 
-      // 2. Atualizar status do ponto
+      // 2. Verificar se o usuário aprovador tem permissão
+      let idAdmin = null;
+
+      // Se for IT_SUPPORT, pode aprovar sem ser ADMIN da empresa
+      if (idUsuarioAprovador.nivel === 'IT_SUPPORT') {
+        const [adminGenerico] = await conn.query(
+          `SELECT id FROM ADMIN WHERE id_usuario = ? LIMIT 1`,
+          [idUsuarioAprovador]
+        );
+        idAdmin = adminGenerico[0]?.id;
+      } else {
+        // Para ADMIN, verificar se é da mesma empresa
+        const [admin] = await conn.query(
+          `SELECT id FROM ADMIN 
+           WHERE id_usuario = ? AND id_empresa = ?`,
+          [idUsuarioAprovador, ponto[0].id_empresa]
+        );
+
+        if (!admin || admin.length === 0) {
+          throw new AppError('Usuário não tem permissão para aprovar pontos nesta empresa', 403);
+        }
+        idAdmin = admin[0].id;
+      }
+
+      // 3. Atualizar status do ponto
       await conn.query(
         `UPDATE REGISTRO_PONTO 
          SET status = ?, id_aprovador = ?, justificativa = ?
          WHERE id = ?`,
-        [status, idAprovador, justificativa, idPonto]
+        [status, idAdmin, justificativa, idPonto]
       );
 
-      // 3. Registrar ocorrência se necessário
+      // 4. Registrar ocorrência se rejeitado
       if (status === 'Rejeitado') {
-        await this.registrarOcorrencia(
-          conn,
-          ponto[0].id_funcionario,
-          'PontoRejeitado',
-          justificativa,
-          idAprovador
+        await conn.query(
+          `INSERT INTO OCORRENCIA 
+           (id_funcionario, tipo, descricao, id_admin_responsavel, data_ocorrencia, status)
+           VALUES (?, ?, ?, ?, NOW(), 'Aprovada')`,
+          [ponto[0].id_funcionario, 'PontoRejeitado', justificativa, idAdmin]
         );
       }
 
-      return { status, idPonto };
+      // 5. Retornar dados completos do ponto atualizado
+      const [pontoAtualizado] = await conn.query(
+        `SELECT rp.*, u.nome as nome_funcionario 
+         FROM REGISTRO_PONTO rp
+         JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+         JOIN USUARIO u ON f.id_usuario = u.id
+         WHERE rp.id = ?`,
+        [idPonto]
+      );
+
+      return {
+        ...pontoAtualizado[0],
+        justificativa: status === 'Rejeitado' ? justificativa : null
+      };
     });
   }
-
-    /**
-   * Registra uma ocorrência para um funcionário
-   * @param {Object} conn - Conexão de banco de dados
-   * @param {Number} idFuncionario - ID do funcionário
-   * @param {String} tipo - Tipo de ocorrência
-   * @param {String} descricao - Descrição da ocorrência
-   * @param {Number} idAdmin - ID do administrador responsável
-   */
-    static async registrarOcorrencia(conn, idFuncionario, tipo, descricao, idAdmin) {
-      await conn.query(
-        `INSERT INTO OCORRENCIA (
+  /**
+ * Registra uma ocorrência para um funcionário
+ * @param {Object} conn - Conexão de banco de dados
+ * @param {Number} idFuncionario - ID do funcionário
+ * @param {String} tipo - Tipo de ocorrência
+ * @param {String} descricao - Descrição da ocorrência
+ * @param {Number} idAdmin - ID do administrador responsável
+ */
+  static async registrarOcorrencia(conn, idFuncionario, tipo, descricao, idAdmin) {
+    await conn.query(
+      `INSERT INTO OCORRENCIA (
           id_funcionario, tipo, descricao, id_admin_responsavel, data_ocorrencia
         ) VALUES (?, ?, ?, ?, CURDATE())`,
-        [idFuncionario, tipo, descricao, idAdmin]
-      );
-    }
-  
+      [idFuncionario, tipo, descricao, idAdmin]
+    );
+  }
+
   /**
     * Carrega pontos pendentes de aprovação
     * @param {Number} idEmpresa - ID da empresa

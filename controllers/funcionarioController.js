@@ -1,98 +1,113 @@
-// Importação do serviço 'FuncionarioService' que contém as lógicas de negócios
-// e da classe 'AppError' para tratamento de erros personalizados.
-const FuncionarioService = require('../services/funcionarioService'); 
+const FuncionarioService = require('../services/funcionarioService');
 const { AppError } = require('../errors');
+const { validate } = require('../middlewares/validators');
+const funcionarioSchema = require('../validators/funcionarioSchema');
 
-// A classe 'FuncionarioController' é responsável por gerenciar as requisições relacionadas
-// aos funcionários, manipulando as interações com os serviços e retornando as respostas
-// apropriadas para o cliente.
 class FuncionarioController {
-  
-  // Método assíncrono para obter o perfil do funcionário
-  // Contextualização: Este método vai pegar o 'id' do funcionário da requisição e
-  // buscar as informações do perfil por meio do 'FuncionarioService'.
-  static async obterPerfil(req, res, next) {
+  /**
+   * @api {get} /funcionario/dashboard Carregar Dashboard
+   * @apiName CarregarDashboard
+   * @apiGroup Funcionario
+   */
+  static async carregarDashboard(req, res, next) {
     try {
-      // O 'id' do usuário é extraído do objeto 'usuario' na requisição (req.usuario)
-      const perfil = await FuncionarioService.obterPerfil(req.usuario.id);
-      
-      // Resposta de sucesso, enviando o perfil obtido.
+      const dashboard = await FuncionarioService.carregarDashboard(req.usuario.id);
       res.json({
         success: true,
-        data: perfil
+        data: dashboard
       });
     } catch (err) {
-      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
       next(err);
     }
   }
 
-  // Método assíncrono para listar o histórico de pontos do funcionário
-  // Contextualização: Este método usa o 'id' do funcionário e os filtros fornecidos na query 
-  // para retornar o histórico de pontos por meio do serviço.
-  static async listarHistoricoPontos(req, res, next) {
+  /**
+   * @api {post} /funcionario/pontos Registrar Ponto
+   * @apiName RegistrarPonto
+   * @apiGroup Funcionario
+   * 
+   * @apiBody {String} tipo Tipo de registro (Entrada/Saida)
+   * @apiBody {Number} latitude Latitude da localização
+   * @apiBody {Number} longitude Longitude da localização
+   */
+  static async registrarPonto(req, res, next) {
     try {
-      // Aqui, 'req.query' está sendo usado para passar filtros adicionais para a busca do histórico.
-      const historico = await FuncionarioService.listarHistoricoPontos(
-        req.usuario.id, // 'id' do funcionário da requisição
-        req.query // Filtros adicionais que podem ser passados na URL
+      const ponto = await FuncionarioService.registrarPonto(
+        req.usuario.id,
+        req.body
       );
-      
-      // Resposta de sucesso, retornando o histórico de pontos do funcionário.
-      res.json({
-        success: true,
-        data: historico
-      });
-    } catch (err) {
-      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
-      next(err);
-    }
-  }
 
-  // Método assíncrono para solicitar alteração de ponto
-  // Contextualização: Esse método recebe dados no corpo da requisição e usa
-  // o serviço para solicitar alteração no ponto do funcionário.
-  static async solicitarAlteracaoPonto(req, res, next) {
-    try {
-      // 'req.body' contém as informações sobre a solicitação de alteração de ponto
-      const resultado = await FuncionarioService.solicitarAlteracaoPonto(
-        req.usuario.id, // 'id' do funcionário da requisição
-        req.body // Dados do corpo da requisição que especificam a solicitação de alteração
-      );
-      
-      // Retorna um status 201 de sucesso com o resultado da solicitação de alteração.
       res.status(201).json({
         success: true,
-        data: resultado
+        data: ponto
       });
     } catch (err) {
-      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
       next(err);
     }
   }
 
-  // Método assíncrono para listar todas as solicitações do funcionário
-  // Contextualização: Este método retorna todas as solicitações feitas por um funcionário
-  // por meio do 'FuncionarioService'.
-  static async listarSolicitacoes(req, res, next) {
+  /**
+   * @api {get} /funcionario/pontos Listar Pontos
+   * @apiName ListarPontos
+   * @apiGroup Funcionario
+   * 
+   * @apiQuery {String} [dataInicio] Data de início (YYYY-MM-DD)
+   * @apiQuery {String} [dataFim] Data de fim (YYYY-MM-DD)
+   */
+  static async listarPontos(req, res, next) {
     try {
-      // Busca todas as solicitações feitas pelo funcionário com o 'id' da requisição.
-      const solicitacoes = await FuncionarioService.listarSolicitacoes(
-        req.usuario.id
- 
+      const pontos = await FuncionarioService.listarPontos(
+        req.usuario.id,
+        req.query
       );
-      
-      // Resposta de sucesso, retornando a lista de solicitações.
+
       res.json({
         success: true,
-        data: solicitacoes
+        data: pontos
       });
     } catch (err) {
-      // Caso ocorra algum erro, passamos o erro para o próximo middleware (erro).
+      next(err);
+    }
+  }
+
+  /**
+   * @api {get} /funcionario/pontos/:id Detalhes do Ponto
+   * @apiName DetalhesPonto
+   * @apiGroup Funcionario
+   */
+  static async detalhesPonto(req, res, next) {
+    try {
+      const ponto = await FuncionarioService.detalhesPonto(
+        req.params.id,
+        req.usuario.id
+      );
+
+      res.json({
+        success: true,
+        data: ponto
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * @api {get} /funcionario/horarios Listar Horários
+   * @apiName ListarHorarios
+   * @apiGroup Funcionario
+   */
+  static async listarHorarios(req, res, next) {
+    try {
+      const horarios = await FuncionarioService.listarHorarios(req.usuario.id);
+
+      res.json({
+        success: true,
+        data: horarios
+      });
+    } catch (err) {
       next(err);
     }
   }
 }
 
-// Exporte a classe para que seja utilizada em outras partes da aplicação
 module.exports = FuncionarioController;

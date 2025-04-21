@@ -6,15 +6,9 @@ const { validate } = require('../middlewares/validators');
 const adminSchema = require('../validators/adminSchema');
 const DashboardController = require('../controllers/dashboardController');
 
-// Middleware para verificar se é admin da empresa
+// Middlewares globais
 router.use(authMiddleware.autenticacao);
 router.use(authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']));
-
-
-router.put(
-  '/funcionarios/:id/desativar',
-  adminController.desativarFuncionario
-);
 
 router.delete(
   '/funcionarios/:id',
@@ -42,14 +36,10 @@ router.get(
 
 router.get(
   '/pontos/pendentes',
+  authMiddleware.checkPermission('gerenciar_pontos'),
   adminController.carregarPontosPendentes
 );
 
-router.put(
-  '/pontos/:id/status',
-  validate(adminSchema.atualizarStatusPonto),
-  adminController.atualizarStatusPonto
-);
 
 router.post('/funcionarios',
   authMiddleware.autenticacao,
@@ -57,6 +47,29 @@ router.post('/funcionarios',
   validate(adminSchema.cadastroFuncionario),
   adminController.cadastrarFuncionario
 );
+
+router.put(
+  '/pontos/:id/status',
+  authMiddleware.autenticacao,
+  authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']),
+  authMiddleware.checkPermission('gerenciar_pontos'),
+  validate(adminSchema.atualizarStatusPonto),
+  adminController.atualizarStatusPonto
+);
+
+router.get(
+  '/pontos/:id/detalhes',
+  authMiddleware.autenticacao,
+  authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']),
+  authMiddleware.checkPermission('gerenciar_pontos'),
+  adminController.obterDetalhesPonto
+);
+
+router.put(
+  '/funcionarios/:id/desativar',
+  adminController.desativarFuncionario
+);
+
 
 router.post('/funcionarios/:id/horarios', adminController.cadastrarHorariosFuncionario);
 module.exports = router;

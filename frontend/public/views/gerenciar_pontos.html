@@ -6,8 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Pontos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/gerenciar_pontos.css">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/gerenciar_pontos.css">
+
+    <!-- Fallback local para Font Awesome -->
+    <script>
+        if (!document.querySelector('link[href*="fontawesome"]')) {
+            document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
+        }
+    </script>
 </head>
 
 <body>
@@ -29,7 +36,6 @@
             <h2>Gerenciar Pontos</h2>
             <p class="subtitle">Aprovar ou rejeitar registros de ponto dos funcionários.</p>
 
-            <!-- Filtros melhorados -->
             <div class="search-filter mb-4">
                 <div class="row g-3">
                     <div class="col-md-4">
@@ -49,13 +55,13 @@
                         <label for="filtro-pontos" class="form-label">Pesquisar</label>
                         <div class="search-input-container">
                             <i class="fas fa-search search-icon"></i>
-                            <input type="text" id="filtro-pontos" class="form-control" placeholder="Nome do funcionário...">
+                            <input type="text" id="filtro-pontos" class="form-control"
+                                placeholder="Nome do funcionário...">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tabela de registros de ponto -->
             <div class="table-responsive">
                 <table class="points-table">
                     <thead>
@@ -69,83 +75,101 @@
                         </tr>
                     </thead>
                     <tbody id="tabela-pontos">
-                        <!-- Linhas de registros de ponto serão inseridas dinamicamente -->
                     </tbody>
                 </table>
             </div>
 
-            <!-- Paginação -->
             <nav id="pagination" class="mt-3 d-flex justify-content-center">
-                <ul class="pagination">
-                    <!-- Paginação será inserida dinamicamente -->
-                </ul>
+                <ul class="pagination"></ul>
             </nav>
         </div>
     </div>
 
-    <!-- Modal de Detalhes (novo) -->
-    <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="detalhesModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Detalhes do Registro</h5>
+                    <h5 class="modal-title">Detalhes do Registro de Ponto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h6>Informações Básicas</h6>
-                            <table class="table table-sm">
-                                <tbody>
-                                    <tr>
-                                        <th>Funcionário:</th>
-                                        <td id="detail-employee"></td>
-                                    </tr>
-                                    <tr>
-                                        <th>Data/Hora:</th>
-                                        <td id="detail-datetime"></td>
-                                    </tr>
-                                    <tr>
-                                        <th>Tipo:</th>
-                                        <td id="detail-type"></td>
-                                    </tr>
-                                    <tr>
-                                        <th>Localização:</th>
-                                        <td id="detail-location"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Funcionário:</label>
+                                <p id="detalhes-nome">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Matrícula:</label>
+                                <p id="detalhes-matricula">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Departamento:</label>
+                                <p id="detalhes-departamento">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Data:</label>
+                                <p id="detalhes-data">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Horário:</label>
+                                <p id="detalhes-horario">—</p>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <h6>Foto do Registro</h6>
-                            <img id="detail-photo" src="" alt="Foto do ponto" class="img-fluid rounded mb-3">
-                            <div id="detail-analysis"></div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Tipo:</label>
+                                <p id="detalhes-tipo">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Status:</label>
+                                <p id="detalhes-status">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Justificativa:</label>
+                                <p id="detalhes-justificativa">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Dispositivo:</label>
+                                <p id="detalhes-dispositivo">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Precisão GPS:</label>
+                                <p id="detalhes-precisao">—</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Aprovador:</label>
+                                <p id="detalhes-aprovador">—</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Foto do Registro:</label>
+                            <img id="detalhes-foto" class="img-fluid rounded" style="display: none; max-height: 200px;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Localização:</label>
+                            <div id="detalhes-mapa" class="rounded border" style="height: 200px;">
+                                <p class="text-muted">Localização não disponível</p>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" id="btn-approve">
-                        <i class="fas fa-check"></i> Aprovar
-                    </button>
-                    <button type="button" class="btn btn-danger" id="btn-reject">
-                        <i class="fas fa-times"></i> Rejeitar
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times"></i> Fechar
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
     <div id="loading-overlay">
         <div class="spinner-border text-light" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
     </div>
 
-    <!-- Notificação Toast (novo) -->
     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
         <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
@@ -155,10 +179,23 @@
             <div class="toast-body" id="toast-message"></div>
         </div>
     </div>
+    <div id="toast" class="toast position-fixed bottom-0 end-0 m-3" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Fechar"></button>
+        </div>
+    </div>
+    <div id="error-message" class="alert alert-danger" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 1100;"></div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/menu.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="/js/sidebarToggle.js"></script>
     <script src="/js/gerenciar_pontos.js"></script>
+
 </body>
+
 </html>

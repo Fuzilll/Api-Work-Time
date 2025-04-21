@@ -4,8 +4,8 @@ const DashboardController = require('../controllers/dashboardController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { validate } = require('../middlewares/validators');
 const dashboardSchema = require('../validators/dashboardSchema');
-
 const dashboardController = new DashboardController();
+
 
 router.use(authMiddleware.autenticacao);
 router.use(authMiddleware.verificarNivel('ADMIN'));

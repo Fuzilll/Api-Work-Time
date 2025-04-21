@@ -1,136 +1,195 @@
-// Importação do módulo de configuração do banco de dados e do erro personalizado.
-const db = require('../config/db'); 
+const db = require('../config/db');
 const { AppError } = require('../errors');
+const geolib = require('geolib');
+const { DateTime } = require('luxon');
 
-// A classe 'FuncionarioService' é responsável pela lógica de negócios relacionada aos funcionários,
-// realizando operações no banco de dados como consulta de perfil, histórico de pontos, solicitações de alteração, etc.
 class FuncionarioService {
+  static async carregarDashboard(idUsuario) {
+    try {
+      const [funcionario] = await db.query(
+        `SELECT f.id FROM FUNCIONARIO f WHERE f.id_usuario = ?`,
+        [idUsuario]
+      );
+      if (!funcionario) {
+        throw new AppError('Funcionário não encontrado', 404);
+      }
 
-  // Método assíncrono para obter o perfil de um funcionário
-  // Contextualização: Este método busca as informações do perfil do funcionário com base no ID do funcionário.
-  // Ele retorna dados como nome, email, cargo, e dados da empresa associada.
-  static async obterPerfil(idFuncionario) {
-    // Consulta SQL para buscar as informações do funcionário no banco de dados
-    const [funcionario] = await db.query(
-      `SELECT 
-        u.id, u.nome, u.email, u.foto_perfil_url,
-        f.registro_emp, f.funcao, f.departamento, 
-        f.data_admissao, f.tipo_contrato,
-        e.nome AS empresa_nome, e.id AS id_empresa
-      FROM USUARIO u
-      JOIN FUNCIONARIO f ON u.id = f.id_usuario
-      JOIN EMPRESA e ON f.id_empresa = e.id
-      WHERE u.id = ?`, // Parâmetro para buscar o ID do funcionário
-      [idFuncionario]
-    );
+      const idFuncionario = funcionario.id;
+      const hoje = DateTime.now().toISODate(); // 'YYYY-MM-DD'
 
-    // Verificação de erro: se o funcionário não for encontrado, lança um erro personalizado
-    if (!funcionario) {
-      throw new AppError('Funcionário não encontrado', 404);
+      const [resumo, pontosHoje, ultimosPontos] = await Promise.all([
+        this.obterResumoPontos(idFuncionario),
+        this.listarPontos(idFuncionario, { dataInicio: hoje, dataFim: hoje }),
+        this.listarPontos(idFuncionario, { limit: 5 })
+      ]);
+
+      return {
+        resumo,
+        pontosHoje,
+        ultimosPontos
+      };
+    } catch (error) {
+      console.error('Erro ao carregar dashboard:', error);
+      throw new AppError('Erro ao carregar dashboard', 500);
     }
-
-    // Retorna os dados do funcionário, caso encontrado
-    return funcionario;
   }
 
-  // Método assíncrono para listar o histórico de pontos do funcionário
-  // Contextualização: Esse método retorna os registros de ponto do funcionário, com possibilidade de filtragem por data e tipo.
-  static async listarHistoricoPontos(idFuncionario, filtros = {}) {
-    // Desestruturação dos filtros (dataInicio, dataFim, tipo)
-    const { dataInicio, dataFim, tipo } = filtros;
+  static async registrarPonto(idUsuario, dados) {
+    return await db.transaction(async (connection) => {
+      const [funcionario] = await connection.query(
+        `SELECT f.id, f.id_empresa 
+         FROM FUNCIONARIO f 
+         WHERE f.id_usuario = ?`,
+        [idUsuario]
+      );
+
+      if (!funcionario) {
+        throw new AppError('Funcionário não encontrado', 404);
+      }
+
+      const { latitude, longitude } = dados;
+      if (!this.validarGeolocalizacao(latitude, longitude, funcionario.id_empresa)) {
+        throw new AppError('Localização fora do raio permitido', 400);
+      }
+
+      const [result] = await connection.query(
+        `INSERT INTO REGISTRO_PONTO 
+         (id_funcionario, tipo, data_hora, latitude, longitude, status) 
+         VALUES (?, ?, NOW(), ?, ?, 'Pendente')`,
+        [funcionario.id, dados.tipo, latitude, longitude]
+      );
+
+      const [ponto] = await connection.query(
+        `SELECT * FROM REGISTRO_PONTO WHERE id = ?`,
+        [result.insertId]
+      );
+
+      return ponto[0];
+    });
+  }
+
+  static async listarPontos(idFuncionario, filtros = {}) {
+    const { dataInicio, dataFim, limit } = filtros;
+
     let sql = `
       SELECT 
         id, tipo, data_hora, status, 
-        latitude, longitude, endereco_registro
-      FROM REGISTRO_PONTO 
-      WHERE id_funcionario = ?`; // Filtro básico para o ID do funcionário
+        latitude, longitude, justificativa
+      FROM REGISTRO_PONTO
+      WHERE id_funcionario = ?
+    `;
+
     const params = [idFuncionario];
 
-    // Adiciona filtro para 'dataInicio' se for fornecido
-    if (dataInicio) {
-      sql += ' AND DATE(data_hora) >= ?';
-      params.push(dataInicio); // Adiciona o valor do filtro de data de início
+    if (dataInicio && dataFim) {
+      sql += ` AND DATE(data_hora) BETWEEN ? AND ?`;
+      params.push(dataInicio, dataFim);
     }
 
-    // Adiciona filtro para 'dataFim' se for fornecido
-    if (dataFim) {
-      sql += ' AND DATE(data_hora) <= ?';
-      params.push(dataFim); // Adiciona o valor do filtro de data de fim
+    sql += ` ORDER BY data_hora DESC`;
+
+    if (limit) {
+      sql += ` LIMIT ?`;
+      params.push(limit);
     }
 
-    // Adiciona filtro para 'tipo' se for fornecido
-    if (tipo) {
-      sql += ' AND tipo = ?';
-      params.push(tipo); // Adiciona o valor do filtro de tipo
-    }
-
-    // Ordena os registros por data de forma decrescente
-    sql += ' ORDER BY data_hora DESC';
-
-    // Executa a consulta SQL com os parâmetros fornecidos
-    return db.query(sql, params);
+    const [pontos] = await db.query(sql, params);
+    return pontos;
   }
 
-  // Método assíncrono para solicitar alteração de ponto
-  // Contextualização: Este método permite que o funcionário solicite alteração em um registro de ponto.
-  static async solicitarAlteracaoPonto(idFuncionario, dados) {
-    // Desestruturação dos dados da solicitação
-    const { id_registro, tipo_solicitacao, motivo } = dados;
-
-    // Consulta para verificar se o registro de ponto realmente pertence ao funcionário
-    const [registro] = await db.query(
-      `SELECT id FROM REGISTRO_PONTO 
-      WHERE id = ? AND id_funcionario = ?`, // Verifica o registro do ponto do funcionário
-      [id_registro, idFuncionario]
-    );
-
-    // Caso o registro não seja encontrado ou não pertença ao funcionário, lança um erro
-    if (!registro) {
-      throw new AppError('Registro de ponto não encontrado ou não pertence ao funcionário', 404);
-    }
-
-    // Insere uma nova solicitação de alteração de ponto na tabela 'SOLICITACAO_ALTERACAO'
-    const [result] = await db.query(
-      `INSERT INTO SOLICITACAO_ALTERACAO (
-        id_registro, id_funcionario, 
-        tipo_solicitacao, motivo, status
-      ) VALUES (?, ?, ?, ?, 'Pendente')`, // A solicitação começa com status 'Pendente'
-      [id_registro, idFuncionario, tipo_solicitacao, motivo]
-    );
-
-    // Atualiza o status do registro de ponto para 'Pendente'
-    await db.query(
-      `UPDATE REGISTRO_PONTO 
-      SET status = 'Pendente' 
-      WHERE id = ?`, // O status do ponto também se torna 'Pendente'
-      [id_registro]
-    );
-
-    // Retorna o ID da solicitação de alteração criada e o status
-    return {
-      id_solicitacao: result.insertId,
-      status: 'Pendente'
-    };
-  }
-
-  // Método assíncrono para listar todas as solicitações de alteração de ponto de um funcionário
-  // Contextualização: Esse método retorna todas as solicitações de alteração feitas por um funcionário, ordenadas por data.
-  static async listarSolicitacoes(idFuncionario) {
-    // Consulta SQL para listar as solicitações de alteração feitas pelo funcionário
-    return db.query(
+  static async detalhesPonto(idPonto, idUsuario) {
+    const [ponto] = await db.query(
       `SELECT 
-        s.id, s.tipo_solicitacao, s.motivo, 
-        s.data_solicitacao, s.status,
-        r.tipo AS tipo_registro, r.data_hora
-      FROM SOLICITACAO_ALTERACAO s
-      JOIN REGISTRO_PONTO r ON s.id_registro = r.id
-      WHERE s.id_funcionario = ?  // Filtro pelo ID do funcionário
-      ORDER BY s.data_solicitacao DESC`, // Ordena pela data da solicitação
-      [idFuncionario]
+        rp.*, 
+        e.nome AS empresa_nome
+       FROM REGISTRO_PONTO rp
+       JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+       JOIN EMPRESA e ON f.id_empresa = e.id
+       WHERE rp.id = ? AND f.id_usuario = ?`,
+      [idPonto, idUsuario]
     );
+
+    if (!ponto || ponto.length === 0) {
+      throw new AppError('Ponto não encontrado', 404);
+    }
+
+    return ponto[0];
   }
+
+  static async listarHorarios(idUsuario) {
+    const [horarios] = await db.query(
+      `SELECT 
+        ht.dia_semana, 
+        ht.hora_entrada, 
+        ht.hora_saida,
+        ht.intervalo_inicio,
+        ht.intervalo_fim
+       FROM HORARIO_TRABALHO ht
+       JOIN FUNCIONARIO f ON ht.id_funcionario = f.id
+       WHERE f.id_usuario = ?
+       ORDER BY 
+         CASE ht.dia_semana
+           WHEN 'Segunda' THEN 1
+           WHEN 'Terca' THEN 2
+           WHEN 'Quarta' THEN 3
+           WHEN 'Quinta' THEN 4
+           WHEN 'Sexta' THEN 5
+           WHEN 'Sabado' THEN 6
+           WHEN 'Domingo' THEN 7
+         END`,
+      [idUsuario]
+    );
+
+    return horarios;
+  }
+
+  static async obterResumoPontos(idFuncionario) {
+    const hoje = DateTime.now().toISODate(); // 'YYYY-MM-DD'
+
+    const [resumo] = await db.query(
+      `SELECT 
+        COUNT(*) AS total_pontos,
+        SUM(CASE WHEN DATE(data_hora) = ? THEN 1 ELSE 0 END) AS pontos_hoje,
+        SUM(CASE WHEN status = 'Aprovado' THEN 1 ELSE 0 END) AS pontos_aprovados,
+        SUM(CASE WHEN status = 'Pendente' THEN 1 ELSE 0 END) AS pontos_pendentes
+       FROM REGISTRO_PONTO
+       WHERE id_funcionario = ?`,
+      [hoje, idFuncionario]
+    );
+
+    return resumo[0];
+  }
+
+  static async validarGeolocalizacao(latitude, longitude, idEmpresa) {
+    try {
+      const [empresa] = await db.query(
+        `SELECT latitude, longitude FROM EMPRESA WHERE id = ?`,
+        [idEmpresa]
+      );
+  
+      if (!empresa || !empresa.latitude || !empresa.longitude) {
+        throw new Error('Localização da empresa não encontrada');
+      }
+  
+      const localizacaoEmpresa = {
+        latitude: parseFloat(empresa.latitude),
+        longitude: parseFloat(empresa.longitude)
+      };
+  
+      const distancia = geolib.getDistance(
+        { latitude, longitude },
+        localizacaoEmpresa
+      );
+  
+      const raioPermitido = 100; // metros
+      return distancia <= raioPermitido;
+  
+    } catch (error) {
+      console.error('Erro ao validar geolocalização:', error);
+      throw new Error('Erro ao validar localização');
+    }
+  }
+  
 }
 
-// Exporta o serviço para que seja utilizado em outras partes da aplicação
 module.exports = FuncionarioService;
-

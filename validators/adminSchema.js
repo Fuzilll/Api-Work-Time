@@ -37,10 +37,13 @@ module.exports = {
    * - Utilizado na aprovação ou rejeição por parte de um gestor
    */
   atualizarStatusPonto: Joi.object({
-    // Só permite os status pré-definidos
-    status: Joi.string().valid('Aprovado', 'Rejeitado').required()
+    status: Joi.string().valid('Aprovado', 'Rejeitado').required(),
+    justificativa: Joi.when('status', {
+      is: 'Rejeitado',
+      then: Joi.string().min(10).max(500).required(),
+      otherwise: Joi.string().optional()
+    })
   }),
-
   /**
    * Validação para filtros de relatório de ponto
    * - Permite filtrar por período, status e busca textual
