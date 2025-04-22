@@ -39,56 +39,67 @@ class FuncionarioService {
 
   static async solicitarAlteracaoPonto(idUsuario, idRegistro, novoHorario, motivo) {
     return await db.transaction(async (connection) => {
-      // 1. Verificar se o registro pertence ao usuário
-      const [registro] = await connection.query(`
-            SELECT rp.id, rp.status
+        // 1. Verificar se o registro pertence ao usuário
+        const [registro] = await connection.query(`
+            SELECT rp.id, rp.status, rp.data_hora
             FROM REGISTRO_PONTO rp
             JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
             WHERE rp.id = ? AND f.id_usuario = ?
         `, [idRegistro, idUsuario]);
 
-      if (!registro || registro.length === 0) {
-        throw new AppError('Registro não encontrado ou não pertence ao usuário', 404);
-      }
+        if (!registro || registro.length === 0) {
+            throw new AppError('Registro não encontrado ou não pertence ao usuário', 404);
+        }
 
-      // 2. Verificar se o registro já está aprovado (só pode solicitar alteração de registros aprovados)
-      if (registro[0].status !== 'Aprovado') {
-        throw new AppError('Só é possível solicitar alteração para registros aprovados', 400);
-      }
-
-      // 3. Verificar se já existe uma solicitação pendente para este registro
-      const [solicitacaoExistente] = await connection.query(`
+        // 2. Verificar se já existe uma solicitação pendente para este registro
+        const [solicitacaoExistente] = await connection.query(`
             SELECT id 
-            FROM SOLICITACAO_ALTERACAO_PONTO 
+            FROM SOLICITACAO_ALTERACAO 
             WHERE id_registro = ? AND status = 'Pendente'
         `, [idRegistro]);
 
-      if (solicitacaoExistente && solicitacaoExistente.length > 0) {
-        throw new AppError('Já existe uma solicitação pendente para este registro', 400);
-      }
+        if (solicitacaoExistente && solicitacaoExistente.length > 0) {
+            throw new AppError('Já existe uma solicitação pendente para este registro', 400);
+        }
 
-      // 4. Validar o novo horário
-      const dataNovoHorario = new Date(novoHorario);
-      if (isNaN(dataNovoHorario.getTime())) {
-        throw new AppError('Formato de data/hora inválido', 400);
-      }
+        // 3. Validar o novo horário
+        const dataNovoHorario = new Date(novoHorario);
+        if (isNaN(dataNovoHorario.getTime())) {
+            throw new AppError('Formato de data/hora inválido', 400);
+        }
 
-      // 5. Criar a solicitação
-      const [result] = await connection.query(`
-            INSERT INTO SOLICITACAO_ALTERACAO_PONTO 
-            (id_registro, novo_horario, motivo, data_solicitacao, status)
-            VALUES (?, ?, ?, NOW(), 'Pendente')
-        `, [idRegistro, dataNovoHorario, motivo]);
+        // 4. Obter o ID do funcionário
+        const [funcionario] = await connection.query(`
+            SELECT id FROM FUNCIONARIO WHERE id_usuario = ?
+        `, [idUsuario]);
 
-      // 6. Retornar os dados da solicitação criada
-      const [solicitacao] = await connection.query(`
-            SELECT * FROM SOLICITACAO_ALTERACAO_PONTO WHERE id = ?
+        if (!funcionario || funcionario.length === 0) {
+            throw new AppError('Funcionário não encontrado', 404);
+        }
+
+        // 5. Criar a solicitação
+        const [result] = await connection.query(`
+            INSERT INTO SOLICITACAO_ALTERACAO 
+            (id_registro, id_funcionario, tipo_solicitacao, motivo, data_solicitacao, status)
+            VALUES (?, ?, 'Correcao', ?, NOW(), 'Pendente')
+        `, [idRegistro, funcionario[0].id, motivo]);
+
+        // 6. Atualizar o registro original com o novo horário (como pendente)
+        await connection.query(`
+            UPDATE REGISTRO_PONTO 
+            SET data_hora = ?, status = 'Pendente'
+            WHERE id = ?
+        `, [dataNovoHorario, idRegistro]);
+
+        // 7. Retornar os dados da solicitação criada
+        const [solicitacao] = await connection.query(`
+            SELECT * FROM SOLICITACAO_ALTERACAO WHERE id = ?
         `, [result.insertId]);
 
-      return solicitacao[0];
+        return solicitacao[0];
     });
-  }
-  
+}
+
   static async registrarPonto(idUsuario, dados) {
     return await db.transaction(async (connection) => {
       const [funcionario] = await connection.query(
@@ -165,32 +176,41 @@ class FuncionarioService {
 
       const { dataInicio, dataFim } = filtros;
       let sql = `
-            SELECT 
-                id, 
-                tipo, 
-                data_hora as data_ponto, 
-                status,
-                justificativa
-            FROM REGISTRO_PONTO
-            WHERE id_funcionario = ?
-        `;
+        SELECT 
+          id, 
+          tipo, 
+          data_hora as data_ponto, 
+          status,
+          justificativa
+        FROM REGISTRO_PONTO
+        WHERE id_funcionario = ?
+      `;
 
       const params = [funcionario.id];
 
       if (dataInicio && dataFim) {
-        sql += ` AND DATE(data_hora) BETWEEN ? AND ?`;
-        params.push(dataInicio, dataFim);
+        sql += ` AND data_hora >= ? AND data_hora < ?`;
+
+        // Ajusta dataFim para o próximo dia (exclusivo)
+        const fim = new Date(dataFim);
+        fim.setDate(fim.getDate() + 1);
+        const dataFimExclusivo = fim.toISOString().split('T')[0];
+
+        params.push(dataInicio, dataFimExclusivo);
       }
 
       sql += ` ORDER BY data_hora DESC`;
 
-      const [pontos] = await db.query(sql, params);
-      return pontos;
+      const resultadoQuery = await db.query(sql, params);
+      console.log('Resultado da query completo:', resultadoQuery);
+      console.log('Resultado da query completo:', resultadoQuery);
+      return resultadoQuery;
     } catch (error) {
       console.error('Erro ao listar histórico de pontos:', error);
       throw new AppError('Erro ao listar histórico de pontos', 500);
     }
   }
+
 
   static async detalhesPonto(idPonto, idUsuario) {
     const [ponto] = await db.query(
