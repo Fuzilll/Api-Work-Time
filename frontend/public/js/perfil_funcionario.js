@@ -16,7 +16,7 @@ class PerfilFuncionario {
         const token = localStorage.getItem(this.authTokenKey);
         if (!token) throw new Error('Token de autenticação não encontrado');
   
-        const response = await this.makeAuthenticatedRequest('/api/funcionario/perfil', 'GET', null, token);
+        const response = await this.makeAuthenticatedRequest('/api/funcionarios/perfil', 'GET', null, token);
         const perfil = response.data ?? response;
   
         this.renderPerfil(perfil);

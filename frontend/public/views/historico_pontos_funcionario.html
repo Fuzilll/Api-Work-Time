@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +7,7 @@
     <link rel="stylesheet" href="/css/dashboard_admin.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- Adicione o SweetAlert2 se for usar -->
+   <!-- Adicione o SweetAlert2 se for usar -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- Fallback local para Font Awesome -->
     <script>
@@ -36,22 +35,47 @@
         <div class="container mt-4">
             <h2>Histórico de Pontos</h2>
             <div class="card">
-                <div class="card-header">
-                    <h4>Meus Registros</h4>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Meus Registros</h4>
+                    <div class="d-flex gap-2">
+                        <div class="input-group" style="width: 200px;">
+                            <input type="date" class="form-control" id="data-inicio" placeholder="Data Início">
+                        </div>
+                        <div class="input-group" style="width: 200px;">
+                            <input type="date" class="form-control" id="data-fim" placeholder="Data Fim">
+                        </div>
+                        <button class="btn btn-primary" id="btn-filtrar">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                        <button class="btn btn-secondary" id="btn-limpar">
+                            <i class="fas fa-times"></i> Limpar
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <table class="table" id="tabela-pontos">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Status</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Os registros de pontos serão carregados aqui -->
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tabela-pontos">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="30%">Data/Hora</th>
+                                    <th width="20%">Status</th>
+                                    <th width="20%">Tipo</th>
+                                    <th width="30%">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-corpo">
+                                <!-- Dados serão carregados via JavaScript -->
+                                <tr class="table-placeholder">
+                                    <td colspan="4" class="text-center py-5">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Carregando...</span>
+                                        </div>
+                                        <p class="mt-2">Carregando registros...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -59,35 +83,56 @@
 
     <!-- Modal de Solicitação de Alteração -->
     <div class="modal fade" id="modalAlteracao" tabindex="-1" aria-labelledby="modalAlteracaoLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalAlteracaoLabel">Solicitar Alteração de Ponto</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalAlteracaoLabel">
+                        <i class="fas fa-edit me-2"></i>Solicitar Alteração de Ponto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="formSolicitarAlteracao">
+                    <form id="formSolicitarAlteracao" novalidate>
                         <input type="hidden" id="idRegistro" name="idRegistro">
+                        
                         <div class="mb-3">
-                            <label for="novoHorario" class="form-label">Novo Horário</label>
-                            <input type="text" class="form-control" id="novoHorario" name="novoHorario" required>
+                            <label for="novoHorario" class="form-label">
+                                <i class="fas fa-clock me-1"></i> Novo Horário
+                            </label>
+                            <input type="datetime-local" class="form-control" id="novoHorario" name="novoHorario" required>
+                            <div class="invalid-feedback">Por favor, informe o novo horário.</div>
                         </div>
+                        
                         <div class="mb-3">
-                            <label for="motivoAlteracao" class="form-label">Motivo da Alteração</label>
-                            <textarea class="form-control" id="motivoAlteracao" name="motivoAlteracao"
-                                required></textarea>
+                            <label for="motivoAlteracao" class="form-label">
+                                <i class="fas fa-comment me-1"></i> Motivo da Alteração
+                            </label>
+                            <textarea class="form-control" id="motivoAlteracao" name="motivoAlteracao" rows="4" required></textarea>
+                            <div class="invalid-feedback">Por favor, informe o motivo da alteração.</div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Enviar Solicitação</button>
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>Enviar Solicitação
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="/js/menu.js"></script>
     <script src="/js/sidebarToggle.js"></script>
-    <script src="/js/buscar_registros_funcionario.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap Bundle com Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Flatpickr -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Nosso Script -->
+    <script src="/js/historico_pontos.js" type="module"></script>
 </body>
-
 </html>
