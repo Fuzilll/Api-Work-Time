@@ -4,17 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Funcionário</title>
-   <link rel="stylesheet" href="/css/dashboard_admin.css">
-   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
-  <!-- Adicione o SweetAlert2 se for usar -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-   <!-- Fallback local para Font Awesome -->
-   <script>
-       if (!document.querySelector('link[href*="fontawesome"]')) {
-           document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
-       }
-   </script>
+    <link rel="stylesheet" href="/css/dashboard_admin.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script>
+        if (!document.querySelector('link[href*="fontawesome"]')) {
+            document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
+        }
+    </script>
 </head>
 <body>
     <div class="sidebar closed" id="sidebar">
@@ -42,9 +40,8 @@
                             <h4>Meu Resumo</h4>
                         </div>
                         <div class="card-body">
-                            <p>Horas trabalhadas este mês: <span id="horas-trabalhadas">0</span></p>
-                            <p>Registros de ponto: <span id="total-pontos">0</span></p>
-                            <p>Solicitações pendentes: <span id="solicitacoes-pendentes">0</span></p>
+                            <p>Total de registros: <span id="total-pontos">0</span></p>
+                            <p>Registros pendentes: <span id="solicitacoes-pendentes">0</span></p>
                         </div>
                     </div>
                 </div>
@@ -58,15 +55,12 @@
                             <button id="registrar-ponto" class="btn btn-primary w-100">
                                 <i class="fas fa-fingerprint"></i> Registrar Ponto
                             </button>
-                            <div id="ultimo-registro" class="mt-3">
-                                Último registro: <span id="horario-ultimo-registro">Nenhum registro hoje</span>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <h3 class="mt-4">Últimos Registros</h3>
+            <h3 class="mt-4">Ultimos Registros</h3>
             <table class="table">
                 <thead>
                     <tr>
@@ -76,7 +70,7 @@
                     </tr>
                 </thead>
                 <tbody id="tabela-ultimos-pontos">
-                    <!-- Os registros serão populados dinamicamente pelo JavaScript -->
+                    <tr><td colspan="3">Carregando registros...</td></tr>
                 </tbody>
             </table>
         </div>

@@ -10,19 +10,22 @@ class FuncionarioService {
         `SELECT f.id FROM FUNCIONARIO f WHERE f.id_usuario = ?`,
         [idUsuario]
       );
-      if (!funcionario) {
+
+      if (!funcionario || funcionario.length === 0) {
         throw new AppError('Funcionário não encontrado', 404);
       }
 
       const idFuncionario = funcionario.id;
-      const hoje = DateTime.now().toISODate(); // 'YYYY-MM-DD'
+      const hoje = DateTime.now().toUTC().toISODate();
 
+      console.log('id do Funcionario:', idFuncionario)
       const [resumo, pontosHoje, ultimosPontos] = await Promise.all([
         this.obterResumoPontos(idFuncionario),
         this.listarPontos(idFuncionario, { dataInicio: hoje, dataFim: hoje }),
         this.listarPontos(idFuncionario, { limit: 5 })
       ]);
-
+      console.log('Data hoje (Luxon):', DateTime.now().toISODate());
+      console.log('Data no banco:', await db.query(`SELECT DATE(data_hora) FROM REGISTRO_PONTO LIMIT 1`));
       return {
         resumo,
         pontosHoje,
@@ -33,6 +36,7 @@ class FuncionarioService {
       throw new AppError('Erro ao carregar dashboard', 500);
     }
   }
+
 
   static async registrarPonto(idUsuario, dados) {
     return await db.transaction(async (connection) => {
@@ -54,9 +58,9 @@ class FuncionarioService {
 
       const [result] = await connection.query(
         `INSERT INTO REGISTRO_PONTO 
-         (id_funcionario, tipo, data_hora, latitude, longitude, status) 
-         VALUES (?, ?, NOW(), ?, ?, 'Pendente')`,
-        [funcionario.id, dados.tipo, latitude, longitude]
+         (id_funcionario, tipo, foto_url, data_hora, latitude, longitude, status) 
+         VALUES (?, ?, ?, NOW(), ?, ?, 'Pendente')`,
+        [funcionario.id, dados.tipo, dados.fotoUrl, latitude, longitude]
       );
 
       const [ponto] = await connection.query(
@@ -144,52 +148,117 @@ class FuncionarioService {
   }
 
   static async obterResumoPontos(idFuncionario) {
-    const hoje = DateTime.now().toISODate(); // 'YYYY-MM-DD'
+    const hoje = DateTime.now().toUTC().toISODate();
 
-    const [resumo] = await db.query(
+    console.log(`[DEBUG] Data usada na query: ${hoje}`);
+
+    const [rows] = await db.query(
       `SELECT 
         COUNT(*) AS total_pontos,
-        SUM(CASE WHEN DATE(data_hora) = ? THEN 1 ELSE 0 END) AS pontos_hoje,
+        SUM(CASE WHEN DATE(CONVERT_TZ(data_hora, '+00:00', @@session.time_zone)) = ? THEN 1 ELSE 0 END) AS pontos_hoje,
         SUM(CASE WHEN status = 'Aprovado' THEN 1 ELSE 0 END) AS pontos_aprovados,
-        SUM(CASE WHEN status = 'Pendente' THEN 1 ELSE 0 END) AS pontos_pendentes
+        SUM(CASE WHEN status = 'Pendente' THEN 1 ELSE 0 END) AS pontos_pendentes,
+        SUM(CASE WHEN status = 'Rejeitado' THEN 1 ELSE 0 END) AS pontos_rejeitados
        FROM REGISTRO_PONTO
        WHERE id_funcionario = ?`,
       [hoje, idFuncionario]
     );
 
-    return resumo[0];
+    console.log('[DEBUG] Resultado bruto da query:', rows);
+
+    // Verifica se rows é um array e pega o primeiro elemento
+    const resultado = Array.isArray(rows) ? rows[0] : rows;
+
+    console.log('[DEBUG] Resultado processado:', resultado);
+
+    // Converte os valores de string para número
+    return {
+      total_pontos: parseInt(resultado?.total_pontos || 0),
+      pontos_hoje: parseInt(resultado?.pontos_hoje || 0),
+      pontos_aprovados: parseInt(resultado?.pontos_aprovados || 0),
+      pontos_pendentes: parseInt(resultado?.pontos_pendentes || 0),
+      pontos_rejeitados: parseInt(resultado?.pontos_rejeitados || 0)
+    };
   }
 
   static async validarGeolocalizacao(latitude, longitude, idEmpresa) {
     try {
       const [empresa] = await db.query(
-        `SELECT latitude, longitude FROM EMPRESA WHERE id = ?`,
+        `SELECT latitude, longitude, raio_geolocalizacao 
+       FROM EMPRESA WHERE id = ?`,
         [idEmpresa]
       );
-  
-      if (!empresa || !empresa.latitude || !empresa.longitude) {
-        throw new Error('Localização da empresa não encontrada');
+
+      if (!empresa || empresa.length === 0) {
+        throw new Error('Empresa não encontrada');
       }
-  
+
+      if (empresa.latitude === null || empresa.longitude === null) {
+        // Se a empresa não tem localização definida, permitir o registro
+        return true;
+      }
+
       const localizacaoEmpresa = {
         latitude: parseFloat(empresa.latitude),
         longitude: parseFloat(empresa.longitude)
       };
-  
+
       const distancia = geolib.getDistance(
         { latitude, longitude },
         localizacaoEmpresa
       );
-  
-      const raioPermitido = 100; // metros
+
+      const raioPermitido = empresa.raio_geolocalizacao || 100; // metros
       return distancia <= raioPermitido;
-  
     } catch (error) {
       console.error('Erro ao validar geolocalização:', error);
       throw new Error('Erro ao validar localização');
     }
   }
-  
+
+  // Adicione este método ao FuncionarioService
+  static async carregarPerfil(idUsuario) {
+    try {
+      // Primeiro buscamos os dados do usuário (nome, email)
+      const usuario = await database.query(`
+          SELECT nome, email 
+          FROM USUARIO 
+          WHERE id = ?
+      `, [idUsuario]);
+
+      if (!usuario || usuario.length === 0) {
+        throw new AppError('Usuário não encontrado', 404);
+      }
+
+      // Depois buscamos os dados do funcionário
+      const funcionario = await database.query(`
+          SELECT 
+              f.registro_emp,
+              f.funcao,
+              f.departamento,
+              f.data_admissao,
+              f.tipo_contrato,
+              e.nome AS empresa_nome
+          FROM FUNCIONARIO f
+          JOIN EMPRESA e ON f.id_empresa = e.id
+          WHERE f.id_usuario = ?
+      `, [idUsuario]);
+
+      if (!funcionario || funcionario.length === 0) {
+        throw new AppError('Funcionário não encontrado', 404);
+      }
+
+      // Combinamos os dados
+      return {
+        nome: usuario[0].nome,
+        email: usuario[0].email,
+        ...funcionario[0]
+      };
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = FuncionarioService;

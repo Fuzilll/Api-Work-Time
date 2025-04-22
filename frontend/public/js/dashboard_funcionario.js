@@ -10,11 +10,9 @@ class FuncionarioDashboard {
   // Métodos de inicialização
   initElements() {
     const elementsConfig = [
-      { id: 'horas-trabalhadas', property: 'horasTrabalhadas' },
       { id: 'total-pontos', property: 'totalPontos' },
       { id: 'solicitacoes-pendentes', property: 'solicitacoesPendentes' },
       { id: 'registrar-ponto', property: 'registrarPontoBtn' },
-      { id: 'horario-ultimo-registro', property: 'horarioUltimoRegistro' },
       { id: 'tabela-ultimos-pontos', property: 'tabelaUltimosPontos' },
       { id: 'logoutBtn', property: 'logoutBtn' }
     ];
@@ -22,7 +20,7 @@ class FuncionarioDashboard {
     elementsConfig.forEach(({ id, property }) => {
       this.elements[property] = document.getElementById(id);
       if (!this.elements[property]) {
-        console.warn(`[DASHBOARD] Elemento com ID '${id}' não encontrado.`);
+        console.error(`[DASHBOARD] Elemento com ID '${id}' não encontrado.`);
       }
     });
   }
@@ -31,7 +29,7 @@ class FuncionarioDashboard {
     if (this.elements.registrarPontoBtn) {
       this.elements.registrarPontoBtn.addEventListener('click', () => this.registrarPonto());
     }
-    
+
     if (this.elements.logoutBtn) {
       this.elements.logoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -73,15 +71,26 @@ class FuncionarioDashboard {
     }
   }
 
-  // Métodos de carregamento de dados
   async loadDashboard() {
     try {
       const token = localStorage.getItem(this.authTokenKey);
       const response = await this.makeAuthenticatedRequest('/api/funcionarios/dashboard', 'GET', null, token);
 
-      this.renderResumo(response.data?.resumo || {});
-      this.renderPontosHoje(response.data?.pontosHoje || []);
-      this.renderUltimosPontos(response.data?.ultimosPontos || []);
+      const data = response.data ?? response;
+      console.log('Dados completos recebidos:', data);
+
+      const resumo = data.resumo || {};
+      const pontosHoje = Array.isArray(data.pontosHoje) ? data.pontosHoje : (data.pontosHoje ? [data.pontosHoje] : []);
+      const ultimosPontos = Array.isArray(data.ultimosPontos) ? data.ultimosPontos : (data.ultimosPontos ? [data.ultimosPontos] : []);
+
+      console.log('Resumo:', resumo);
+      console.log('Pontos hoje:', pontosHoje);
+      console.log('Últimos pontos:', ultimosPontos);
+
+      this.renderResumo(resumo);
+      this.renderPontosHoje(pontosHoje);
+      this.renderUltimosPontos(ultimosPontos);
+
     } catch (error) {
       console.error('[DASHBOARD] Erro ao carregar:', error);
       this.showError(error.message || 'Erro ao carregar dados do dashboard');
@@ -99,12 +108,11 @@ class FuncionarioDashboard {
         'Authorization': `Bearer ${token}`
       },
       body: body ? JSON.stringify(body) : null,
-      signal: AbortSignal.timeout(10000) // Timeout de 10 segundos
+      signal: AbortSignal.timeout(10000)
     };
 
     const response = await fetch(url, options);
     const contentType = response.headers.get('content-type') || '';
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `Erro HTTP ${response.status}`);
@@ -119,35 +127,22 @@ class FuncionarioDashboard {
 
   // Métodos de renderização
   renderResumo(resumo = {}) {
-    this.setElementText('totalPontos', resumo.total_pontos ?? 0);
-    this.setElementText('solicitacoesPendentes', resumo.pontos_pendentes ?? 0);
+    this.setElementText('totalPontos', resumo.total_pontos ?? resumo.totalRegistros ?? '0');
+    this.setElementText('solicitacoesPendentes', resumo.pontos_pendentes ?? resumo.registrosPendentes ?? '0');
   }
 
   renderPontosHoje(pontosHoje = []) {
-    if (!Array.isArray(pontosHoje)) pontosHoje = [];
-    
-    const entrada = pontosHoje[0];
-    const saida = pontosHoje[pontosHoje.length - 1];
-
-    // Calcula horas trabalhadas
-    if (entrada && saida && pontosHoje.length >= 2) {
-      const diffMs = new Date(saida.data_hora) - new Date(entrada.data_hora);
-      const diffHrs = Math.floor(diffMs / 3600000);
-      const diffMins = Math.round((diffMs % 3600000) / 60000);
-      this.setElementText('horasTrabalhadas', `${diffHrs}h ${diffMins}m`);
-    } else {
-      this.setElementText('horasTrabalhadas', '0h 0m');
-    }
-
-    // Mostra último registro
-    if (pontosHoje.length > 0) {
-      const ultimoPonto = pontosHoje[pontosHoje.length - 1];
-      const dataHora = new Date(ultimoPonto.data_hora);
-      this.setElementText('horarioUltimoRegistro', 
-        `${dataHora.toLocaleTimeString('pt-BR')} (${ultimoPonto.tipo})`);
-    } else {
+    if (!Array.isArray(pontosHoje) || pontosHoje.length === 0) {
       this.setElementText('horarioUltimoRegistro', 'Nenhum registro hoje');
+      return;
     }
+
+    pontosHoje.sort((a, b) => new Date(b.data_hora) - new Date(a.data_hora));
+    const ultimoPonto = pontosHoje[0];
+    const dataHora = new Date(ultimoPonto.data_hora);
+
+    this.setElementText('horarioUltimoRegistro',
+      `${dataHora.toLocaleTimeString('pt-BR')} (${ultimoPonto.tipo})`);
   }
 
   renderUltimosPontos(pontos = []) {
@@ -158,7 +153,9 @@ class FuncionarioDashboard {
       return;
     }
 
-    this.elements.tabelaUltimosPontos.innerHTML = pontos.map(ponto => {
+    const pontosOrdenados = [...pontos].sort((a, b) => new Date(b.data_hora) - new Date(a.data_hora));
+
+    this.elements.tabelaUltimosPontos.innerHTML = pontosOrdenados.map(ponto => {
       const dataHora = new Date(ponto.data_hora);
       return `
         <tr>
@@ -173,7 +170,7 @@ class FuncionarioDashboard {
   // Métodos auxiliares de UI
   setBotaoRegistroCarregando(loading) {
     if (!this.elements.registrarPontoBtn) return;
-    
+
     this.elements.registrarPontoBtn.disabled = loading;
     this.elements.registrarPontoBtn.innerHTML = loading
       ? '<i class="fas fa-spinner fa-spin"></i> Registrando...'
@@ -194,7 +191,7 @@ class FuncionarioDashboard {
       this.setBotaoRegistroCarregando(true);
       const position = await this.getCurrentPosition();
       const token = localStorage.getItem(this.authTokenKey);
-      
+
       const response = await this.makeAuthenticatedRequest(
         '/api/funcionarios/pontos',
         'POST',
@@ -218,7 +215,8 @@ class FuncionarioDashboard {
   }
 
   getTipoRegistroAdequado() {
-    return new Date().getHours() < 12 ? 'Entrada' : 'Saida';
+    const horaAtual = new Date().getHours();
+    return horaAtual < 12 ? 'Entrada' : (horaAtual < 14 ? 'Saída Almoço' : 'Saida');
   }
 
   getCurrentPosition() {
@@ -264,7 +262,7 @@ class FuncionarioDashboard {
   }
 }
 
-// Inicialização com tratamento de erro global
+// Inicialização
 document.addEventListener('DOMContentLoaded', () => {
   try {
     window.funcionarioDashboard = new FuncionarioDashboard();
@@ -273,4 +271,4 @@ document.addEventListener('DOMContentLoaded', () => {
     alert('Ocorreu um erro ao carregar o dashboard. Redirecionando para login...');
     window.location.href = 'login.html';
   }
-});
+});          

@@ -12,6 +12,14 @@ class FuncionarioController {
   static async carregarDashboard(req, res, next) {
     try {
       const dashboard = await FuncionarioService.carregarDashboard(req.usuario.id);
+
+      console.log('[DASHBOARD] Enviando dados:', {
+        resumo: dashboard.resumo,
+        pontosHoje: dashboard.pontosHoje,
+        ultimosPontos: dashboard.ultimosPontos
+      });
+
+
       res.json({
         success: true,
         data: dashboard
@@ -20,6 +28,7 @@ class FuncionarioController {
       next(err);
     }
   }
+
 
   /**
    * @api {post} /funcionario/pontos Registrar Ponto
@@ -103,6 +112,19 @@ class FuncionarioController {
       res.json({
         success: true,
         data: horarios
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async carregarPerfil(req, res, next) {
+    try {
+      const perfil = await FuncionarioService.carregarPerfil(req.usuario.id);
+
+      res.json({
+        success: true,
+        data: perfil
       });
     } catch (err) {
       next(err);

@@ -30,4 +30,6 @@ router.get('/pontos/:id', FuncionarioController.detalhesPonto);
 // Rotas de horários
 router.get('/horarios', FuncionarioController.listarHorarios);
 
+router.get('/perfil', FuncionarioController.carregarPerfil);
+
 module.exports = router;
