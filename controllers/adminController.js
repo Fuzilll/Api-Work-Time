@@ -207,7 +207,7 @@ class AdminController {
         req.usuario.id,      // ID do usuário aprovador
         req.body.justificativa // Justificativa (opcional)
       );
-  
+
       res.json({
         success: true,
         data: resultado
@@ -215,7 +215,7 @@ class AdminController {
     } catch (err) {
       next(err);
     }
-}
+  }
 
   /**
    * @api {get} /api/admin/pontos/pendentes Listar Pontos Pendentes
@@ -231,9 +231,11 @@ class AdminController {
       const pontos = await AdminService.carregarPontosPendentes(
         req.usuario.id_empresa,
         {
-          dataInicio: req.query.dataInicio,
-          dataFim: req.query.dataFim,
-          departamento: req.query.departamento
+          dataInicio: req.query.date_start,
+          dataFim: req.query.date_end,
+          departamento: req.query.department,
+          status: req.query.status,
+          nome: req.query.nome
         }
       );
 
@@ -245,6 +247,8 @@ class AdminController {
       next(err);
     }
   }
+
+
 
   /**
    * Desativa um funcionário (sem excluir do banco)
@@ -266,39 +270,39 @@ class AdminController {
     }
   }
 
-/**
- * @api {get} /api/admin/pontos/:id/detalhes Obter Detalhes do Ponto
- * @apiName ObterDetalhesPonto
- * @apiGroup Admin
- * 
- * @apiParam {Number} id ID do registro de ponto
- * 
- * @apiSuccess {Object} data Detalhes completos do ponto
- */
-static async obterDetalhesPonto(req, res, next) {
-  try {
-    console.log(`[AdminController] Buscando detalhes do ponto ID: ${req.params.id}`);
-    
-    const detalhes = await AdminService.obterDetalhesPonto(
-      req.params.id,
-      req.usuario.id_empresa
-    );
+  /**
+   * @api {get} /api/admin/pontos/:id/detalhes Obter Detalhes do Ponto
+   * @apiName ObterDetalhesPonto
+   * @apiGroup Admin
+   * 
+   * @apiParam {Number} id ID do registro de ponto
+   * 
+   * @apiSuccess {Object} data Detalhes completos do ponto
+   */
+  static async obterDetalhesPonto(req, res, next) {
+    try {
+      console.log(`[AdminController] Buscando detalhes do ponto ID: ${req.params.id}`);
 
-    if (!detalhes) {
-      console.log(`[AdminController] Ponto não encontrado: ${req.params.id}`);
-      throw new AppError('Ponto não encontrado', 404);
+      const detalhes = await AdminService.obterDetalhesPonto(
+        req.params.id,
+        req.usuario.id_empresa
+      );
+
+      if (!detalhes) {
+        console.log(`[AdminController] Ponto não encontrado: ${req.params.id}`);
+        throw new AppError('Ponto não encontrado', 404);
+      }
+
+      console.log(`[AdminController] Detalhes encontrados para o ponto: ${req.params.id}`);
+      res.json({
+        success: true,
+        data: detalhes
+      });
+    } catch (err) {
+      console.error(`[AdminController] Erro ao buscar detalhes do ponto: ${err.message}`);
+      next(err);
     }
-
-    console.log(`[AdminController] Detalhes encontrados para o ponto: ${req.params.id}`);
-    res.json({
-      success: true,
-      data: detalhes
-    });
-  } catch (err) {
-    console.error(`[AdminController] Erro ao buscar detalhes do ponto: ${err.message}`);
-    next(err);
   }
-}
 
   /**
    * Exclui um funcionário definitivamente

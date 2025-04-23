@@ -322,66 +322,87 @@ class AdminService {
     sql += ' ORDER BY rp.data_hora DESC';
     return db.query(sql, params);
   }
-
   static async atualizarStatusPonto(idPonto, status, idUsuarioAprovador, justificativa = null) {
     return await db.transaction(async (conn) => {
-      // 1. Verificar se o ponto existe e está pendente
+      // 1. Verificar se o ponto existe
       const [ponto] = await conn.query(
         `SELECT rp.id, rp.id_funcionario, rp.status, f.id_empresa
          FROM REGISTRO_PONTO rp
          JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
-         WHERE rp.id = ? AND rp.status = 'Pendente' FOR UPDATE`,
+         WHERE rp.id = ? FOR UPDATE`,
         [idPonto]
       );
-
-      if (!ponto || ponto.length === 0) {
-        throw new AppError('Ponto não encontrado ou já processado', 404);
+  
+      if (!ponto?.length) {
+        throw new AppError('Ponto não encontrado', 404);
       }
-
-      // 2. Verificar se o usuário aprovador tem permissão
+  
+      const pontoData = ponto[0];
+  
+      // 2. Buscar informações do usuário aprovador
+      const [usuarioRows] = await conn.query(
+        `SELECT 
+           u.id AS user_id, 
+           u.nome,
+           u.nivel,
+           a.id AS admin_id,
+           a.id_empresa,
+           a.permissoes
+         FROM USUARIO u
+         LEFT JOIN ADMIN a ON u.id = a.id_usuario
+         WHERE u.id = ?`,
+        [idUsuarioAprovador]
+      );
+  
+      if (!usuarioRows?.length) {
+        throw new AppError('Usuário não encontrado', 404);
+      }
+  
+      const user = usuarioRows[0];
       let idAdmin = null;
-
-      // Se for IT_SUPPORT, pode aprovar sem ser ADMIN da empresa
-      if (idUsuarioAprovador.nivel === 'IT_SUPPORT') {
-        const [adminGenerico] = await conn.query(
-          `SELECT id FROM ADMIN WHERE id_usuario = ? LIMIT 1`,
-          [idUsuarioAprovador]
-        );
-        idAdmin = adminGenerico[0]?.id;
-      } else {
-        // Para ADMIN, verificar se é da mesma empresa
-        const [admin] = await conn.query(
-          `SELECT id FROM ADMIN 
-           WHERE id_usuario = ? AND id_empresa = ?`,
-          [idUsuarioAprovador, ponto[0].id_empresa]
-        );
-
-        if (!admin || admin.length === 0) {
+  
+      // 3. Verificar permissões e obter id do admin
+      if (user.nivel === 'IT_SUPPORT') {
+        // IT_SUPPORT pode aprovar qualquer ponto
+        if (!user.admin_id) {
+          throw new AppError('Administrador IT_SUPPORT não encontrado', 403);
+        }
+        idAdmin = user.admin_id;
+      } else if (user.nivel === 'ADMIN') {
+        // ADMIN comum precisa ser da mesma empresa do ponto
+        if (user.id_empresa !== pontoData.id_empresa) {
           throw new AppError('Usuário não tem permissão para aprovar pontos nesta empresa', 403);
         }
-        idAdmin = admin[0].id;
+        if (!user.admin_id) {
+          throw new AppError('Administrador não encontrado', 403);
+        }
+        idAdmin = user.admin_id;
+      } else {
+        throw new AppError('Usuário não autorizado para aprovar pontos', 403);
       }
-
-      // 3. Atualizar status do ponto
+  
+      console.log('[AdminService] ID do ADMIN aprovador:', idAdmin);
+  
+      // 4. Atualizar status do ponto
       await conn.query(
         `UPDATE REGISTRO_PONTO 
          SET status = ?, id_aprovador = ?, justificativa = ?
          WHERE id = ?`,
         [status, idAdmin, justificativa, idPonto]
       );
-
-      // 4. Registrar ocorrência se rejeitado
+  
+      // 5. Registrar ocorrência se rejeitado
       if (status === 'Rejeitado') {
         await conn.query(
           `INSERT INTO OCORRENCIA 
            (id_funcionario, tipo, descricao, id_admin_responsavel, data_ocorrencia, status)
            VALUES (?, ?, ?, ?, NOW(), 'Aprovada')`,
-          [ponto[0].id_funcionario, 'PontoRejeitado', justificativa, idAdmin]
+          [pontoData.id_funcionario, 'PontoRejeitado', justificativa, idAdmin]
         );
       }
-
-      // 5. Retornar dados completos do ponto atualizado
-      const [pontoAtualizado] = await conn.query(
+  
+      // 6. Retornar dados atualizados do ponto
+      const [pontoAtualizadoRows] = await conn.query(
         `SELECT rp.*, u.nome as nome_funcionario 
          FROM REGISTRO_PONTO rp
          JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
@@ -389,13 +410,17 @@ class AdminService {
          WHERE rp.id = ?`,
         [idPonto]
       );
-
+  
       return {
-        ...pontoAtualizado[0],
+        ...pontoAtualizadoRows[0],
         justificativa: status === 'Rejeitado' ? justificativa : null
       };
     });
   }
+  
+
+  
+  
   /**
  * Registra uma ocorrência para um funcionário
  * @param {Object} conn - Conexão de banco de dados
@@ -421,43 +446,55 @@ class AdminService {
     */
   static async carregarPontosPendentes(idEmpresa, filtros = {}) {
     let sql = `
-    SELECT 
-      rp.id,
-      u.nome AS funcionario,
-      f.departamento,
-      rp.tipo,
-      rp.data_hora,
-      rp.foto_url,
-      rp.latitude,
-      rp.longitude,
-      rp.endereco_registro,
-      rp.status,
-      rp.justificativa,
-      rp.dispositivo,
-      rp.precisao_geolocalizacao
-    FROM REGISTRO_PONTO rp
-    JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
-    JOIN USUARIO u ON f.id_usuario = u.id
-    WHERE rp.status = 'Pendente' AND f.id_empresa = ?
-  `;
-
+      SELECT 
+        rp.id,
+        u.nome AS funcionario,
+        f.departamento,
+        rp.tipo,
+        rp.data_hora,
+        rp.foto_url,
+        rp.latitude,
+        rp.longitude,
+        rp.endereco_registro,
+        rp.status,
+        rp.justificativa,
+        rp.dispositivo,
+        rp.precisao_geolocalizacao
+      FROM REGISTRO_PONTO rp
+      JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+      JOIN USUARIO u ON f.id_usuario = u.id
+      WHERE f.id_empresa = ?
+    `;
+  
     const params = [idEmpresa];
-
-    // Aplicar filtros
+  
+    if (filtros.status) {
+      sql += ` AND rp.status = ?`;
+      params.push(filtros.status);
+    }
+  
     if (filtros.dataInicio && filtros.dataFim) {
       sql += ` AND DATE(rp.data_hora) BETWEEN ? AND ?`;
       params.push(filtros.dataInicio, filtros.dataFim);
     }
-
+  
     if (filtros.departamento) {
       sql += ` AND f.departamento = ?`;
       params.push(filtros.departamento);
     }
-
+  
+    if (filtros.nome && filtros.nome.trim()) {
+      sql += ` AND u.nome LIKE ?`;
+      params.push(`%${filtros.nome.trim()}%`);
+    }
+  
     sql += ` ORDER BY rp.data_hora DESC`;
-
+  
     return await db.query(sql, params);
   }
+  
+
+  
   /**
     * Carrega pontos com possíveis irregularidades para análise manual
     * @param {Number} idEmpresa - ID da empresa

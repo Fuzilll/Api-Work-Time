@@ -11,40 +11,49 @@ class PointManager {
     this.elements = {
       filterInput: document.querySelector("#filtro-pontos"),
       pointsTable: document.querySelector("#tabela-pontos"),
-      dateFilter: document.querySelector("#filtro-data"),
+      dateFilterStart: document.querySelector("#filtro-data-inicio"),
+      dateFilterEnd: document.querySelector("#filtro-data-fim"),
       departmentFilter: document.querySelector("#filtro-departamento"),
+      statusFilter : document.querySelector("#filtro-status"),
       pagination: document.querySelector("#pagination"),
       loadingOverlay: document.querySelector("#loading-overlay"),
       errorMessage: document.querySelector("#error-message")
     };
   }
 
+
   setupEventListeners() {
     this.elements.filterInput.addEventListener('input', () => this.loadPendingPoints());
-    this.elements.dateFilter.addEventListener('change', () => this.loadPendingPoints());
+    this.elements.dateFilterStart.addEventListener('change', () => this.loadPendingPoints());
+    this.elements.dateFilterEnd.addEventListener('change', () => this.loadPendingPoints());
+    this.elements.statusFilter.addEventListener('change', () => this.loadPendingPoints());
     this.elements.departmentFilter.addEventListener('change', () => this.loadPendingPoints());
     this.setupTableEvents();
   }
 
+
   async loadPendingPoints(page = 1) {
     this.showLoading();
     this.currentPage = page;
-
+  
     try {
       const params = new URLSearchParams({
         page,
         limit: this.itemsPerPage,
         search: this.elements.filterInput.value,
-        date: this.elements.dateFilter.value,
-        department: this.elements.departmentFilter.value
+        nome: this.elements.filterInput.value,
+        date_start: this.elements.dateFilterStart.value,
+        date_end: this.elements.dateFilterEnd.value,
+        department: this.elements.departmentFilter.value,
+        status: this.elements.statusFilter.value
       });
-
+  
       const response = await fetch(`/api/admin/pontos/pendentes?${params}`);
-
+  
       if (!response.ok) throw new Error('Erro ao carregar pontos');
-
+  
       const { data: pontos, total } = await response.json();
-
+  
       this.renderPointsTable(pontos);
       this.renderPagination(total);
     } catch (error) {
@@ -53,6 +62,7 @@ class PointManager {
       this.hideLoading();
     }
   }
+  
 
   renderPointsTable(pontos) {
     this.elements.pointsTable.innerHTML = pontos.length ?
@@ -176,7 +186,7 @@ class PointManager {
   async rejectPoint(pointId) {
     if (!confirm('Deseja rejeitar este registro de ponto?')) return;
 
-    const justificativa = prompt('Digite a justificativa para a rejeição:', 'Sem justificativa');
+    const justificativa = prompt('Digite a justificativa para a rejeição:', 'Motivo não especificado');
     if (justificativa === null) return; // Usuário cancelou
 
     try {
@@ -184,8 +194,6 @@ class PointManager {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          // Removi o token já que não estava definido
-          // Se precisar de autenticação, você deve definir o token no cabeçalho
         },
         body: JSON.stringify({
           status: 'Rejeitado',

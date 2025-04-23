@@ -52,7 +52,6 @@ router.put(
   '/pontos/:id/status',
   authMiddleware.autenticacao,
   authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']),
-  authMiddleware.checkPermission('gerenciar_pontos'),
   validate(adminSchema.atualizarStatusPonto),
   adminController.atualizarStatusPonto
 );

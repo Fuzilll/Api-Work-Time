@@ -140,12 +140,12 @@ class GerenciadorEmpresas {
             <button class="btn btn-primary btn-sm btn-cadastrar-admin"
               data-id="${company.id}" 
               data-nome="${this.ui.escapeHtml(company.nome)}">
-              <i class="bi bi-person-plus"></i> Register Admin
+              <i class="bi bi-person-plus"></i> Registrar Admin
             </button>
             <button class="btn btn-danger btn-sm btn-remover-empresa"
               data-id="${company.id}" 
               data-nome="${this.ui.escapeHtml(company.nome)}">
-              <i class="bi bi-trash"></i> Remove
+              <i class="bi bi-trash"></i> Excluir empresa
             </button>
           </td>
         `;

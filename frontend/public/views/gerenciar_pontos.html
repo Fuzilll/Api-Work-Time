@@ -36,31 +36,45 @@
             <h2>Gerenciar Pontos</h2>
             <p class="subtitle">Aprovar ou rejeitar registros de ponto dos funcionários.</p>
 
+            
             <div class="search-filter mb-4">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="filtro-data" class="form-label">Data</label>
-                        <input type="date" id="filtro-data" class="form-control">
+                    <div class="col-md-2">
+                        <label for="filtro-data-inicio" class="form-label">Data Início</label>
+                        <input type="date" id="filtro-data-inicio" class="form-control">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
+                        <label for="filtro-data-fim" class="form-label">Data Fim</label>
+                        <input type="date" id="filtro-data-fim" class="form-control">
+                    </div>
+                    <div class="col-md-2">
                         <label for="filtro-departamento" class="form-label">Departamento</label>
                         <select id="filtro-departamento" class="form-select">
                             <option value="">Todos</option>
-                            <option>TI</option>
-                            <option>RH</option>
-                            <option>Financeiro</option>
+                            <option value="TI">TI</option>
+                            <option value="RH">RH</option>
+                            <option value="Financeiro">Financeiro</option>
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label for="filtro-pontos" class="form-label">Pesquisar</label>
-                        <div class="search-input-container">
-                            <i class="fas fa-search search-icon"></i>
-                            <input type="text" id="filtro-pontos" class="form-control"
-                                placeholder="Nome do funcionário...">
+                        <label for="filtro-pontos" class="form-label">Pesquisar por Nome</label>
+                        <div class="search-input-container position-relative">
+                            <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted"></i>
+                            <input type="text" id="filtro-pontos" class="form-control ps-5" placeholder="Nome do funcionário...">
                         </div>
+                    </div>
+                    <div class="col-md-4 d-flex flex-column justify-content-end">
+                        <label for="filtro-status" class="form-label">Status</label>
+                        <select id="filtro-status" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Rejeitado">Rejeitado</option>
+                        </select>
                     </div>
                 </div>
             </div>
+              
 
             <div class="table-responsive">
                 <table class="points-table">
@@ -126,7 +140,7 @@
                                 <p id="detalhes-status">—</p>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Justificativa:</label>
+                                <label class="form-label fw-bold">Justificativa registrada pelo aprovador:</label>
                                 <p id="detalhes-justificativa">—</p>
                             </div>
                             <div class="mb-3">
