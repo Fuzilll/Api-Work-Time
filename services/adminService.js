@@ -228,17 +228,13 @@ class AdminService {
           rp.endereco_registro,
           rp.dispositivo,
           rp.precisao_geolocalizacao,
-          ht.hora_entrada AS hora_esperada_entrada,
-          ht.hora_saida AS hora_esperada_saida,
-          a.nome AS aprovador,
+          aprovador_usuario.nome AS aprovador,
           f.registro_emp AS matricula
         FROM REGISTRO_PONTO rp
         JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
         JOIN USUARIO u ON f.id_usuario = u.id
-        LEFT JOIN HORARIO_TRABALHO ht ON 
-          f.id = ht.id_funcionario AND 
-          ht.dia_semana = DAYNAME(rp.data_hora)
-        LEFT JOIN USUARIO a ON rp.id_aprovador = a.id
+        LEFT JOIN ADMIN a ON rp.id_aprovador = a.id
+        LEFT JOIN USUARIO aprovador_usuario ON a.id_usuario = aprovador_usuario.id
         WHERE rp.id = ? AND (f.id_empresa = ? OR ? IS NULL)
       `;
 
@@ -359,29 +355,23 @@ class AdminService {
       }
   
       const user = usuarioRows[0];
-      let idAdmin = null;
+      let idAdmin = user.admin_id;
   
-      // 3. Verificar permissões e obter id do admin
+      // 3. Verificar permissões
       if (user.nivel === 'IT_SUPPORT') {
-        // IT_SUPPORT pode aprovar qualquer ponto
-        if (!user.admin_id) {
+        if (!idAdmin) {
           throw new AppError('Administrador IT_SUPPORT não encontrado', 403);
         }
-        idAdmin = user.admin_id;
       } else if (user.nivel === 'ADMIN') {
-        // ADMIN comum precisa ser da mesma empresa do ponto
         if (user.id_empresa !== pontoData.id_empresa) {
-          throw new AppError('Usuário não tem permissão para aprovar pontos nesta empresa', 403);
+          throw new AppError('Você não tem permissão para aprovar este ponto', 403);
         }
-        if (!user.admin_id) {
+        if (!idAdmin) {
           throw new AppError('Administrador não encontrado', 403);
         }
-        idAdmin = user.admin_id;
       } else {
         throw new AppError('Usuário não autorizado para aprovar pontos', 403);
       }
-  
-      console.log('[AdminService] ID do ADMIN aprovador:', idAdmin);
   
       // 4. Atualizar status do ponto
       await conn.query(
@@ -401,7 +391,15 @@ class AdminService {
         );
       }
   
-      // 6. Retornar dados atualizados do ponto
+      // 6. Inserir log de auditoria
+      const acao = status === 'Aprovado' ? 'Aprovação de Ponto' : 'Rejeição de Ponto';
+      const detalhe = `Ponto ID ${idPonto}, status alterado para "${status}"${justificativa ? `, justificativa: ${justificativa}` : ''}`;
+      await conn.query(
+        `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) VALUES (?, ?, ?)`,
+        [idUsuarioAprovador, acao, detalhe]
+      );
+  
+      // 7. Retornar dados atualizados do ponto
       const [pontoAtualizadoRows] = await conn.query(
         `SELECT rp.*, u.nome as nome_funcionario 
          FROM REGISTRO_PONTO rp
@@ -417,6 +415,7 @@ class AdminService {
       };
     });
   }
+  
   
 
   

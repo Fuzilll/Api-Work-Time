@@ -200,14 +200,14 @@ class AdminController {
       if (!req.usuario.permissoes?.aprovar_pontos && req.usuario.nivel !== 'ADMIN') {
         throw new AppError('Você não tem permissão para aprovar/rejeitar pontos', 403);
       }
-
+  
       const resultado = await AdminService.atualizarStatusPonto(
-        req.params.id,       // ID do ponto
-        req.body.status,     // 'Aprovado' ou 'Rejeitado'
-        req.usuario.id,      // ID do usuário aprovador
-        req.body.justificativa // Justificativa (opcional)
+        req.params.id,              // ID do ponto
+        req.body.status,            // 'Aprovado' ou 'Rejeitado'
+        req.usuario.id,             // ID do usuário autenticado (aprovador)
+        req.body.justificativa      // Justificativa (opcional)
       );
-
+  
       res.json({
         success: true,
         data: resultado
@@ -216,7 +216,7 @@ class AdminController {
       next(err);
     }
   }
-
+  
   /**
    * @api {get} /api/admin/pontos/pendentes Listar Pontos Pendentes
    * @apiName CarregarPontosPendentes
