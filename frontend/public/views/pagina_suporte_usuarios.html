@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitar Ajuda - Central de Suporte</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #16161a;
+      color: #fffffe;
+    }
+    h2, p {
+      color: #fffffe;
+    }
+    .form-container {
+      background-color: #242629;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      max-width: 600px;
+      margin: auto;
+    }
+    .form-container input, .form-container textarea, .form-container select {
+      background-color: #16161a;
+      color: #fffffe;
+      border: 1px solid #72757e;
+    }
+    .form-container button {
+      background-color: #7f5af0;
+      color: #fffffe;
+      border: none;
+    }
+    .form-container button:hover {
+      background-color: #2cb67d;
+    }
+    .form-group label {
+      color: #94a1b2;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <div class="form-container">
+      <h2>Solicitar Ajuda</h2>
+      <p>Se você está enfrentando algum problema ou precisa de ajuda, preencha o formulário abaixo.</p>
+      <form action="/enviar-chamado" method="POST">
+        <div class="form-group">
+          <label for="assunto">Assunto</label>
+          <input type="text" class="form-control" id="assunto" name="assunto" required>
+        </div>
+        <div class="form-group">
+          <label for="descricao">Descrição do Problema</label>
+          <textarea class="form-control" id="descricao" name="descricao" rows="4" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="prioridade">Prioridade</label>
+          <select class="form-control" id="prioridade" name="prioridade">
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="categoria">Categoria</label>
+          <select class="form-control" id="categoria" name="categoria">
+            <option value="tecnico">Problema Técnico</option>
+            <option value="duvida">Dúvida sobre Funcionalidade</option>
+            <option value="erro">Relatar Erro</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="anexo">Anexar Arquivos</label>
+          <input type="file" class="form-control-file" id="anexo" name="anexo">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Enviar Solicitação</button>
+      </form>
+    </div>
+  </div>
+  
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.0/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+</body>
+</html>
