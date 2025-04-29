@@ -112,60 +112,77 @@ class FuncionarioController {
    * @param {Function} next - Next middleware
    */
   static async solicitarAlteracaoPonto(req, res, next) {
+    const transaction = await db.beginTransaction();
     try {
-        console.log('[CONTROLLER] Iniciando solicitação de alteração:', {
-            usuarioId: req.usuario.id,
+        console.log('[PontoController] Iniciando solicitação de alteração', {
+            usuario: req.usuario.id,
             body: req.body
         });
 
-        // Validações básicas
-        if (!req.body.id_registro || !req.body.motivo) {
-            throw new AppError('ID do registro e motivo são obrigatórios', 400);
+        // Validação robusta dos dados de entrada
+        const { id_registro, motivo, novo_tipo, nova_data_hora } = req.body;
+        
+        if (!id_registro || !motivo) {
+            throw new AppError('Campos obrigatórios não informados: id_registro e motivo são necessários', 400);
         }
 
         if (req.usuario.nivel !== 'FUNCIONARIO') {
-            throw new AppError('Apenas funcionários podem solicitar alterações', 403);
+            throw new AppError('Apenas funcionários podem solicitar alterações de ponto', 403);
         }
 
-        // Converter ID do registro
-        const idRegistroPonto = parseInt(req.body.id_registro);
+        // Converter e validar ID
+        const idRegistroPonto = parseInt(id_registro);
         if (isNaN(idRegistroPonto)) {
             throw new AppError('ID do registro deve ser um número válido', 400);
         }
 
-        // Obter funcionário com tratamento robusto
-        console.log('[CONTROLLER] Chamando serviço para obter funcionário...');
-        const funcionario = await FuncionarioService.obterFuncionarioPorUsuario(req.usuario.id);
-        
-        console.log('[CONTROLLER] Funcionário recebido do serviço:', JSON.stringify(funcionario, null, 2));
-        
+        // Validar motivo (tamanho mínimo e máximo)
+        if (motivo.length < 10 || motivo.length > 500) {
+            throw new AppError('O motivo deve ter entre 10 e 500 caracteres', 400);
+        }
+
+        // Validar data/hora se fornecida
+        let dataHoraValidada = null;
+        if (nova_data_hora) {
+            dataHoraValidada = new Date(nova_data_hora);
+            if (isNaN(dataHoraValidada.getTime())) {
+                throw new AppError('Formato de data/hora inválido', 400);
+            }
+        }
+
+        // Obter funcionário com verificação de existência
+        const funcionario = await FuncionarioService.obterFuncionarioPorUsuario(req.usuario.id, transaction);
         if (!funcionario) {
-            console.error('[CONTROLLER] Erro crítico: serviço retornou null/undefined');
-            throw new AppError('Erro inesperado ao obter dados do funcionário', 500);
+            throw new AppError('Funcionário não encontrado', 404);
         }
 
         // Processar solicitação
-        console.log('[CONTROLLER] Chamando serviço para solicitar alteração...');
         const resultado = await FuncionarioService.solicitarAlteracaoPonto(
             funcionario.id,
             idRegistroPonto,
-            req.body.motivo,
-            req.body.novo_tipo || null,
-            req.body.nova_data_hora || null
+            motivo,
+            novo_tipo || null,
+            dataHoraValidada || null,
+            transaction
         );
 
-        console.log('[CONTROLLER] Solicitação processada com sucesso:', resultado);
+        await db.commitTransaction(transaction);
+
+        console.log('[PontoController] Solicitação processada com sucesso', {
+            solicitacaoId: resultado.id
+        });
 
         return res.status(201).json({
             success: true,
+            message: 'Solicitação de alteração registrada com sucesso',
             data: resultado
         });
 
     } catch (error) {
-        console.error('[CONTROLLER] Erro completo:', {
-            message: error.message,
+        await db.rollbackTransaction(transaction);
+        console.error('[PontoController] Erro na solicitação:', {
+            error: error.message,
             stack: error.stack,
-            usuario: req.usuario,
             body: req.body
         });
         next(error);

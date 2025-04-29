@@ -32,7 +32,9 @@ router.get('/horarios', FuncionarioController.listarHorarios);
 
 router.get('/perfil', FuncionarioController.carregarPerfil);
 
-router.post('/pedir-alteracao-ponto', FuncionarioController.solicitarAlteracaoPonto);
+router.post(
+  '/pedir-alteracao-ponto', authMiddleware, nivelMiddleware('FUNCIONARIO'), FuncionarioController.solicitarAlteracaoPonto
+);
 
 router.get('/historico-pontos', FuncionarioController.listarHistoricoPontos);
 module.exports = router;

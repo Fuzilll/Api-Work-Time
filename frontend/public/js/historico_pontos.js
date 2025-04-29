@@ -2,9 +2,11 @@ class HistoricoPontos {
     constructor() {
         this.authTokenKey = 'authToken';
         this.modal = null;
+        this.alteracaoModal = null; // Nova instância do modal de alteração
         this.initElements();
         this.setupEventListeners();
-        this.initModal(); 
+        this.initModal();
+        this.initAlteracaoModal(); // Inicializa o novo modal
     }
 
     initElements() {
@@ -15,7 +17,12 @@ class HistoricoPontos {
             btnFiltrar: document.getElementById('btn-filtrar'),
             btnLimpar: document.getElementById('btn-limpar'),
             modalAlteracao: document.getElementById('modalAlteracao'),
-            formSolicitarAlteracao: document.getElementById('formSolicitarAlteracao')
+            formSolicitarAlteracao: document.getElementById('formSolicitarAlteracao'),
+            // Novos elementos para o modal melhorado
+            modalAlteracaoPonto: document.getElementById('modalAlteracaoPonto'),
+            formSolicitarAlteracaoPonto: document.getElementById('formSolicitarAlteracaoPonto'),
+            tipoAtual: document.getElementById('tipoAtual'),
+            dataHoraAtual: document.getElementById('dataHoraAtual')
         };
     }
 
@@ -28,23 +35,36 @@ class HistoricoPontos {
             this.elements.btnLimpar.addEventListener('click', () => this.limparFiltros());
         }
 
+        // Mantém o listener do formulário antigo para compatibilidade
         if (this.elements.formSolicitarAlteracao) {
             this.elements.formSolicitarAlteracao.addEventListener('submit', (e) => this.enviarSolicitacaoAlteracao(e));
+        }
+
+        // Listener para o novo formulário
+        if (this.elements.formSolicitarAlteracaoPonto) {
+            this.elements.formSolicitarAlteracaoPonto.addEventListener('submit', (e) => this.enviarSolicitacaoAlteracaoMelhorada(e));
         }
     }
 
     initModal() {
-        // Verifica se o elemento modal existe
+        // Modal antigo (mantido para compatibilidade)
         if (!this.elements.modalAlteracao) {
             console.error('Elemento modal não encontrado');
             return;
         }
 
-        // Inicializa o modal apenas uma vez
         this.modal = new bootstrap.Modal(this.elements.modalAlteracao);
-
-        // Adiciona event delegation para os botões da tabela
         this.elements.tabelaPontos?.querySelector('tbody')?.addEventListener('click', (e) => this.handleTableClick(e));
+    }
+
+    initAlteracaoModal() {
+        // Novo modal de alteração
+        if (!this.elements.modalAlteracaoPonto) {
+            console.error('Elemento modalAlteracaoPonto não encontrado');
+            return;
+        }
+
+        this.alteracaoModal = new bootstrap.Modal(this.elements.modalAlteracaoPonto);
     }
 
     async carregarHistorico() {
@@ -76,9 +96,6 @@ class HistoricoPontos {
 
             this.renderizarHistorico(pontos);
 
-            // Inicializa o modal APÓS renderizar a tabela
-            this.initModal();
-
         } catch (erro) {
             console.error('Erro ao carregar histórico:', erro);
             exibirErro(erro.message || 'Erro ao carregar histórico de pontos');
@@ -92,8 +109,18 @@ class HistoricoPontos {
         if (!btn) return;
 
         const idRegistro = btn.dataset.id;
+        const row = btn.closest('tr');
+        const tipo = row.cells[2].textContent.trim();
+        const dataHora = row.cells[0].textContent.trim();
+
         if (idRegistro) {
-            this.abrirModalAlteracao(idRegistro);
+            // Usa o novo modal se disponível
+            if (this.alteracaoModal) {
+                this.abrirModalAlteracaoMelhorado(idRegistro, { tipo, data_hora: dataHora });
+            } else {
+                // Fallback para o modal antigo
+                this.abrirModalAlteracao(idRegistro);
+            }
         }
     }
 
@@ -131,28 +158,94 @@ class HistoricoPontos {
         if (this.elements.dataFim) this.elements.dataFim.value = '';
         this.carregarHistorico();
     }
-    // Adicione este novo método para formatar o tipo do ponto
-    formatarTipo(tipo) {
-        if (!tipo) return 'Não informado';
 
-        const tipos = {
-            'ENTRADA': { classe: 'info', texto: 'Entrada', icone: 'sign-in-alt' },
-            'SAIDA': { classe: 'secondary', texto: 'Saída', icone: 'sign-out-alt' },
-            'SAIDA_ALMOCO': { classe: 'primary', texto: 'Saída Almoço', icone: 'utensils' },
-            'RETORNO_ALMOCO': { classe: 'success', texto: 'Retorno Almoço', icone: 'utensils' }
-        };
+    // Métodos para o novo modal de alteração
+    abrirModalAlteracaoMelhorado(idRegistro, dadosPonto = {}) {
+        console.log('Abrindo modal melhorado para ID:', idRegistro, 'com dados:', dadosPonto);
 
-        const item = tipos[tipo.toUpperCase()] || { classe: 'light', texto: tipo, icone: 'clock' };
+        if (!this.alteracaoModal) {
+            console.error('Modal de alteração não inicializado');
+            return;
+        }
 
-        return `
-        <span class="badge bg-${item.classe}">
-            <i class="fas fa-${item.icone} me-1"></i>${item.texto}
-        </span>
-    `;
+        // Preenche os dados do ponto atual
+        if (this.elements.tipoAtual) {
+            this.elements.tipoAtual.textContent = dadosPonto.tipo || 'N/A';
+        }
+
+        if (this.elements.dataHoraAtual) {
+            this.elements.dataHoraAtual.textContent = dadosPonto.data_hora || 'N/A';
+        }
+
+        // Define o ID do registro no formulário
+        if (this.elements.formSolicitarAlteracaoPonto) {
+            this.elements.formSolicitarAlteracaoPonto.querySelector('#idRegistro').value = idRegistro;
+        }
+
+        this.alteracaoModal.show();
     }
 
+    async enviarSolicitacaoAlteracaoMelhorada(event) {
+        event.preventDefault();
+        const loading = new LoadingHelper();
+
+        try {
+            loading.show('Enviando solicitação...');
+            
+            const token = localStorage.getItem(this.authTokenKey);
+            if (!token) throw new Error('Sessão expirada. Por favor, faça login novamente.');
+
+            const formData = new FormData(this.elements.formSolicitarAlteracaoPonto);
+            const dados = {
+                id_registro: formData.get('idRegistro'),
+                novo_tipo: formData.get('novoTipo'),
+                nova_data_hora: formData.get('novoHorario'),
+                motivo: formData.get('motivoAlteracao')
+            };
+
+            // Validação básica no frontend
+            if (!dados.motivo || dados.motivo.length < 10) {
+                throw new Error('Por favor, forneça um motivo detalhado (mínimo 10 caracteres)');
+            }
+
+            const response = await fetch('/api/funcionarios/pedir-alteracao-ponto', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(dados)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Erro ao enviar solicitação');
+            }
+
+            const result = await response.json();
+            
+            ToastHelper.success('Solicitação enviada com sucesso!');
+            this.alteracaoModal.hide();
+            
+            // Disparar evento para atualização da interface
+            document.dispatchEvent(new CustomEvent('solicitacaoEnviada', {
+                detail: result.data
+            }));
+
+            // Recarrega o histórico
+            await this.carregarHistorico();
+
+        } catch (error) {
+            console.error('Erro na solicitação:', error);
+            ToastHelper.error(error.message);
+        } finally {
+            loading.hide();
+        }
+    }
+
+    // Mantém os métodos antigos para compatibilidade
     abrirModalAlteracao(idRegistro) {
-        console.log('Abrindo modal para ID:', idRegistro);
+        console.log('Abrindo modal antigo para ID:', idRegistro);
 
         if (!this.modal) {
             console.log('Modal não inicializado, tentando inicializar...');
@@ -208,7 +301,26 @@ class HistoricoPontos {
         }
     }
 
-    // Métodos utilitários
+    // Métodos utilitários (mantidos da versão original)
+    formatarTipo(tipo) {
+        if (!tipo) return 'Não informado';
+
+        const tipos = {
+            'ENTRADA': { classe: 'info', texto: 'Entrada', icone: 'sign-in-alt' },
+            'SAIDA': { classe: 'secondary', texto: 'Saída', icone: 'sign-out-alt' },
+            'SAIDA_ALMOCO': { classe: 'primary', texto: 'Saída Almoço', icone: 'utensils' },
+            'RETORNO_ALMOCO': { classe: 'success', texto: 'Retorno Almoço', icone: 'utensils' }
+        };
+
+        const item = tipos[tipo.toUpperCase()] || { classe: 'light', texto: tipo, icone: 'clock' };
+
+        return `
+        <span class="badge bg-${item.classe}">
+            <i class="fas fa-${item.icone} me-1"></i>${item.texto}
+        </span>
+    `;
+    }
+
     async buscarDados(url, token) {
         try {
             const resposta = await fetch(url, {
@@ -285,37 +397,86 @@ class HistoricoPontos {
     }
 }
 
-// Funções utilitárias globais
-function mostrarLoading() {
-    const loadingElement = document.getElementById('loading-overlay');
-    if (loadingElement) loadingElement.style.display = 'flex';
-}
+// Classes auxiliares (novas)
+class LoadingHelper {
+    constructor() {
+        this.loadingElement = document.getElementById('loadingOverlay') || document.getElementById('loading-overlay');
+    }
 
-function esconderLoading() {
-    const loadingElement = document.getElementById('loading-overlay');
-    if (loadingElement) loadingElement.style.display = 'none';
-}
+    show(message = '') {
+        if (this.loadingElement) {
+            this.loadingElement.style.display = 'flex';
+            if (message && this.loadingElement.querySelector('.loading-message')) {
+                this.loadingElement.querySelector('.loading-message').textContent = message;
+            }
+        }
+    }
 
-function exibirErro(mensagem) {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({ icon: 'error', title: 'Erro', text: mensagem });
-    } else {
-        const errorDiv = document.getElementById('error-message');
-        if (errorDiv) {
-            errorDiv.style.display = 'block';
-            errorDiv.innerText = mensagem;
-            setTimeout(() => errorDiv.style.display = 'none', 5000);
+    hide() {
+        if (this.loadingElement) {
+            this.loadingElement.style.display = 'none';
         }
     }
 }
 
-function exibirSucesso(mensagem) {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({ icon: 'success', title: 'Sucesso', text: mensagem });
-    } else {
-        alert(mensagem);
+class ToastHelper {
+    static success(message) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'success', title: 'Sucesso', text: message });
+        } else if (typeof Toastify !== 'undefined') {
+            Toastify({
+                text: message,
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+                stopOnFocus: true
+            }).showToast();
+        } else {
+            alert(message);
+        }
+    }
+
+    static error(message) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'error', title: 'Erro', text: message });
+        } else if (typeof Toastify !== 'undefined') {
+            Toastify({
+                text: message,
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
+                stopOnFocus: true
+            }).showToast();
+        } else {
+            alert(message);
+        }
     }
 }
+
+// Funções utilitárias globais (mantidas para compatibilidade)
+function mostrarLoading() {
+    const loadingElement = document.getElementById('loading-overlay') || document.getElementById('loadingOverlay');
+    if (loadingElement) loadingElement.style.display = 'flex';
+}
+
+function esconderLoading() {
+    const loadingElement = document.getElementById('loading-overlay') || document.getElementById('loadingOverlay');
+    if (loadingElement) loadingElement.style.display = 'none';
+}
+
+function exibirErro(mensagem) {
+    ToastHelper.error(mensagem);
+}
+
+function exibirSucesso(mensagem) {
+    ToastHelper.success(mensagem);
+}
+
+// Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         mostrarLoading();
