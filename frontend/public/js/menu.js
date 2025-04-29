@@ -7,13 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const menu = document.getElementById('menu');
     let menuItems = '';
-
     switch (userData.nivel) {
         case 'ADMIN':
             menuItems = `
                 <a href="dashboard_admin.html"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
                 <a href="cadastrar_funcionarios.html"><i class="fas fa-users"></i><span>Funcionários</span></a>
                 <a href="gerenciar_pontos.html"><i class="fas fa-clock"></i><span>Registros de Ponto</span></a>
+                <a href="solicitacoes-alteracao-ponto.html" class="d-flex align-items-center"><i class="fas fa-calendar-edit fa-lg mr-2"></i><span>Solicitações de Alteração de Ponto</span></a>
                 <a href="pagina_suporte_usuarios.html" class="d-flex align-items-center"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Central de Suporte</span></a>
 
             `;

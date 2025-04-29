@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atender Chamados</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- FontAwesome para ícones (opcional) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f1f1f1;
+        }
+
+        .modal-header {
+            background-color: #007bff;
+            color: white;
+            border-bottom: 2px solid #0056b3;
+        }
+
+        .modal-header .btn-close {
+            color: white;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+        }
+
+        .modal-body {
+            font-size: 1.1rem;
+        }
+
+        .badge-custom {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .status-aberto {
+            background-color: #ffc107;
+            color: white;
+        }
+
+        .status-em-andamento {
+            background-color: #ff8000;
+            color: white;
+        }
+
+        .status-resolvido {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .status-fechado {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-custom {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .photo-container img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .btn-link {
+            font-size: 1.1rem;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2>Lista de Chamados</h2>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Assunto</th>
+                <th>Categoria</th>
+                <th>Prioridade</th>
+                <th>Status</th>
+                <th>Empresa</th>
+                <th>Usuário</th>
+                <th>Detalhes</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Exemplo de Chamados -->
+            <tr>
+                <td>1</td>
+                <td>Problema com Login</td>
+                <td>Técnico</td>
+                <td>Alta</td>
+                <td><span class="badge badge-custom status-aberto">Aberto</span></td>
+                <td>Empresa A</td>
+                <td>João Silva</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal" onclick="carregarDetalhes(1)">
+                        Ver Detalhes
+                    </button>
+                </td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Erro no Sistema</td>
+                <td>Erro</td>
+                <td>Crítica</td>
+                <td><span class="badge badge-custom status-em-andamento">Em Andamento</span></td>
+                <td>Empresa B</td>
+                <td>Ana Souza</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal" onclick="carregarDetalhes(2)">
+                        Ver Detalhes
+                    </button>
+                </td>
+            </tr>
+            <!-- Fim do exemplo -->
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="chamadoModal" tabindex="-1" aria-labelledby="chamadoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chamadoModalLabel">Detalhes do Chamado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Detalhes do Chamado -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p><strong>Assunto:</strong> <span id="modalAssunto">Problema com Login</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Categoria:</strong> <span id="modalCategoria">Técnico</span></p>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p><strong>Prioridade:</strong> <span id="modalPrioridade">Alta</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Status:</strong> <span id="modalStatus" class="badge status-aberto">Aberto</span></p>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p><strong>Empresa:</strong> <span id="modalEmpresa">Empresa A</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Usuário:</strong> <span id="modalUsuario">João Silva</span></p>
+                    </div>
+                </div>
+
+                <p><strong>Descrição:</strong></p>
+                <p id="modalDescricao">O usuário não consegue acessar a plataforma desde ontem, apresenta erro de login.</p>
+                
+                <!-- Foto do Chamado -->
+                <p><strong>Foto:</strong></p>
+                <div class="photo-container">
+                    <img id="modalFoto" src="https://via.placeholder.com/600x400" alt="Foto do Chamado">
+                </div> 
+
+                <p><strong>Anexo:</strong> <a href="#" class="btn-link" target="_blank">Clique aqui para ver o anexo</a></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="atualizarStatusChamado()">Alterar Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS (necessário para o funcionamento do modal) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Função para carregar os detalhes do chamado no modal
+    function carregarDetalhes(idChamado) {
+        // Dados do chamado simulados (normalmente viria do backend)
+        const chamados = [
+            {
+                id: 1,
+                assunto: 'Problema com Login',
+                categoria: 'Técnico',
+                prioridade: 'Alta',
+                status: 'Aberto',
+                descricao: 'O usuário não consegue acessar a plataforma desde ontem, apresenta erro de login.',
+                fotoUrl: 'https://via.placeholder.com/600x400',
+                empresa: 'Empresa A',
+                usuario: 'João Silva'
+            },
+            {
+                id: 2,
+                assunto: 'Erro no Sistema',
+                categoria: 'Erro',
+                prioridade: 'Crítica',
+                status: 'Em andamento',
+                descricao: 'Erro crítico no sistema, causando travamentos constantes.',
+                fotoUrl: 'https://via.placeholder.com/600x400',
+                empresa: 'Empresa B',
+                usuario: 'Ana Souza'
+            }
+        ];
+
+        const chamado = chamados.find(ch => ch.id === idChamado);
+
+        // Preenche os campos do modal com os dados do chamado
+        document.getElementById('modalAssunto').textContent = chamado.assunto;
+        document.getElementById('modalCategoria').textContent = chamado.categoria;
+        document.getElementById('modalPrioridade').textContent = chamado.prioridade;
+        document.getElementById('modalStatus').textContent = chamado.status;
+        document.getElementById('modalDescricao').textContent = chamado.descricao;
+        document.getElementById('modalFoto').src = chamado.fotoUrl;
+        document.getElementById('modalEmpresa').textContent = chamado.empresa;
+        document.getElementById('modalUsuario').textContent = chamado.usuario;
+    }
+
+    // Função para alterar o status do chamado
+    function atualizarStatusChamado() {
+        alert("Status do chamado alterado com sucesso!");
+        // Aqui, você pode implementar a lógica para atualizar o status no backend
+    }
+</script>
+
+</body>
+</html>
