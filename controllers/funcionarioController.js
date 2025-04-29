@@ -106,88 +106,64 @@ class FuncionarioController {
   }
 
   /**
-   * Solicita alteração em um registro de ponto
-   * @param {Object} req - Request object
-   * @param {Object} res - Response object
-   * @param {Function} next - Next middleware
+   * @api {post} /funcionario/solicitar-alteracao-ponto Solicitar Alteração de Ponto
+   * @apiName SolicitarAlteracaoPonto
+   * @apiGroup Funcionario
+   * 
+   * @apiBody {Number} id_registro ID do registro de ponto
+   * @apiBody {String} motivo Motivo da alteração
+   * @apiBody {String} [novo_tipo] Novo tipo de ponto (opcional)
+   * @apiBody {String} [nova_data_hora] Nova data/hora (opcional)
    */
   static async solicitarAlteracaoPonto(req, res, next) {
-    const transaction = await db.beginTransaction();
     try {
-        console.log('[PontoController] Iniciando solicitação de alteração', {
-            usuario: req.usuario.id,
-            body: req.body
-        });
+      // Validação básica
+      if (!req.body.id_registro || !req.body.motivo) {
+        throw new AppError('ID do registro e motivo são obrigatórios', 400);
+      }
 
-        // Validação robusta dos dados de entrada
-        const { id_registro, motivo, novo_tipo, nova_data_hora } = req.body;
-        
-        if (!id_registro || !motivo) {
-            throw new AppError('Campos obrigatórios não informados: id_registro e motivo são necessários', 400);
-        }
+      // Verifica se o usuário é funcionário
+      if (req.usuario.nivel !== 'FUNCIONARIO') {
+        throw new AppError('Apenas funcionários podem solicitar alterações', 403);
+      }
 
-        if (req.usuario.nivel !== 'FUNCIONARIO') {
-            throw new AppError('Apenas funcionários podem solicitar alterações de ponto', 403);
-        }
+      // Processa a solicitação
+      const resultado = await FuncionarioService.solicitarAlteracaoPonto(
+        req.usuario.id,
+        req.body.id_registro,
+        req.body.motivo,
+        req.body.novo_tipo,
+        req.body.nova_data_hora
+      );
 
-        // Converter e validar ID
-        const idRegistroPonto = parseInt(id_registro);
-        if (isNaN(idRegistroPonto)) {
-            throw new AppError('ID do registro deve ser um número válido', 400);
-        }
-
-        // Validar motivo (tamanho mínimo e máximo)
-        if (motivo.length < 10 || motivo.length > 500) {
-            throw new AppError('O motivo deve ter entre 10 e 500 caracteres', 400);
-        }
-
-        // Validar data/hora se fornecida
-        let dataHoraValidada = null;
-        if (nova_data_hora) {
-            dataHoraValidada = new Date(nova_data_hora);
-            if (isNaN(dataHoraValidada.getTime())) {
-                throw new AppError('Formato de data/hora inválido', 400);
-            }
-        }
-
-        // Obter funcionário com verificação de existência
-        const funcionario = await FuncionarioService.obterFuncionarioPorUsuario(req.usuario.id, transaction);
-        if (!funcionario) {
-            throw new AppError('Funcionário não encontrado', 404);
-        }
-
-        // Processar solicitação
-        const resultado = await FuncionarioService.solicitarAlteracaoPonto(
-            funcionario.id,
-            idRegistroPonto,
-            motivo,
-            novo_tipo || null,
-            dataHoraValidada || null,
-            transaction
-        );
-
-        await db.commitTransaction(transaction);
-
-        console.log('[PontoController] Solicitação processada com sucesso', {
-            solicitacaoId: resultado.id
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: 'Solicitação de alteração registrada com sucesso',
-            data: resultado
-        });
-
+      res.status(201).json({
+        success: true,
+        data: resultado
+      });
     } catch (error) {
-        await db.rollbackTransaction(transaction);
-        console.error('[PontoController] Erro na solicitação:', {
-            error: error.message,
-            stack: error.stack,
-            body: req.body
-        });
-        next(error);
+      next(error);
     }
-}
+  }
+
+  /**
+   * @api {get} /funcionario/solicitacoes-alteracao Listar Solicitações de Alteração
+   * @apiName ListarSolicitacoesAlteracao
+   * @apiGroup Funcionario
+   */
+  static async listarSolicitacoesAlteracao(req, res, next) {
+    try {
+      const solicitacoes = await FuncionarioService.listarSolicitacoesAlteracao(
+        req.usuario.id
+      );
+
+      res.json({
+        success: true,
+        data: solicitacoes
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 
   /**
    * @api {get} /funcionario/pontos/:id Detalhes do Ponto

@@ -47,142 +47,144 @@ class FuncionarioService {
    * @returns {Promise<Object>} Dados da solicitação criada
    * @throws {AppError} Em caso de erro na solicitação
    */
-  static async solicitarAlteracaoPonto(
-    idFuncionario,
-    idRegistroPonto,
-    motivo,
-    novoTipo = null,
-    novaDataHora = null,
-    transaction = null
-  ) {
-    const connection = transaction || await db.getConnection();
-
-    try {
-      console.log('[PontoService] Iniciando processo de alteração', {
-        funcionario: idFuncionario,
-        registro: idRegistroPonto,
-        tipoAlteracao: novoTipo ? 'Correcao' : 'Justificativa'
-      });
-
-      // 1. Verificar integridade do registro de ponto
-      const ponto = await this.verificarPontoDoFuncionario(idRegistroPonto, idFuncionario, connection);
-
-      // 2. Verificar se já existe solicitação pendente
-      const solicitacaoExistente = await this.verificarSolicitacaoPendente(idRegistroPonto, connection);
-      if (solicitacaoExistente) {
-        throw new AppError('Já existe uma solicitação pendente para este registro', 400);
-      }
-
-      // 3. Obter admin responsável
-      const adminResponsavel = await this.obterAdminResponsavel(idFuncionario, connection);
-      if (!adminResponsavel) {
-        throw new AppError('Nenhum administrador disponível para aprovar esta solicitação', 404);
-      }
-
-      // 4. Determinar tipo de solicitação
-      const tipoSolicitacao = novoTipo || novaDataHora ? 'Correcao' : 'Justificativa';
-
-      // 5. Criar solicitação no banco de dados
-      const solicitacao = await this.criarSolicitacao(
-        idRegistroPonto,
-        idFuncionario,
-        tipoSolicitacao,
-        motivo,
-        adminResponsavel.id,
-        connection
-      );
-
-      // 6. Atualizar status do ponto
-      await this.atualizarStatusPonto(idRegistroPonto, 'Em Revisão', connection);
-
-      // 7. Registrar log de auditoria
-      await this.registrarLogAuditoria(
-        idFuncionario,
-        'Solicitação de Alteração',
-        `Solicitação ID ${solicitacao.id} para o ponto ${idRegistroPonto}`,
-        connection
-      );
-
-      if (!transaction) {
-        await connection.commit();
-      }
-
-      console.log('[PontoService] Solicitação criada com sucesso', {
-        solicitacaoId: solicitacao.id
-      });
-
-      return solicitacao;
-
-    } catch (error) {
-      if (!transaction) {
-        await connection.rollback();
-      }
-      console.error('[PontoService] Erro no processo:', {
-        error: error.message,
-        stack: error.stack
-      });
-      throw error;
-    } finally {
-      if (!transaction) {
-        connection.release();
-      }
+ /**
+   * Solicita alteração em um registro de ponto
+   * @param {number} idUsuario - ID do usuário funcionário
+   * @param {number} idRegistroPonto - ID do registro de ponto
+   * @param {string} motivo - Motivo da alteração
+   * @param {string|null} novoTipo - Novo tipo de ponto (opcional)
+   * @param {string|null} novaDataHora - Nova data/hora (opcional)
+   * @returns {Promise<Object>} Dados da solicitação criada
+   */
+ static async solicitarAlteracaoPonto(idUsuario, idRegistroPonto, motivo, novoTipo = null, novaDataHora = null) {
+  return await db.transaction(async (connection) => {
+    // 1. Obter funcionário
+    const funcionario = await this.obterFuncionarioPorUsuario(idUsuario);
+    if (!funcionario) {
+      throw new AppError('Funcionário não encontrado', 404);
     }
-  }
 
-  // Métodos auxiliares do Service
-  static async verificarSolicitacaoPendente(idRegistroPonto, connection) {
+    // 2. Verificar se o ponto pertence ao funcionário
+    const ponto = await this.verificarPontoDoFuncionario(idRegistroPonto, funcionario.id);
+    
+    // 3. Verificar se já existe solicitação pendente
     const [solicitacoes] = await connection.query(
       `SELECT id FROM SOLICITACAO_ALTERACAO 
-         WHERE id_registro = ? AND status = 'Pendente' LIMIT 1`,
+       WHERE id_registro = ? AND status = 'Pendente' LIMIT 1`,
       [idRegistroPonto]
     );
-    return solicitacoes.length > 0 ? solicitacoes[0] : null;
-  }
 
-  static async obterAdminResponsavel(idFuncionario, connection) {
+    if (solicitacoes.length > 0) {
+      throw new AppError('Já existe uma solicitação pendente para este ponto', 400);
+    }
+
+    // 4. Obter admin responsável
     const [admins] = await connection.query(
       `SELECT a.id 
-         FROM ADMIN a
-         JOIN FUNCIONARIO f ON a.id_empresa = f.id_empresa
-         WHERE f.id = ? LIMIT 1`,
-      [idFuncionario]
+       FROM ADMIN a
+       JOIN FUNCIONARIO f ON a.id_empresa = f.id_empresa
+       WHERE f.id = ? LIMIT 1`,
+      [funcionario.id]
     );
-    return admins.length > 0 ? admins[0] : null;
-  }
 
-  static async criarSolicitacao(idRegistro, idFuncionario, tipo, motivo, idAdmin, connection) {
-    const [result] = await connection.query(
+    if (admins.length === 0) {
+      throw new AppError('Nenhum administrador encontrado para aprovar esta solicitação', 404);
+    }
+
+    const idAdmin = admins[0].id;
+    const tipoSolicitacao = novoTipo || novaDataHora ? 'Correcao' : 'Justificativa';
+
+    // 5. Criar solicitação
+    const [result] = await connection.execute(
       `INSERT INTO SOLICITACAO_ALTERACAO 
-         (id_registro, id_funcionario, tipo_solicitacao, motivo, id_admin_responsavel)
-         VALUES (?, ?, ?, ?, ?)`,
-      [idRegistro, idFuncionario, tipo, motivo, idAdmin]
+       (id_registro, id_funcionario, tipo_solicitacao, motivo, id_admin_responsavel)
+       VALUES (?, ?, ?, ?, ?)`,
+      [idRegistroPonto, funcionario.id, tipoSolicitacao, motivo, idAdmin]
     );
 
+    // 6. Atualizar status do ponto
+    await connection.execute(
+      `UPDATE REGISTRO_PONTO 
+       SET status = 'Em Revisão'
+       WHERE id = ?`,
+      [idRegistroPonto]
+    );
+
+    // 7. Registrar log
+    await connection.execute(
+      `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
+       VALUES (?, ?, ?)`,
+      [idUsuario, 'Solicitação de Alteração', `Solicitação ID ${result.insertId} para o ponto ${idRegistroPonto}`]
+    );
+
+    // Retorna os dados da solicitação
     const [solicitacao] = await connection.query(
-      `SELECT * FROM SOLICITACAO_ALTERACAO WHERE id = ? LIMIT 1`,
+      `SELECT * FROM SOLICITACAO_ALTERACAO WHERE id = ?`,
       [result.insertId]
     );
 
     return solicitacao[0];
-  }
+  });
+}
 
-  static async atualizarStatusPonto(idRegistro, status, connection) {
-    await connection.query(
-      `UPDATE REGISTRO_PONTO 
-         SET status = ?
-         WHERE id = ?`,
-      [status, idRegistro]
+/**
+ * Lista as solicitações de alteração de um funcionário
+ * @param {number} idUsuario - ID do usuário funcionário
+ * @returns {Promise<Array>} Lista de solicitações
+ */
+static async listarSolicitacoesAlteracao(idUsuario) {
+  try {
+    const funcionario = await this.obterFuncionarioPorUsuario(idUsuario);
+    if (!funcionario) {
+      throw new AppError('Funcionário não encontrado', 404);
+    }
+
+    const [solicitacoes] = await db.query(
+      `SELECT 
+         sa.id,
+         sa.tipo_solicitacao,
+         sa.motivo,
+         sa.data_solicitacao,
+         sa.status,
+         rp.tipo AS tipo_ponto,
+         rp.data_hora AS data_ponto,
+         a.nome AS admin_responsavel
+       FROM SOLICITACAO_ALTERACAO sa
+       JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
+       LEFT JOIN ADMIN adm ON sa.id_admin_responsavel = adm.id
+       LEFT JOIN USUARIO a ON adm.id_usuario = a.id
+       WHERE sa.id_funcionario = ?
+       ORDER BY sa.data_solicitacao DESC`,
+      [funcionario.id]
     );
+
+    return solicitacoes;
+  } catch (error) {
+    console.error('Erro ao listar solicitações de alteração:', error);
+    throw new AppError('Erro ao listar solicitações de alteração', 500);
+  }
+}
+
+/**
+ * Verifica se um ponto pertence a um funcionário
+ * @param {number} idRegistroPonto - ID do registro de ponto
+ * @param {number} idFuncionario - ID do funcionário
+ * @returns {Promise<Object>} Dados do registro de ponto
+ */
+static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
+  const [pontos] = await db.query(
+    `SELECT id, tipo, data_hora, status
+     FROM REGISTRO_PONTO 
+     WHERE id = ? AND id_funcionario = ? LIMIT 1`,
+    [idRegistroPonto, idFuncionario]
+  );
+
+  if (!pontos || pontos.length === 0) {
+    throw new AppError('Ponto não encontrado ou não pertence ao funcionário', 404);
   }
 
-  static async registrarLogAuditoria(idUsuario, acao, detalhe, connection) {
-    await connection.query(
-      `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
-         VALUES (?, ?, ?)`,
-      [idUsuario, acao, detalhe]
-    );
-  }
-
+  return pontos[0];
+}
   /**
    * Obtém um funcionário pelo ID do usuário
    * @param {number} idUsuario - ID do usuário
@@ -191,11 +193,10 @@ class FuncionarioService {
    */
   static async obterFuncionarioPorUsuario(idUsuario) {
     try {
-      console.log('[SERVICE] Buscando funcionário para usuário:', idUsuario);
-
-      // Usar db.execute() em vez de db.query() para maior consistência
-      const [rows] = await db.execute(
-        `SELECT 
+        console.log('[SERVICE] Buscando funcionário para usuário:', idUsuario);
+        
+        const [results] = await db.execute(
+            `SELECT 
                 f.id, 
                 f.id_empresa, 
                 f.registro_emp, 
@@ -206,61 +207,28 @@ class FuncionarioService {
              FROM FUNCIONARIO f
              JOIN EMPRESA e ON f.id_empresa = e.id
              WHERE f.id_usuario = ? LIMIT 1`,
-        [idUsuario]
-      );
+            [idUsuario]
+        );
 
-      console.log('[SERVICE] Resultado bruto da query:', rows);
+        console.log('[SERVICE] Resultado bruto da query:', results);
 
-      if (!rows || rows.length === 0) {
-        console.error('[SERVICE] Nenhum funcionário encontrado para usuário:', idUsuario);
-        throw new AppError('Funcionário não encontrado', 404);
-      }
+        if (!results || results.length === 0) {
+            console.error('[SERVICE] Nenhum funcionário encontrado para usuário:', idUsuario);
+            throw new AppError('Funcionário não encontrado', 404);
+        }
 
-      const funcionario = rows[0];
-      console.log('[SERVICE] Funcionário formatado:', funcionario);
-
-      return funcionario;
+        const funcionario = results[0];
+        console.log('[SERVICE] Funcionário formatado:', funcionario);
+        
+        return funcionario;
     } catch (error) {
-      console.error('[SERVICE] Erro ao buscar funcionário:', {
-        error: error.message,
-        stack: error.stack
-      });
-      throw error;
+        console.error('[SERVICE] Erro ao buscar funcionário:', {
+            error: error.message,
+            stack: error.stack
+        });
+        throw error;
     }
-  }
-  /**
-     * Verifica se um ponto pertence a um funcionário
-     * @param {number} idRegistroPonto - ID do registro de ponto
-     * @param {number} idFuncionario - ID do funcionário
-     * @returns {Promise<Object>} Dados do registro de ponto
-     * @throws {AppError} Se o ponto não for encontrado ou não pertencer ao funcionário
-     */
-  static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
-    try {
-      console.log('[SERVICE] Verificando ponto:', { idRegistroPonto, idFuncionario });
-
-      const [pontos] = await db.query(
-        `SELECT 
-                  id, 
-                  tipo, 
-                  data_hora,
-                  status
-              FROM REGISTRO_PONTO 
-              WHERE id = ? AND id_funcionario = ? LIMIT 1`,
-        [idRegistroPonto, idFuncionario]
-      );
-
-      if (!pontos || pontos.length === 0) {
-        console.error('[SERVICE] Ponto não encontrado ou não pertence ao funcionário');
-        throw new AppError('Ponto não encontrado ou não pertence ao funcionário', 404);
-      }
-
-      return pontos[0];
-    } catch (error) {
-      console.error('[SERVICE] Erro ao verificar ponto:', error);
-      throw error instanceof AppError ? error : new AppError('Erro ao verificar ponto', 500);
-    }
-  }
+}
 
 
   static async registrarPonto(idUsuario, dados) {

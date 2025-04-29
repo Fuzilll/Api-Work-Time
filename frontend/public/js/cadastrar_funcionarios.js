@@ -12,6 +12,7 @@ class FuncionarioCadastro {
 
         this.init();
     }
+
     init() {
         if (!this.form) {
             console.error('Formulário não encontrado no DOM');
@@ -84,7 +85,6 @@ class FuncionarioCadastro {
         `).join('');
     }
 
-
     coletarHorarios() {
         const dias = [
             { nome: 'segunda', label: 'Segunda' },
@@ -100,12 +100,27 @@ class FuncionarioCadastro {
             const intervaloInicioEl = document.querySelector(`.intervalo-inicio-${nome}`);
             const intervaloFimEl = document.querySelector(`.intervalo-fim-${nome}`);
 
+            // Validar se todos os campos de horário estão preenchidos
+            if (!entradaEl.value || !saidaEl.value || !intervaloInicioEl.value || !intervaloFimEl.value) {
+                throw new Error(`Preencha todos os horários para ${label}`);
+            }
+
+            // Validar se a hora de saída é depois da hora de entrada
+            if (saidaEl.value <= entradaEl.value) {
+                throw new Error(`A hora de saída deve ser após a hora de entrada para ${label}`);
+            }
+
+            // Validar se o intervalo está dentro do horário de trabalho
+            if (intervaloInicioEl.value < entradaEl.value || intervaloFimEl.value > saidaEl.value) {
+                throw new Error(`O intervalo deve estar dentro do horário de trabalho para ${label}`);
+            }
+
             return {
                 dia_semana: label,
-                hora_entrada: entradaEl.value,
-                hora_saida: saidaEl.value,
-                intervalo_inicio: intervaloInicioEl.value,
-                intervalo_fim: intervaloFimEl.value
+                hora_entrada: entradaEl.value + ':00', // Garantir formato HH:MM:SS
+                hora_saida: saidaEl.value + ':00',
+                intervalo_inicio: intervaloInicioEl.value + ':00',
+                intervalo_fim: intervaloFimEl.value + ':00'
             };
         });
     }
@@ -121,12 +136,29 @@ class FuncionarioCadastro {
 
             // 2. Adicionar horários se checkbox estiver marcado
             const dadosEnvio = { ...funcionario };
-            if (this.definirHorarioCheckbox?.checked && this.horariosPersonalizados) {
-                dadosEnvio.horarios = this.horariosPersonalizados;
+            
+            // Converter data para formato ISO
+            if (dadosEnvio.data_admissao) {
+                dadosEnvio.data_admissao = new Date(dadosEnvio.data_admissao).toISOString();
+            }
+
+            if (this.definirHorarioCheckbox?.checked) {
+                try {
+                    this.coletarHorarios();
+                    dadosEnvio.horarios = this.horariosPersonalizados;
+                } catch (error) {
+                    this.mostrarErros([error.message]);
+                    return;
+                }
             }
 
             // 3. Enviar para o servidor
             const resultadoFuncionario = await this.salvarFuncionario(dadosEnvio);
+
+            // 4. Se houver horários e o cadastro do funcionário foi bem-sucedido
+            if (this.definirHorarioCheckbox?.checked && this.horariosPersonalizados && resultadoFuncionario.id) {
+                await this.cadastrarHorarios(resultadoFuncionario.id);
+            }
 
             this.mostrarMensagemSucesso(resultadoFuncionario);
             this.resetarFormulario();
@@ -138,7 +170,6 @@ class FuncionarioCadastro {
             this.mostrarLoading(false);
         }
     }
-
 
     obterDadosFormulario() {
         const getValue = (id) => {
@@ -152,7 +183,7 @@ class FuncionarioCadastro {
             nome: getValue("nome"),
             email: getValue("email"),
             senha: getValue("senha"),
-            cpf: getValue("cpf"),
+            cpf: getValue("cpf") ? getValue("cpf").replace(/\D/g, '') : null, // Remover formatação do CPF
             registro_emp: getValue("registro_emp"),
             funcao: getValue("funcao"),
             data_admissao: getValue("data_admissao"),
@@ -169,7 +200,7 @@ class FuncionarioCadastro {
             erros.push("O nome deve ter pelo menos 2 caracteres");
         }
 
-        if (!funcionario.email || !funcionario.email.includes('@')) {
+        if (!funcionario.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(funcionario.email)) {
             erros.push("E-mail inválido");
         }
 
@@ -189,8 +220,8 @@ class FuncionarioCadastro {
             erros.push("Função é obrigatória");
         }
 
-        if (!funcionario.data_admissao) {
-            erros.push("Data de admissão é obrigatória");
+        if (!funcionario.data_admissao || isNaN(new Date(funcionario.data_admissao).getTime())) {
+            erros.push("Data de admissão é obrigatória e deve ser válida");
         }
 
         if (!funcionario.departamento) {
@@ -214,21 +245,6 @@ class FuncionarioCadastro {
     }
 
     async salvarFuncionario(funcionario) {
-        // Verificar campos obrigatórios
-        const camposObrigatorios = ['nome', 'email', 'senha', 'cpf', 'registro_emp',
-            'funcao', 'data_admissao', 'tipo_contrato'];
-
-        const faltantes = camposObrigatorios.filter(campo => !funcionario[campo]);
-
-        if (faltantes.length > 0) {
-            throw new Error(`Preencha todos os campos obrigatórios: ${faltantes.join(', ')}`);
-        }
-
-        // Converter salário para número
-        if (funcionario.salario_base) {
-            funcionario.salario_base = parseFloat(funcionario.salario_base);
-        }
-
         const token = localStorage.getItem('authToken');
         if (!token) {
             throw new Error('Usuário não autenticado');
@@ -244,15 +260,61 @@ class FuncionarioCadastro {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || `Erro ${response.status}: ${response.statusText}`);
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                throw new Error(`Erro ${response.status}: ${response.statusText}`);
+            }
+            
+            // Tratamento modificado para diferentes formatos de erro
+            if (response.status === 422) {
+                let errorMessage = 'Erro de validação';
+                
+                if (errorData.errors) {
+                    // Formato 1: { errors: { campo: ["mensagem1", "mensagem2"] } }
+                    if (typeof errorData.errors === 'object' && !Array.isArray(errorData.errors)) {
+                        const validationErrors = Object.entries(errorData.errors)
+                            .map(([field, messages]) => {
+                                // Verifica se messages é um array
+                                if (Array.isArray(messages)) {
+                                    return `${field}: ${messages.join(', ')}`;
+                                }
+                                // Se não for array, converte para string
+                                return `${field}: ${String(messages)}`;
+                            });
+                        errorMessage = `Erros de validação:\n${validationErrors.join('\n')}`;
+                    } 
+                    // Formato 2: { errors: ["mensagem1", "mensagem2"] }
+                    else if (Array.isArray(errorData.errors)) {
+                        errorMessage = `Erros de validação:\n${errorData.errors.join('\n')}`;
+                    }
+                    // Formato 3: { errors: "mensagem única" }
+                    else {
+                        errorMessage = String(errorData.errors);
+                    }
+                } 
+                // Formato 4: { message: "mensagem de erro" }
+                else if (errorData.message) {
+                    errorMessage = errorData.message;
+                }
+                
+                throw new Error(errorMessage);
+            }
+            
+            throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
         }
 
         return await response.json();
     }
+
     async cadastrarHorarios(idFuncionario) {
         if (!idFuncionario) {
             throw new Error('ID do funcionário não está definido');
+        }
+
+        if (!this.horariosPersonalizados || this.horariosPersonalizados.length === 0) {
+            throw new Error('Nenhum horário personalizado foi definido');
         }
 
         const token = localStorage.getItem('authToken');
@@ -306,14 +368,27 @@ class FuncionarioCadastro {
 
     handleProcessarFormularioError(error) {
         console.error("Erro no cadastro:", error);
-
+    
         let mensagem = 'Erro ao cadastrar funcionário';
-        if (error.message.includes('500')) {
+        
+        // Se for um erro de validação (422), mostra a mensagem diretamente
+        if (error.message.includes('Erros de validação') || error.message.includes('Erro de validação')) {
+            mensagem = error.message;
+        } 
+        else if (error.message.includes('500')) {
             mensagem = 'Erro interno no servidor. Verifique os dados e tente novamente.';
-        } else if (error.message) {
+        } 
+        else if (error.message.includes('Campos obrigatórios faltando')) {
+            const camposFaltando = error.message.split(':')[1]?.trim();
+            mensagem = `Preencha os seguintes campos obrigatórios: ${camposFaltando}`;
+        } 
+        else if (error.message.includes('horários')) {
+            mensagem = 'Erro no envio dos horários: verifique se todos os campos estão preenchidos corretamente.';
+        } 
+        else if (error.message) {
             mensagem = error.message;
         }
-
+    
         Swal.fire({
             title: 'Erro!',
             text: mensagem,

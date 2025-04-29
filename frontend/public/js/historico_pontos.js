@@ -1,29 +1,35 @@
 class HistoricoPontos {
     constructor() {
         this.authTokenKey = 'authToken';
+        this.elements = {};
         this.modal = null;
-        this.alteracaoModal = null; // Nova instância do modal de alteração
         this.initElements();
         this.setupEventListeners();
         this.initModal();
-        this.initAlteracaoModal(); // Inicializa o novo modal
+        this.checkAuthAndLoad();
     }
 
+    // Métodos de inicialização
     initElements() {
-        this.elements = {
-            tabelaPontos: document.getElementById('tabela-pontos'),
-            dataInicio: document.getElementById('data-inicio'),
-            dataFim: document.getElementById('data-fim'),
-            btnFiltrar: document.getElementById('btn-filtrar'),
-            btnLimpar: document.getElementById('btn-limpar'),
-            modalAlteracao: document.getElementById('modalAlteracao'),
-            formSolicitarAlteracao: document.getElementById('formSolicitarAlteracao'),
-            // Novos elementos para o modal melhorado
-            modalAlteracaoPonto: document.getElementById('modalAlteracaoPonto'),
-            formSolicitarAlteracaoPonto: document.getElementById('formSolicitarAlteracaoPonto'),
-            tipoAtual: document.getElementById('tipoAtual'),
-            dataHoraAtual: document.getElementById('dataHoraAtual')
-        };
+        const elementsConfig = [
+            { id: 'tabela-pontos', property: 'tabelaPontos' },
+            { id: 'data-inicio', property: 'dataInicio' },
+            { id: 'data-fim', property: 'dataFim' },
+            { id: 'btn-filtrar', property: 'btnFiltrar' },
+            { id: 'btn-limpar', property: 'btnLimpar' },
+            { id: 'modalAlteracao', property: 'modalAlteracao' },
+            { id: 'formSolicitarAlteracao', property: 'formSolicitarAlteracao' },
+            { id: 'idRegistro', property: 'idRegistro' },
+            { id: 'novoHorario', property: 'novoHorario' },
+            { id: 'motivoAlteracao', property: 'motivoAlteracao' }
+        ];
+
+        elementsConfig.forEach(({ id, property }) => {
+            this.elements[property] = document.getElementById(id);
+            if (!this.elements[property]) {
+                console.error(`[HISTORICO] Elemento com ID '${id}' não encontrado.`);
+            }
+        });
     }
 
     setupEventListeners() {
@@ -35,109 +41,174 @@ class HistoricoPontos {
             this.elements.btnLimpar.addEventListener('click', () => this.limparFiltros());
         }
 
-        // Mantém o listener do formulário antigo para compatibilidade
         if (this.elements.formSolicitarAlteracao) {
             this.elements.formSolicitarAlteracao.addEventListener('submit', (e) => this.enviarSolicitacaoAlteracao(e));
-        }
-
-        // Listener para o novo formulário
-        if (this.elements.formSolicitarAlteracaoPonto) {
-            this.elements.formSolicitarAlteracaoPonto.addEventListener('submit', (e) => this.enviarSolicitacaoAlteracaoMelhorada(e));
         }
     }
 
     initModal() {
-        // Modal antigo (mantido para compatibilidade)
         if (!this.elements.modalAlteracao) {
-            console.error('Elemento modal não encontrado');
+            console.error('[HISTORICO] Elemento modal não encontrado');
             return;
         }
 
         this.modal = new bootstrap.Modal(this.elements.modalAlteracao);
-        this.elements.tabelaPontos?.querySelector('tbody')?.addEventListener('click', (e) => this.handleTableClick(e));
+        
+        // Event delegation para os botões de alteração
+        this.elements.tabelaPontos?.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-alteracao');
+            if (btn) {
+                const idRegistro = btn.dataset.id;
+                if (idRegistro) {
+                    this.abrirModalAlteracao(idRegistro);
+                }
+            }
+        });
     }
 
-    initAlteracaoModal() {
-        // Novo modal de alteração
-        if (!this.elements.modalAlteracaoPonto) {
-            console.error('Elemento modalAlteracaoPonto não encontrado');
-            return;
+    // Métodos de autenticação (padrão do FuncionarioDashboard)
+    async checkAuthAndLoad() {
+        try {
+            await this.verifyAuthentication();
+            await this.carregarHistorico();
+        } catch (error) {
+            console.error('[HISTORICO] Erro de autenticação:', error);
+            this.showError(error.message);
+            this.redirectToLogin();
         }
-
-        this.alteracaoModal = new bootstrap.Modal(this.elements.modalAlteracaoPonto);
     }
 
+    async verifyAuthentication() {
+        const token = localStorage.getItem(this.authTokenKey);
+        if (!token) throw new Error('Token de autenticação não encontrado');
+
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.exp && Date.now() >= payload.exp * 1000) {
+                throw new Error('Token expirado');
+            }
+            return true;
+        } catch (e) {
+            console.error('[HISTORICO] Erro ao verificar token:', e);
+            throw new Error('Token inválido');
+        }
+    }
+
+    redirectToLogin() {
+        localStorage.removeItem(this.authTokenKey);
+        window.location.href = 'login.html';
+    }
+
+    // Métodos principais
     async carregarHistorico() {
         try {
-            mostrarLoading();
-
+            this.showLoading();
             const token = localStorage.getItem(this.authTokenKey);
             if (!token) throw new Error('Token de autenticação não encontrado');
 
             const params = new URLSearchParams();
-
-            if (this.elements.dataInicio.value) {
+            if (this.elements.dataInicio?.value) {
                 params.append('dataInicio', this.elements.dataInicio.value);
             }
-
-            if (this.elements.dataFim.value) {
+            if (this.elements.dataFim?.value) {
                 params.append('dataFim', this.elements.dataFim.value);
             }
 
-            const resposta = await this.buscarDados(`/api/funcionarios/historico-pontos?${params.toString()}`, token);
-            console.log('🔍 Resposta completa da API:', resposta);
+            const url = `/api/funcionarios/historico-pontos?${params.toString()}`;
+            console.log('[HISTORICO] Carregando dados de:', url);
 
-            if (!resposta || !resposta.success) {
-                throw new Error(resposta.message || 'Resposta inválida da API');
+            const response = await this.makeAuthenticatedRequest(url, 'GET', null, token);
+            const data = response.data ?? response;
+
+            if (!Array.isArray(data)) {
+                throw new Error('Resposta da API não contém array de pontos');
             }
 
-            const pontos = Array.isArray(resposta.data) ? resposta.data : [resposta.data];
-            console.log('📊 Pontos processados:', pontos);
+            this.renderizarHistorico(data);
 
-            this.renderizarHistorico(pontos);
-
-        } catch (erro) {
-            console.error('Erro ao carregar histórico:', erro);
-            exibirErro(erro.message || 'Erro ao carregar histórico de pontos');
-        } finally {
-            esconderLoading();
-        }
-    }
-
-    handleTableClick(event) {
-        const btn = event.target.closest('.btn-alteracao');
-        if (!btn) return;
-
-        const idRegistro = btn.dataset.id;
-        const row = btn.closest('tr');
-        const tipo = row.cells[2].textContent.trim();
-        const dataHora = row.cells[0].textContent.trim();
-
-        if (idRegistro) {
-            // Usa o novo modal se disponível
-            if (this.alteracaoModal) {
-                this.abrirModalAlteracaoMelhorado(idRegistro, { tipo, data_hora: dataHora });
+        } catch (error) {
+            console.error('[HISTORICO] Erro ao carregar:', error);
+            
+            // Tratamento especial para erros de JSON inválido
+            if (error.message.includes('Unexpected token') || error.message.includes('JSON')) {
+                this.showError('Erro no formato dos dados recebidos do servidor');
             } else {
-                // Fallback para o modal antigo
-                this.abrirModalAlteracao(idRegistro);
+                this.showError(error.message || 'Erro ao carregar histórico de pontos');
             }
+            
+            if (error.message.includes('autenticação') || error.message.includes('401')) {
+                this.redirectToLogin();
+            }
+        } finally {
+            this.hideLoading();
         }
     }
 
+    async makeAuthenticatedRequest(url, method = 'GET', body = null, token) {
+        try {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: body ? JSON.stringify(body) : null
+            };
+
+            const response = await fetch(url, options);
+            
+            // Verifica se a requisição foi redirecionada para login
+            if (response.redirected && response.url.includes('login')) {
+                throw new Error('Sessão expirada. Redirecionando para login...');
+            }
+
+            // Verifica o content-type mesmo para respostas de erro
+            const contentType = response.headers.get('content-type') || '';
+            
+            if (!contentType.includes('application/json')) {
+                // Se não for JSON, tenta ler como texto para dar uma mensagem melhor
+                const text = await response.text();
+                
+                if (text.startsWith('<!DOCTYPE html>')) {
+                    throw new Error('O servidor retornou uma página HTML inesperada');
+                }
+                
+                // Se for um texto simples (como mensagem de erro)
+                throw new Error(text || `Resposta inválida do servidor (${response.status})`);
+            }
+
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || `Erro HTTP ${response.status}`);
+            }
+
+            return data;
+        } catch (error) {
+            console.error(`[HISTORICO] Erro na requisição para ${url}:`, error);
+            
+            // Tratamento especial para erros de rede
+            if (error.message.includes('Failed to fetch')) {
+                throw new Error('Falha na conexão com o servidor');
+            }
+            
+            throw error;
+        }
+    }
+
+    // Métodos de renderização
     renderizarHistorico(pontos = []) {
         const tbody = this.elements.tabelaPontos?.querySelector('tbody');
         if (!tbody) return;
 
         tbody.innerHTML = '';
 
-        if (pontos.length === 0 || pontos[0] === null) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center">Nenhum registro encontrado</td></tr>';
+        if (pontos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhum registro encontrado</td></tr>';
             return;
         }
 
         pontos.forEach(ponto => {
-            if (!ponto) return;
-
             const row = tbody.insertRow();
             row.innerHTML = `
                 <td>${this.formatarDataHora(ponto.data_ponto || ponto.data_hora)}</td>
@@ -159,114 +230,32 @@ class HistoricoPontos {
         this.carregarHistorico();
     }
 
-    // Métodos para o novo modal de alteração
-    abrirModalAlteracaoMelhorado(idRegistro, dadosPonto = {}) {
-        console.log('Abrindo modal melhorado para ID:', idRegistro, 'com dados:', dadosPonto);
+    // Métodos de alteração de ponto
+    abrirModalAlteracao(idRegistro) {
+        console.log('[HISTORICO] Abrindo modal para ID:', idRegistro);
 
-        if (!this.alteracaoModal) {
-            console.error('Modal de alteração não inicializado');
+        if (!this.modal) {
+            console.error('[HISTORICO] Modal não inicializado');
             return;
         }
 
-        // Preenche os dados do ponto atual
-        if (this.elements.tipoAtual) {
-            this.elements.tipoAtual.textContent = dadosPonto.tipo || 'N/A';
+        if (this.elements.idRegistro) {
+            this.elements.idRegistro.value = idRegistro;
         }
+        
+        // Limpa os campos do formulário
+        if (this.elements.novoHorario) this.elements.novoHorario.value = '';
+        if (this.elements.motivoAlteracao) this.elements.motivoAlteracao.value = '';
 
-        if (this.elements.dataHoraAtual) {
-            this.elements.dataHoraAtual.textContent = dadosPonto.data_hora || 'N/A';
-        }
-
-        // Define o ID do registro no formulário
-        if (this.elements.formSolicitarAlteracaoPonto) {
-            this.elements.formSolicitarAlteracaoPonto.querySelector('#idRegistro').value = idRegistro;
-        }
-
-        this.alteracaoModal.show();
-    }
-
-    async enviarSolicitacaoAlteracaoMelhorada(event) {
-        event.preventDefault();
-        const loading = new LoadingHelper();
-
-        try {
-            loading.show('Enviando solicitação...');
-            
-            const token = localStorage.getItem(this.authTokenKey);
-            if (!token) throw new Error('Sessão expirada. Por favor, faça login novamente.');
-
-            const formData = new FormData(this.elements.formSolicitarAlteracaoPonto);
-            const dados = {
-                id_registro: formData.get('idRegistro'),
-                novo_tipo: formData.get('novoTipo'),
-                nova_data_hora: formData.get('novoHorario'),
-                motivo: formData.get('motivoAlteracao')
-            };
-
-            // Validação básica no frontend
-            if (!dados.motivo || dados.motivo.length < 10) {
-                throw new Error('Por favor, forneça um motivo detalhado (mínimo 10 caracteres)');
-            }
-
-            const response = await fetch('/api/funcionarios/pedir-alteracao-ponto', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(dados)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Erro ao enviar solicitação');
-            }
-
-            const result = await response.json();
-            
-            ToastHelper.success('Solicitação enviada com sucesso!');
-            this.alteracaoModal.hide();
-            
-            // Disparar evento para atualização da interface
-            document.dispatchEvent(new CustomEvent('solicitacaoEnviada', {
-                detail: result.data
-            }));
-
-            // Recarrega o histórico
-            await this.carregarHistorico();
-
-        } catch (error) {
-            console.error('Erro na solicitação:', error);
-            ToastHelper.error(error.message);
-        } finally {
-            loading.hide();
-        }
-    }
-
-    // Mantém os métodos antigos para compatibilidade
-    abrirModalAlteracao(idRegistro) {
-        console.log('Abrindo modal antigo para ID:', idRegistro);
-
-        if (!this.modal) {
-            console.log('Modal não inicializado, tentando inicializar...');
-            this.initModal();
-
-            if (!this.modal) {
-                console.error('Falha ao inicializar o modal');
-                return;
-            }
-        }
-
-        document.getElementById('idRegistro').value = idRegistro;
         this.modal.show();
     }
 
     async enviarSolicitacaoAlteracao(event) {
         event.preventDefault();
-
+        
         try {
-            mostrarLoading();
-
+            this.showLoading('Enviando solicitação...');
+            
             const token = localStorage.getItem(this.authTokenKey);
             if (!token) throw new Error('Token de autenticação não encontrado');
 
@@ -277,93 +266,31 @@ class HistoricoPontos {
                 motivo: formData.get('motivoAlteracao')
             };
 
-            const resposta = await this.enviarDados(
-                '/api/funcionarios/pedir-alteracao-ponto',
+            // Validação básica
+            if (!dados.motivo || dados.motivo.length < 10) {
+                throw new Error('O motivo deve ter pelo menos 10 caracteres');
+            }
+
+            const response = await this.makeAuthenticatedRequest(
+                '/api/funcionarios/solicitar-alteracao-ponto',
                 'POST',
                 dados,
                 token
             );
 
-            console.log('✅ Solicitação de alteração enviada:', resposta);
-
-            exibirSucesso('Solicitação enviada com sucesso!');
-
-            const modal = bootstrap.Modal.getInstance(this.elements.modalAlteracao);
-            modal.hide();
-
+            this.showSuccess('Solicitação enviada com sucesso!');
+            this.modal.hide();
             await this.carregarHistorico();
 
-        } catch (erro) {
-            console.error('Erro ao enviar solicitação:', erro);
-            exibirErro(erro.message || 'Erro ao enviar solicitação');
+        } catch (error) {
+            console.error('[HISTORICO] Erro ao enviar solicitação:', error);
+            this.showError(error.message || 'Erro ao enviar solicitação');
         } finally {
-            esconderLoading();
+            this.hideLoading();
         }
     }
 
-    // Métodos utilitários (mantidos da versão original)
-    formatarTipo(tipo) {
-        if (!tipo) return 'Não informado';
-
-        const tipos = {
-            'ENTRADA': { classe: 'info', texto: 'Entrada', icone: 'sign-in-alt' },
-            'SAIDA': { classe: 'secondary', texto: 'Saída', icone: 'sign-out-alt' },
-            'SAIDA_ALMOCO': { classe: 'primary', texto: 'Saída Almoço', icone: 'utensils' },
-            'RETORNO_ALMOCO': { classe: 'success', texto: 'Retorno Almoço', icone: 'utensils' }
-        };
-
-        const item = tipos[tipo.toUpperCase()] || { classe: 'light', texto: tipo, icone: 'clock' };
-
-        return `
-        <span class="badge bg-${item.classe}">
-            <i class="fas fa-${item.icone} me-1"></i>${item.texto}
-        </span>
-    `;
-    }
-
-    async buscarDados(url, token) {
-        try {
-            const resposta = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!resposta.ok) {
-                throw new Error(`Erro HTTP: ${resposta.status}`);
-            }
-
-            return await resposta.json();
-        } catch (erro) {
-            console.error(`❌ Erro ao buscar dados de ${url}:`, erro);
-            throw erro;
-        }
-    }
-
-    async enviarDados(url, method, body, token) {
-        try {
-            const resposta = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (!resposta.ok) {
-                const erroData = await resposta.json().catch(() => ({}));
-                throw new Error(erroData.message || `Erro HTTP ${resposta.status}`);
-            }
-
-            return await resposta.json();
-        } catch (erro) {
-            console.error(`❌ Erro ao enviar dados para ${url}:`, erro);
-            throw erro;
-        }
-    }
-
+    // Métodos utilitários
     formatarDataHora(data) {
         if (!data) return 'Data não informada';
 
@@ -386,111 +313,72 @@ class HistoricoPontos {
     formatarStatus(status) {
         if (!status) status = 'DESCONHECIDO';
 
-        const mapa = {
-            'APROVADO': { classe: 'success', texto: 'Aprovado' },
-            'PENDENTE': { classe: 'warning', texto: 'Pendente' },
-            'REJEITADO': { classe: 'danger', texto: 'Rejeitado' }
+        const statusClasses = {
+            'APROVADO': 'bg-success',
+            'PENDENTE': 'bg-warning',
+            'REJEITADO': 'bg-danger'
+        };
+        
+        const classe = statusClasses[status.toUpperCase()] || 'bg-secondary';
+        return `<span class="badge ${classe}">${status}</span>`;
+    }
+
+    formatarTipo(tipo) {
+        if (!tipo) return 'Não informado';
+
+        const tipos = {
+            'ENTRADA': { classe: 'info', texto: 'Entrada', icone: 'sign-in-alt' },
+            'SAIDA': { classe: 'secondary', texto: 'Saída', icone: 'sign-out-alt' },
+            'SAIDA_ALMOCO': { classe: 'primary', texto: 'Saída Almoço', icone: 'utensils' },
+            'RETORNO_ALMOCO': { classe: 'success', texto: 'Retorno Almoço', icone: 'utensils' }
         };
 
-        const item = mapa[status.toUpperCase()] || { classe: 'secondary', texto: 'Desconhecido' };
-        return `<span class="badge bg-${item.classe}">${item.texto}</span>`;
-    }
-}
-
-// Classes auxiliares (novas)
-class LoadingHelper {
-    constructor() {
-        this.loadingElement = document.getElementById('loadingOverlay') || document.getElementById('loading-overlay');
+        const item = tipos[tipo.toUpperCase()] || { classe: 'light', texto: tipo, icone: 'clock' };
+        return `<span class="badge bg-${item.classe}"><i class="fas fa-${item.icone} me-1"></i>${item.texto}</span>`;
     }
 
-    show(message = '') {
-        if (this.loadingElement) {
-            this.loadingElement.style.display = 'flex';
-            if (message && this.loadingElement.querySelector('.loading-message')) {
-                this.loadingElement.querySelector('.loading-message').textContent = message;
+    // Métodos de UI (padrão do FuncionarioDashboard)
+    showLoading(message = '') {
+        const loadingElement = document.getElementById('loading-overlay') || document.getElementById('loadingOverlay');
+        if (loadingElement) {
+            loadingElement.style.display = 'flex';
+            if (message && loadingElement.querySelector('.loading-message')) {
+                loadingElement.querySelector('.loading-message').textContent = message;
             }
         }
     }
 
-    hide() {
-        if (this.loadingElement) {
-            this.loadingElement.style.display = 'none';
+    hideLoading() {
+        const loadingElement = document.getElementById('loading-overlay') || document.getElementById('loadingOverlay');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
         }
     }
-}
 
-class ToastHelper {
-    static success(message) {
+    showSuccess(message) {
+        this.showAlert('success', 'Sucesso', message);
+    }
+
+    showError(message) {
+        this.showAlert('error', 'Erro', message);
+    }
+
+    showAlert(icon, title, text) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon: 'success', title: 'Sucesso', text: message });
-        } else if (typeof Toastify !== 'undefined') {
-            Toastify({
-                text: message,
-                duration: 3000,
-                close: true,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
-                stopOnFocus: true
-            }).showToast();
+            Swal.fire({ icon, title, text });
         } else {
-            alert(message);
+            alert(`${title}: ${text}`);
         }
     }
-
-    static error(message) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon: 'error', title: 'Erro', text: message });
-        } else if (typeof Toastify !== 'undefined') {
-            Toastify({
-                text: message,
-                duration: 3000,
-                close: true,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
-                stopOnFocus: true
-            }).showToast();
-        } else {
-            alert(message);
-        }
-    }
-}
-
-// Funções utilitárias globais (mantidas para compatibilidade)
-function mostrarLoading() {
-    const loadingElement = document.getElementById('loading-overlay') || document.getElementById('loadingOverlay');
-    if (loadingElement) loadingElement.style.display = 'flex';
-}
-
-function esconderLoading() {
-    const loadingElement = document.getElementById('loading-overlay') || document.getElementById('loadingOverlay');
-    if (loadingElement) loadingElement.style.display = 'none';
-}
-
-function exibirErro(mensagem) {
-    ToastHelper.error(mensagem);
-}
-
-function exibirSucesso(mensagem) {
-    ToastHelper.success(mensagem);
 }
 
 // Inicialização
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     try {
-        mostrarLoading();
-
-        const historicoPontos = new HistoricoPontos();
-        await historicoPontos.carregarHistorico();
-
-        // Torna a instância acessível globalmente se necessário
-        window.historicoPontos = historicoPontos;
-
-    } catch (erro) {
-        console.error('Erro ao inicializar histórico de pontos:', erro);
-        exibirErro('Erro ao carregar o histórico de pontos. Tente recarregar a página.');
-    } finally {
-        esconderLoading();
+        window.historicoPontos = new HistoricoPontos();
+    } catch (error) {
+        console.error('Erro fatal ao inicializar histórico:', error);
+        alert('Ocorreu um erro ao carregar o histórico. Redirecionando para login...');
+        window.location.href = 'login.html';
     }
 });

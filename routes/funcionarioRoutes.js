@@ -32,8 +32,16 @@ router.get('/horarios', FuncionarioController.listarHorarios);
 
 router.get('/perfil', FuncionarioController.carregarPerfil);
 
+// Solicitar alteração de ponto
 router.post(
-  '/pedir-alteracao-ponto', authMiddleware, nivelMiddleware('FUNCIONARIO'), FuncionarioController.solicitarAlteracaoPonto
+  '/solicitar-alteracao-ponto',
+  FuncionarioController.solicitarAlteracaoPonto
+);
+
+// Listar solicitações de alteração
+router.get(
+  '/solicitacoes-alteracao',
+  FuncionarioController.listarSolicitacoesAlteracao
 );
 
 router.get('/historico-pontos', FuncionarioController.listarHistoricoPontos);

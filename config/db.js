@@ -81,12 +81,31 @@ class Database {
     async execute(sql, params, conn = null) {
         const connection = conn || await this.pool.getConnection();
         try {
-            const [result] = await connection.execute(sql, params); // Executa o comando
-            return result;                                          // Retorna metadados do resultado
+            const [rows, fields] = await connection.execute(sql, params);
+            return [rows, fields];
         } finally {
             if (!conn) connection.release();
         }
     }
+    async executeSelect(sql, params, conn = null) {
+        const connection = conn || await this.pool.getConnection();
+        try {
+            const [rows] = await connection.execute(sql, params);
+            return rows;
+        } finally {
+            if (!conn) connection.release();
+        }
+    }
+    async executeCommand(sql, params, conn = null) {
+        const connection = conn || await this.pool.getConnection();
+        try {
+            const [result] = await connection.execute(sql, params);
+            return result;
+        } finally {
+            if (!conn) connection.release();
+        }
+    }
+    
 
     /**
      * Método para realizar transações no banco de dados.
