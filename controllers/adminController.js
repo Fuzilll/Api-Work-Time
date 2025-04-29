@@ -323,6 +323,123 @@ class AdminController {
       next(err);
     }
   }
+
+  /**
+ * @api {put} /api/admin/solicitacoes/:id/responder Responder Solicitação
+ * @apiName ResponderSolicitacao
+ * @apiGroup Admin
+ * 
+ * @apiParam {Number} id ID da solicitação
+ * @apiBody {String="Aprovada","Rejeitada"} acao Ação a ser tomada
+ * @apiBody {String} resposta Resposta do admin
+ */
+static async responderSolicitacao(req, res, next) {
+  try {
+      const { acao, resposta } = req.body;
+      
+      // Verifica se o usuário é um admin
+      if (req.usuario.nivel !== 'ADMIN') {
+          throw new AppError('Apenas administradores podem responder solicitações', 403);
+      }
+      
+      // Obtém o ID do admin associado ao usuário
+      const [admin] = await db.query(
+          'SELECT id FROM ADMIN WHERE id_usuario = ?',
+          [req.usuario.id]
+      );
+      
+      if (!admin.length) {
+          throw new AppError('Administrador não encontrado', 404);
+      }
+      
+      const resultado = await AdminService.responderSolicitacaoAlteracao(
+          req.params.id,
+          admin[0].id,
+          acao,
+          resposta
+      );
+      
+      // Aqui você pode chamar o serviço de email para notificar o funcionário
+      // await emailService.enviarEmailRespostaSolicitacao(resultado);
+      
+      res.json({
+          success: true,
+          data: resultado
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+/**
+ * @api {get} /api/admin/solicitacoes/pendentes Listar Solicitações Pendentes
+ * @apiName ListarSolicitacoesPendentes
+ * @apiGroup Admin
+ */
+static async listarSolicitacoesPendentes(req, res, next) {
+  try {
+      // Verifica se o usuário é um admin
+      if (req.usuario.nivel !== 'ADMIN') {
+          throw new AppError('Apenas administradores podem listar solicitações', 403);
+      }
+      
+      // Obtém o ID do admin associado ao usuário
+      const [admin] = await db.query(
+          'SELECT id FROM ADMIN WHERE id_usuario = ?',
+          [req.usuario.id]
+      );
+      
+      if (!admin.length) {
+          throw new AppError('Administrador não encontrado', 404);
+      }
+      
+      const solicitacoes = await AdminService.listarSolicitacoesPendentes(admin[0].id);
+      
+      res.json({
+          success: true,
+          data: solicitacoes
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+
+/**
+* @api {get} /api/admin/solicitacoes/:id Obter Detalhes da Solicitação
+* @apiName ObterDetalhesSolicitacao
+* @apiGroup Admin
+* 
+* @apiParam {Number} id ID da solicitação
+*/
+static async obterDetalhesSolicitacao(req, res, next) {
+  try {
+      // Verifica se o usuário é um admin
+      if (req.usuario.nivel !== 'ADMIN') {
+          throw new AppError('Apenas administradores podem visualizar solicitações', 403);
+      }
+      
+      // Obtém o ID do admin associado ao usuário
+      const [admin] = await db.query(
+          'SELECT id FROM ADMIN WHERE id_usuario = ?',
+          [req.usuario.id]
+      );
+      
+      if (!admin.length) {
+          throw new AppError('Administrador não encontrado', 404);
+      }
+      
+      const solicitacao = await AdminService.obterDetalhesSolicitacao(
+          req.params.id,
+          admin[0].id
+      );
+      
+      res.json({
+          success: true,
+          data: solicitacao
+      });
+  } catch (err) {
+      next(err);
+  }
+}
 }
 
 // Exporta a classe para uso nas rotas (ex: admin.routes.js)

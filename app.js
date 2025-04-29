@@ -123,26 +123,20 @@ class App {
     this.app.use('/css', express.static(path.join(__dirname, 'frontend/public/css')));
   }
 
-
   configureSessionStore() {
-    if (process.env.NODE_ENV === 'production') {
-      const MySQLStore = require('express-mysql-session')(session);
-      return new MySQLStore({
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-        clearExpired: true,
-        checkExpirationInterval: 900000
-      });
-    }
-    return undefined;
+    const MySQLStore = require('express-mysql-session')(session);
+    return new MySQLStore({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
+      clearExpired: true,
+      checkExpirationInterval: 900000
+    });
   }
 
   initializeRoutes() {
-
-
     // 1. Configuração de arquivos estáticos
     this.app.use(express.static(path.join(__dirname, 'frontend/public/views')));
     this.app.use('/js', express.static(path.join(__dirname, 'frontend/public/js')));

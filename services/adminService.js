@@ -580,6 +580,152 @@ class AdminService {
       return { message: 'Funcionário excluído com sucesso' };
     });
   }
+
+
+  //solicitações de alteração de ponto 
+  /**
+ * Processa a resposta do admin para uma solicitação de alteração
+ * @param {Number} idSolicitacao - ID da solicitação
+ * @param {Number} idAdmin - ID do admin que está respondendo
+ * @param {String} acao - 'Aprovada' ou 'Rejeitada'
+ * @param {String} resposta - Resposta do admin
+ * @returns {Promise<Object>} - Resultado do processamento
+ */
+static async responderSolicitacaoAlteracao(idSolicitacao, idAdmin, acao, resposta) {
+    return await db.transaction(async (connection) => {
+        // 1. Verificar se a solicitação existe e está pendente
+        const [solicitacao] = await connection.query(
+            `SELECT sa.*, rp.id_funcionario, u.nome as nome_funcionario, u.email
+             FROM SOLICITACAO_ALTERACAO sa
+             JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
+             JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+             JOIN USUARIO u ON f.id_usuario = u.id
+             WHERE sa.id = ? AND sa.status = 'Pendente' FOR UPDATE`,
+            [idSolicitacao]
+        );
+
+        if (!solicitacao.length) {
+            throw new AppError('Solicitação não encontrada ou já processada', 404);
+        }
+
+        const solicitacaoData = solicitacao[0];
+
+        // 2. Verificar se o admin tem permissão
+        const [admin] = await connection.query(
+            `SELECT id FROM ADMIN WHERE id = ? AND id = ?`,
+            [idAdmin, solicitacaoData.id_admin_responsavel]
+        );
+
+        if (!admin.length) {
+            throw new AppError('Você não tem permissão para responder esta solicitação', 403);
+        }
+
+        // 3. Atualizar a solicitação
+        await connection.query(
+            `UPDATE SOLICITACAO_ALTERACAO 
+             SET status = ?, resposta_admin = ?, data_resposta = NOW()
+             WHERE id = ?`,
+            [acao, resposta, idSolicitacao]
+        );
+
+        // 4. Atualizar o registro de ponto
+        let statusPonto = acao === 'Aprovada' ? 'Aprovado' : 'Rejeitado';
+        await connection.query(
+            `UPDATE REGISTRO_PONTO 
+             SET status = ?, id_aprovador = ?
+             WHERE id = ?`,
+            [statusPonto, idAdmin, solicitacaoData.id_registro]
+        );
+
+        // 5. Registrar log
+        await connection.query(
+            `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
+             VALUES (?, ?, ?)`,
+            [
+                idAdmin,
+                `Resposta Solicitação Alteração Ponto`,
+                `Solicitação ID ${idSolicitacao} ${acao}. Resposta: ${resposta}`
+            ]
+        );
+
+        // 6. Retornar dados para envio de email
+        return {
+            id: idSolicitacao,
+            id_registro: solicitacaoData.id_registro,
+            id_funcionario: solicitacaoData.id_funcionario,
+            nome_funcionario: solicitacaoData.nome_funcionario,
+            email_funcionario: solicitacaoData.email,
+            status: acao,
+            resposta_admin: resposta,
+            data_resposta: new Date()
+        };
+    });
+}
+
+/**
+ * Lista solicitações de alteração pendentes para um admin
+ * @param {Number} idAdmin - ID do admin
+ * @returns {Promise<Array>} - Lista de solicitações
+ */
+static async listarSolicitacoesPendentes(idAdmin) {
+    const [solicitacoes] = await db.query(
+        `SELECT 
+            sa.id,
+            sa.id_registro,
+            sa.motivo,
+            sa.data_solicitacao,
+            u.nome as nome_funcionario,
+            f.departamento,
+            rp.tipo as tipo_ponto,
+            rp.data_hora,
+            rp.status as status_ponto
+         FROM SOLICITACAO_ALTERACAO sa
+         JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
+         JOIN FUNCIONARIO f ON sa.id_funcionario = f.id
+         JOIN USUARIO u ON f.id_usuario = u.id
+         WHERE sa.id_admin_responsavel = ? AND sa.status = 'Pendente'
+         ORDER BY sa.data_solicitacao DESC`,
+        [idAdmin]
+    );
+
+    return solicitacoes;
+}
+
+/**
+ * Obtém detalhes de uma solicitação específica
+ * @param {Number} idSolicitacao - ID da solicitação
+ * @param {Number} idAdmin - ID do admin (para validação)
+ * @returns {Promise<Object>} - Detalhes da solicitação
+ */
+static async obterDetalhesSolicitacao(idSolicitacao, idAdmin) {
+    const [solicitacao] = await db.query(
+        `SELECT 
+            sa.*,
+            u.nome as nome_funcionario,
+            f.departamento,
+            rp.tipo as tipo_ponto,
+            rp.data_hora,
+            rp.foto_url,
+            rp.latitude,
+            rp.longitude,
+            rp.endereco_registro,
+            aprovador.nome as nome_aprovador
+         FROM SOLICITACAO_ALTERACAO sa
+         JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
+         JOIN FUNCIONARIO f ON sa.id_funcionario = f.id
+         JOIN USUARIO u ON f.id_usuario = u.id
+         LEFT JOIN ADMIN adm ON sa.id_admin_responsavel = adm.id
+         LEFT JOIN USUARIO aprovador ON adm.id_usuario = aprovador.id
+         WHERE sa.id = ? AND sa.id_admin_responsavel = ?`,
+        [idSolicitacao, idAdmin]
+    );
+
+    if (!solicitacao.length) {
+        throw new AppError('Solicitação não encontrada', 404);
+    }
+
+    return solicitacao[0];
+}
 }
 
 module.exports = AdminService;

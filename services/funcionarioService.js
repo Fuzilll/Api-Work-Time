@@ -37,68 +37,190 @@ class FuncionarioService {
     }
   }
 
-  static async solicitarAlteracaoPonto(idUsuario, idRegistro, novoHorario, motivo) {
-    return await db.transaction(async (connection) => {
-        // 1. Verificar se o registro pertence ao usuário
-        const [registro] = await connection.query(`
-            SELECT rp.id, rp.status, rp.data_hora
-            FROM REGISTRO_PONTO rp
-            JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
-            WHERE rp.id = ? AND f.id_usuario = ?
-        `, [idRegistro, idUsuario]);
+  /**
+   * Solicita alteração em um registro de ponto
+   * @param {number} idFuncionario - ID do funcionário
+   * @param {number} idRegistroPonto - ID do registro de ponto
+   * @param {string} motivo - Motivo da alteração
+   * @param {string|null} novoTipo - Novo tipo de ponto (opcional)
+   * @param {string|null} novaDataHora - Nova data/hora (opcional)
+   * @returns {Promise<Object>} Dados da solicitação criada
+   * @throws {AppError} Em caso de erro na solicitação
+   */
+  static async solicitarAlteracaoPonto(idFuncionario, idRegistroPonto, motivo, novoTipo = null, novaDataHora = null) {
+    let connection;
+    try {
+      console.log('[SERVICE] Iniciando solicitação de alteração:', {
+        idFuncionario,
+        idRegistroPonto,
+        motivo: motivo.substring(0, 50) + (motivo.length > 50 ? '...' : ''),
+        novoTipo,
+        novaDataHora
+      });
 
-        if (!registro || registro.length === 0) {
-            throw new AppError('Registro não encontrado ou não pertence ao usuário', 404);
-        }
+      connection = await db.getConnection();
+      await connection.beginTransaction();
 
-        // 2. Verificar se já existe uma solicitação pendente para este registro
-        const [solicitacaoExistente] = await connection.query(`
-            SELECT id 
-            FROM SOLICITACAO_ALTERACAO 
-            WHERE id_registro = ? AND status = 'Pendente'
-        `, [idRegistro]);
+      // 1. Verificar se o ponto existe e pertence ao funcionário
+      const ponto = await this.verificarPontoDoFuncionario(idRegistroPonto, idFuncionario);
 
-        if (solicitacaoExistente && solicitacaoExistente.length > 0) {
-            throw new AppError('Já existe uma solicitação pendente para este registro', 400);
-        }
+      // 2. Verificar se já existe solicitação pendente
+      const [solicitacoes] = await connection.query(
+        `SELECT id FROM SOLICITACAO_ALTERACAO 
+               WHERE id_registro = ? AND status = 'Pendente' LIMIT 1`,
+        [idRegistroPonto]
+      );
 
-        // 3. Validar o novo horário
-        const dataNovoHorario = new Date(novoHorario);
-        if (isNaN(dataNovoHorario.getTime())) {
-            throw new AppError('Formato de data/hora inválido', 400);
-        }
+      if (solicitacoes.length > 0) {
+        throw new AppError('Já existe uma solicitação pendente para este ponto', 400);
+      }
 
-        // 4. Obter o ID do funcionário
-        const [funcionario] = await connection.query(`
-            SELECT id FROM FUNCIONARIO WHERE id_usuario = ?
-        `, [idUsuario]);
+      // 3. Obter admin responsável
+      const [admins] = await connection.query(
+        `SELECT a.id 
+               FROM ADMIN a
+               JOIN FUNCIONARIO f ON a.id_empresa = f.id_empresa
+               WHERE f.id = ? LIMIT 1`,
+        [idFuncionario]
+      );
 
-        if (!funcionario || funcionario.length === 0) {
+      if (admins.length === 0) {
+        throw new AppError('Nenhum administrador encontrado para aprovar esta solicitação', 404);
+      }
+
+      const idAdmin = admins[0].id;
+      const tipoSolicitacao = novoTipo || novaDataHora ? 'Correcao' : 'Justificativa';
+
+      // 4. Criar solicitação
+      const [result] = await connection.query(
+        `INSERT INTO SOLICITACAO_ALTERACAO 
+               (id_registro, id_funcionario, tipo_solicitacao, motivo, id_admin_responsavel)
+               VALUES (?, ?, ?, ?, ?)`,
+        [idRegistroPonto, idFuncionario, tipoSolicitacao, motivo, idAdmin]
+      );
+
+      // 5. Atualizar status do ponto
+      await connection.query(
+        `UPDATE REGISTRO_PONTO 
+               SET status = 'Em Revisão'
+               WHERE id = ?`,
+        [idRegistroPonto]
+      );
+
+      // 6. Registrar log
+      await connection.query(
+        `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
+               VALUES (?, ?, ?)`,
+        [idFuncionario, 'Solicitação de Alteração', `Solicitação ID ${result.insertId} para o ponto ${idRegistroPonto}`]
+      );
+
+      await connection.commit();
+
+      const solicitacao = {
+        id: result.insertId,
+        id_registro: idRegistroPonto,
+        id_funcionario,
+        tipo_solicitacao,
+        status: 'Pendente',
+        data_solicitacao: new Date()
+      };
+
+      console.log('[SERVICE] Solicitação criada com sucesso:', solicitacao);
+      return solicitacao;
+
+    } catch (error) {
+      if (connection) await connection.rollback();
+      console.error('[SERVICE] Erro na solicitação de alteração:', {
+        error: error.message,
+        stack: error.stack,
+        idFuncionario,
+        idRegistroPonto
+      });
+      throw error instanceof AppError ? error : new AppError('Erro ao solicitar alteração de ponto', 500);
+    } finally {
+      if (connection) connection.release();
+    }
+  }
+
+  /**
+   * Obtém um funcionário pelo ID do usuário
+   * @param {number} idUsuario - ID do usuário
+   * @returns {Promise<Object>} Objeto com dados do funcionário
+   * @throws {AppError} Se o funcionário não for encontrado
+   */
+  static async obterFuncionarioPorUsuario(idUsuario) {
+    try {
+        console.log('[SERVICE] Buscando funcionário para usuário:', idUsuario);
+        
+        // Usar db.execute() em vez de db.query() para maior consistência
+        const [rows] = await db.execute(
+            `SELECT 
+                f.id, 
+                f.id_empresa, 
+                f.registro_emp, 
+                f.funcao,
+                f.departamento,
+                f.tipo_contrato,
+                e.nome AS empresa_nome
+             FROM FUNCIONARIO f
+             JOIN EMPRESA e ON f.id_empresa = e.id
+             WHERE f.id_usuario = ? LIMIT 1`,
+            [idUsuario]
+        );
+
+        console.log('[SERVICE] Resultado bruto da query:', rows);
+
+        if (!rows || rows.length === 0) {
+            console.error('[SERVICE] Nenhum funcionário encontrado para usuário:', idUsuario);
             throw new AppError('Funcionário não encontrado', 404);
         }
 
-        // 5. Criar a solicitação
-        const [result] = await connection.query(`
-            INSERT INTO SOLICITACAO_ALTERACAO 
-            (id_registro, id_funcionario, tipo_solicitacao, motivo, data_solicitacao, status)
-            VALUES (?, ?, 'Correcao', ?, NOW(), 'Pendente')
-        `, [idRegistro, funcionario[0].id, motivo]);
-
-        // 6. Atualizar o registro original com o novo horário (como pendente)
-        await connection.query(`
-            UPDATE REGISTRO_PONTO 
-            SET data_hora = ?, status = 'Pendente'
-            WHERE id = ?
-        `, [dataNovoHorario, idRegistro]);
-
-        // 7. Retornar os dados da solicitação criada
-        const [solicitacao] = await connection.query(`
-            SELECT * FROM SOLICITACAO_ALTERACAO WHERE id = ?
-        `, [result.insertId]);
-
-        return solicitacao[0];
-    });
+        const funcionario = rows[0];
+        console.log('[SERVICE] Funcionário formatado:', funcionario);
+        
+        return funcionario;
+    } catch (error) {
+        console.error('[SERVICE] Erro ao buscar funcionário:', {
+            error: error.message,
+            stack: error.stack
+        });
+        throw error;
+    }
 }
+  /**
+     * Verifica se um ponto pertence a um funcionário
+     * @param {number} idRegistroPonto - ID do registro de ponto
+     * @param {number} idFuncionario - ID do funcionário
+     * @returns {Promise<Object>} Dados do registro de ponto
+     * @throws {AppError} Se o ponto não for encontrado ou não pertencer ao funcionário
+     */
+  static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
+    try {
+      console.log('[SERVICE] Verificando ponto:', { idRegistroPonto, idFuncionario });
+
+      const [pontos] = await db.query(
+        `SELECT 
+                  id, 
+                  tipo, 
+                  data_hora,
+                  status
+              FROM REGISTRO_PONTO 
+              WHERE id = ? AND id_funcionario = ? LIMIT 1`,
+        [idRegistroPonto, idFuncionario]
+      );
+
+      if (!pontos || pontos.length === 0) {
+        console.error('[SERVICE] Ponto não encontrado ou não pertence ao funcionário');
+        throw new AppError('Ponto não encontrado ou não pertence ao funcionário', 404);
+      }
+
+      return pontos[0];
+    } catch (error) {
+      console.error('[SERVICE] Erro ao verificar ponto:', error);
+      throw error instanceof AppError ? error : new AppError('Erro ao verificar ponto', 500);
+    }
+  }
+
 
   static async registrarPonto(idUsuario, dados) {
     return await db.transaction(async (connection) => {

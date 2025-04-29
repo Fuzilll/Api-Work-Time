@@ -2,6 +2,7 @@ const FuncionarioService = require('../services/funcionarioService');
 const { AppError } = require('../errors');
 const { validate } = require('../middlewares/validators');
 const funcionarioSchema = require('../validators/funcionarioSchema');
+const db = require('../config/db');
 
 class FuncionarioController {
   /**
@@ -88,54 +89,87 @@ class FuncionarioController {
  * @apiQuery {String} [dataInicio] Data de início (YYYY-MM-DD)
  * @apiQuery {String} [dataFim] Data de fim (YYYY-MM-DD)
  */
-static async listarHistoricoPontos(req, res, next) {
-  try {
+  static async listarHistoricoPontos(req, res, next) {
+    try {
       const pontos = await FuncionarioService.listarHistoricoPontos(
-          req.usuario.id,
-          req.query
+        req.usuario.id,
+        req.query
       );
 
       res.json({
-          success: true,
-          data: pontos
+        success: true,
+        data: pontos
       });
-  } catch (err) {
+    } catch (err) {
       next(err);
+    }
   }
-}
 
-/**
- * @api {post} /funcionario/pedir-alteracao-ponto Solicitar Alteração de Ponto
- * @apiName SolicitarAlteracaoPonto
- * @apiGroup Funcionario
- * 
- * @apiBody {Number} id_registro ID do registro a ser alterado
- * @apiBody {String} novo_horario Novo horário no formato YYYY-MM-DD HH:MM:SS
- * @apiBody {String} motivo Motivo da alteração
- */
-static async solicitarAlteracaoPonto(req, res, next) {
-  try {
-      const { id_registro, novo_horario, motivo } = req.body;
+  /**
+   * Solicita alteração em um registro de ponto
+   * @param {Object} req - Request object
+   * @param {Object} res - Response object
+   * @param {Function} next - Next middleware
+   */
+  static async solicitarAlteracaoPonto(req, res, next) {
+    try {
+        console.log('[CONTROLLER] Iniciando solicitação de alteração:', {
+            usuarioId: req.usuario.id,
+            body: req.body
+        });
 
-      if (!id_registro || !novo_horario || !motivo) {
-          throw new AppError('Todos os campos são obrigatórios', 400);
-      }
+        // Validações básicas
+        if (!req.body.id_registro || !req.body.motivo) {
+            throw new AppError('ID do registro e motivo são obrigatórios', 400);
+        }
 
-      const solicitacao = await FuncionarioService.solicitarAlteracaoPonto(
-          req.usuario.id,
-          id_registro,
-          novo_horario,
-          motivo
-      );
+        if (req.usuario.nivel !== 'FUNCIONARIO') {
+            throw new AppError('Apenas funcionários podem solicitar alterações', 403);
+        }
 
-      res.json({
-          success: true,
-          data: solicitacao,
-          message: 'Solicitação de alteração registrada com sucesso'
-      });
-  } catch (err) {
-      next(err);
-  }
+        // Converter ID do registro
+        const idRegistroPonto = parseInt(req.body.id_registro);
+        if (isNaN(idRegistroPonto)) {
+            throw new AppError('ID do registro deve ser um número válido', 400);
+        }
+
+        // Obter funcionário com tratamento robusto
+        console.log('[CONTROLLER] Chamando serviço para obter funcionário...');
+        const funcionario = await FuncionarioService.obterFuncionarioPorUsuario(req.usuario.id);
+        
+        console.log('[CONTROLLER] Funcionário recebido do serviço:', JSON.stringify(funcionario, null, 2));
+        
+        if (!funcionario) {
+            console.error('[CONTROLLER] Erro crítico: serviço retornou null/undefined');
+            throw new AppError('Erro inesperado ao obter dados do funcionário', 500);
+        }
+
+        // Processar solicitação
+        console.log('[CONTROLLER] Chamando serviço para solicitar alteração...');
+        const resultado = await FuncionarioService.solicitarAlteracaoPonto(
+            funcionario.id,
+            idRegistroPonto,
+            req.body.motivo,
+            req.body.novo_tipo || null,
+            req.body.nova_data_hora || null
+        );
+
+        console.log('[CONTROLLER] Solicitação processada com sucesso:', resultado);
+
+        return res.status(201).json({
+            success: true,
+            data: resultado
+        });
+
+    } catch (error) {
+        console.error('[CONTROLLER] Erro completo:', {
+            message: error.message,
+            stack: error.stack,
+            usuario: req.usuario,
+            body: req.body
+        });
+        next(error);
+    }
 }
 
   /**

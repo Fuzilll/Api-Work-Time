@@ -131,6 +131,33 @@ class EmailService {
       throw new AppError('Falha ao enviar notificação de ponto', 500);
     }
   }
+      /**
+     * Envia email de notificação quando uma solicitação é respondida
+     * @param {Object} data - Dados da solicitação
+     */
+      async enviarEmailRespostaSolicitacao(data) {
+        try {
+            const { nome_funcionario, email_funcionario, status, resposta_admin } = data;
+            
+            const mailOptions = {
+                from: `"Sistema de Ponto" <${process.env.EMAIL_FROM}>`,
+                to: email_funcionario,
+                subject: `Sua solicitação de alteração de ponto foi ${status}`,
+                html: `
+                    <h1>Olá, ${nome_funcionario}!</h1>
+                    <p>Sua solicitação de alteração de ponto foi <strong>${status.toLowerCase()}</strong>.</p>
+                    ${resposta_admin ? `<p><strong>Resposta do administrador:</strong> ${resposta_admin}</p>` : ''}
+                    <p>Acesse o sistema para mais detalhes.</p>
+                `
+            };
+            
+            await this.transporter.sendMail(mailOptions);
+        } catch (error) {
+            console.error('Erro ao enviar email:', error);
+            throw new AppError('Erro ao enviar email de notificação', 500);
+        }
+    }
+
 }
 
 // Exportar uma instância singleton

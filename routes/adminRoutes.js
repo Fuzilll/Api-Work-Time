@@ -69,6 +69,9 @@ router.put(
   adminController.desativarFuncionario
 );
 
+router.put('/solicitacoes/:id/responder', authMiddleware, adminController.responderSolicitacao);
+router.get('/solicitacoes/pendentes', authMiddleware, adminController.listarSolicitacoesPendentes);
+router.get('/solicitacoes/:id', authMiddleware, adminController.obterDetalhesSolicitacao);
 
 router.post('/funcionarios/:id/horarios', adminController.cadastrarHorariosFuncionario);
 module.exports = router;
