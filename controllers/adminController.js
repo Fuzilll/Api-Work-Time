@@ -216,7 +216,36 @@ class AdminController {
       next(err);
     }
   }
-  
+  /**
+   * 
+   * testando
+   * 
+   * static async atualizarStatusPonto(req, res, next) {
+    try {
+        // Verifica se o usuário tem permissão
+        if (!req.usuario.permissoes?.aprovar_pontos && req.usuario.nivel !== 'ADMIN') {
+            throw new AppError('Você não tem permissão para aprovar/rejeitar pontos', 403);
+        }
+
+        // Chama a stored procedure apropriada
+        const procedure = req.body.status === 'Aprovado' ? 'APROVARPONTO' : 'REPROVARPONTO';
+        const resultado = await Database.callProcedure(procedure, [
+            req.params.id,              // ID do ponto
+            req.usuario.id,             // ID do usuário autenticado (aprovador)
+            req.body.justificativa      // Justificativa
+        ]);
+
+        res.json({
+            success: true,
+            data: resultado[0] // Assumindo que o resultado é um array com o retorno da procedure
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+
+   */
   /**
    * @api {get} /api/admin/pontos/pendentes Listar Pontos Pendentes
    * @apiName CarregarPontosPendentes
