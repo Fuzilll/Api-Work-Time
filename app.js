@@ -14,7 +14,7 @@ const estadosRoutes = require('./routes/estadosRoutes');
 const { NotFoundError } = require('./errors');
 const authMiddleware = require('./middlewares/authMiddleware');
 const db = require('./config/db');
-
+// comentario teste
 class App {
   constructor() {
     this.app = express();

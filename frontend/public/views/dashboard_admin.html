@@ -5,32 +5,37 @@
     <meta charset="UTF-8">
     <title>Dashboard Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
- 
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/dashboard_admin.css">
-        <!-- Fallback local para Font Awesome -->
-        <script>
-            if (!document.querySelector('link[href*="fontawesome"]')) {
-                document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
-            }
-        </script>
+    <!-- Fallback local para Font Awesome -->
+    <script>
+        if (!document.querySelector('link[href*="fontawesome"]')) {
+            document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
+        }
+    </script>
 </head>
 
 <body>
-    <div class="sidebar closed" id="sidebar">
-        <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
-        <div class="logo-container text-center">
-            <img src="/images/logo.png" alt="Logo" class="img-fluid">
-        </div>
-        <div id="menu"></div>
-        <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
-    </div>
+    <section id="barra">
 
-    <div class="content">
+        <div class="sidebar closed" id="sidebar">
+            <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+            <div class="logo-container text-center">
+                <img src="/images/logo.png" alt="Logo" class="img-fluid">
+            </div>
+            <div id="menu"></div>
+            <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+        </div>
+
         <div class="topbar">
+            <!-- botão tema escuro -->
             <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
         </div>
+    </section>
+    <div class="content">
+
 
         <div class="container mt-4">
             <h2>Dashboard</h2>
@@ -89,9 +94,12 @@
         </div>
     </div>
 
+    <!-- Os registros serão populados dinamicamente pelo JavaScript -->
+
     <script src="/js/menu.js"></script>
     <script src="/js/sidebarToggle.js"></script>
     <script src="/js/dashboard_admin.js"></script>
+
     <script src="/js/alterar_modo.js"></script>
 
 </body>
