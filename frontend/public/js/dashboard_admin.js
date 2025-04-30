@@ -18,7 +18,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     esconderLoading();
   }
 });
+const graficoFuncionarios = new Chart(document.getElementById('graficoFuncionarios'), {
+  type: 'doughnut',
+  data: {
+      labels: ['Ativos', 'Inativos'],
+      datasets: [{
+          data: [0, 0],
+          backgroundColor: ['#2cb67d', '#72757e'],
+          borderWidth: 1
+      }]
+  },
+  options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+          legend: {
+              position: 'bottom',
+              labels: {
+                  boxWidth: 12,
+                  padding: 20
+              }
+          },
+          tooltip: {
+              callbacks: {
+                  label: function (context) {
+                      const label = context.label || '';
+                      const value = context.raw || 0;
+                      const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                      const percentage = Math.round((value / total) * 100);
+                      return `${label}: ${value} (${percentage}%)`;
+                  }
+              }
+          }
+      },
+      cutout: '70%'
+  }
+});
 
+const graficoPontos = new Chart(document.getElementById('graficoPontos'), {
+  type: 'bar',
+  data: {
+      labels: ['Aprovados', 'Pendentes'],
+      datasets: [{
+          label: 'Pontos',
+          data: [110, 10],
+          backgroundColor: ['#7f5af0', '#fa5246']
+      }]
+  },
+  options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+  }
+});
 // Utils: loading
 function mostrarLoading() {
   const loadingElement = document.getElementById('loading-overlay');
@@ -39,7 +91,7 @@ function exibirErro(mensagem) {
     setTimeout(() => errorDiv.style.display = 'none', 5000);
   }
 }
-
+// Funções principais
 // Funções principais
 function carregarResumo(resumo) {
   console.log('➡️ Dados recebidos para carregarResumo():', resumo);
@@ -57,9 +109,14 @@ function carregarResumo(resumo) {
     funcionariosInativos
   });
 
+  // Atualiza os textos
   atualizarTexto('total-funcionarios', totalFuncionarios);
   atualizarTexto('funcionarios-ativos', funcionariosAtivos);
   atualizarTexto('funcionarios-inativos', funcionariosInativos);
+
+  // Atualiza o gráfico doughnut
+  graficoFuncionarios.data.datasets[0].data = [funcionariosAtivos, funcionariosInativos];
+  graficoFuncionarios.update();
 }
 
 function carregarRelatorioPontos(relatorio = {}) {
@@ -85,6 +142,7 @@ function carregarRegistrosRecentes(pontosPendentes = []) {
   });
 }
 
+
 // Funções auxiliares
 async function buscarDados(url) {
   try {
@@ -104,13 +162,13 @@ async function buscarDados(url) {
   }
 }
 
+
 function atualizarTexto(id, valor) {
   const elemento = document.getElementById(id);
   if (elemento) {
     elemento.textContent = valor ?? 0;
   }
 }
-
 function formatarStatus(status) {
   if (!status) status = 'DESCONHECIDO';
 

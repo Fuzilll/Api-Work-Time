@@ -12,7 +12,6 @@ class FuncionarioDashboard {
     const elementsConfig = [
       { id: 'total-pontos', property: 'totalPontos' },
       { id: 'solicitacoes-pendentes', property: 'solicitacoesPendentes' },
-      { id: 'registrar-ponto', property: 'registrarPontoBtn' },
       { id: 'tabela-ultimos-pontos', property: 'tabelaUltimosPontos' },
       { id: 'logoutBtn', property: 'logoutBtn' }
     ];
@@ -83,13 +82,12 @@ class FuncionarioDashboard {
       const pontosHoje = Array.isArray(data.pontosHoje) ? data.pontosHoje : (data.pontosHoje ? [data.pontosHoje] : []);
       const ultimosPontos = Array.isArray(data.ultimosPontos) ? data.ultimosPontos : (data.ultimosPontos ? [data.ultimosPontos] : []);
 
-      console.log('Resumo:', resumo);
-      console.log('Pontos hoje:', pontosHoje);
-      console.log('Últimos pontos:', ultimosPontos);
-
       this.renderResumo(resumo);
       this.renderPontosHoje(pontosHoje);
       this.renderUltimosPontos(ultimosPontos);
+
+      // Atualiza o gráfico doughnut
+      this.atualizarGraficoRegistros(resumo);
 
     } catch (error) {
       console.error('[DASHBOARD] Erro ao carregar:', error);
@@ -99,6 +97,29 @@ class FuncionarioDashboard {
       }
     }
   }
+
+  atualizarGraficoRegistros(resumo = {}) {
+    // Verifica se o gráfico foi corretamente inicializado
+    if (!window.graficoRegistros || !window.graficoRegistros.data || !window.graficoRegistros.data.datasets) {
+      console.error('[DASHBOARD] Gráfico não inicializado corretamente');
+      return;
+    }
+
+
+    // Obtém os valores reais com fallback para zero
+    const aprovados = Number(resumo.pontos_aprovados ?? resumo.registrosAprovados ?? 0);
+    const pendentes = Number(resumo.pontos_pendentes ?? resumo.registrosPendentes ?? 0);
+    const rejeitados = Number(resumo.pontos_rejeitados ?? resumo.registrosRejeitados ?? 0);
+
+    console.log("📊 Atualizando gráfico com:", { aprovados, pendentes, rejeitados });
+
+    // Atualiza os dados no gráfico na mesma ordem dos labels
+    window.graficoRegistros.data.datasets[0].data = [aprovados, pendentes, rejeitados];
+
+    // Atualiza o gráfico visualmente
+    window.graficoRegistros.update();
+  }
+
 
   async makeAuthenticatedRequest(url, method = 'GET', body = null, token) {
     const options = {
@@ -183,42 +204,6 @@ class FuncionarioDashboard {
     }
   }
 
-  // Métodos de registro de ponto
-  async registrarPonto() {
-    if (!this.elements.registrarPontoBtn) return;
-
-    try {
-      this.setBotaoRegistroCarregando(true);
-      const position = await this.getCurrentPosition();
-      const token = localStorage.getItem(this.authTokenKey);
-
-      const response = await this.makeAuthenticatedRequest(
-        '/api/funcionarios/pontos',
-        'POST',
-        {
-          tipo: this.getTipoRegistroAdequado(),
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        },
-        token
-      );
-
-      this.showSuccess('Ponto registrado com sucesso!');
-      await this.loadDashboard();
-
-    } catch (error) {
-      console.error('[DASHBOARD] Erro ao registrar ponto:', error);
-      this.showError(error.message || 'Erro ao registrar ponto');
-    } finally {
-      this.setBotaoRegistroCarregando(false);
-    }
-  }
-
-  getTipoRegistroAdequado() {
-    const horaAtual = new Date().getHours();
-    return horaAtual < 12 ? 'Entrada' : (horaAtual < 14 ? 'Saída Almoço' : 'Saida');
-  }
-
   getCurrentPosition() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -271,4 +256,4 @@ document.addEventListener('DOMContentLoaded', () => {
     alert('Ocorreu um erro ao carregar o dashboard. Redirecionando para login...');
     window.location.href = 'login.html';
   }
-});          
+});
