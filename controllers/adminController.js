@@ -469,6 +469,81 @@ static async obterDetalhesSolicitacao(req, res, next) {
       next(err);
   }
 }
+
+
+//METODOS EM TESTE PARA solicitações de alteração de ponto 
+// No AdminController.js
+
+/**
+ * @api {get} /api/admin/solicitacoes/pendentes Listar Solicitações Pendentes
+ * @apiName ListarSolicitacoesPendentes
+ * @apiGroup Admin
+ * 
+ * @apiSuccess {Object[]} data Lista de solicitações pendentes
+ */
+static async listarSolicitacoesPendentes(req, res, next) {
+  try {
+      const { id_empresa } = req.usuario;
+      
+      if (!id_empresa) {
+          throw new AppError('ID da empresa não encontrado no token', 400);
+      }
+
+      const solicitacoes = await AdminService.obterSolicitacoesAlteracaoPendentes(id_empresa);
+      
+      res.json({
+          success: true,
+          data: solicitacoes
+      });
+  } catch (error) {
+      console.error('[AdminController] Erro ao listar solicitações pendentes:', error);
+      next(error);
+  }
+}
+
+/**
+* @api {post} /api/admin/solicitacoes/:id/processar Processar Solicitação
+* @apiName ProcessarSolicitacao
+* @apiGroup Admin
+* 
+* @apiParam {Number} id ID da solicitação
+* @apiBody {String="aprovar","rejeitar"} acao Ação a ser tomada
+* @apiBody {String} motivo Motivo da decisão
+* 
+* @apiSuccess {String} message Mensagem de sucesso
+*/
+static async processarSolicitacao(req, res, next) {
+  try {
+      const { id } = req.params;
+      const { id: idUsuario } = req.usuario;
+      const { acao, motivo } = req.body;
+
+      if (!['aprovar', 'rejeitar'].includes(acao)) {
+          throw new AppError('Ação inválida. Use "aprovar" ou "rejeitar"', 400);
+      }
+
+      if (!motivo || motivo.trim().length < 5) {
+          throw new AppError('Informe um motivo válido (mínimo 5 caracteres)', 400);
+      }
+
+      const resultado = await AdminService.processarSolicitacaoAlteracao(
+          id, 
+          idUsuario, 
+          acao, 
+          motivo
+      );
+
+      res.json({
+          success: true,
+          message: resultado.message,
+          data: resultado.data
+      });
+  } catch (error) {
+      console.error('[AdminController] Erro ao processar solicitação:', error);
+      next(error);
+  }
+}
+
 }
 
 // Exporta a classe para uso nas rotas (ex: admin.routes.js)

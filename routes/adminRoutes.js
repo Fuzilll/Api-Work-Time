@@ -74,4 +74,19 @@ router.get('/solicitacoes/pendentes', authMiddleware, adminController.listarSoli
 router.get('/solicitacoes/:id', authMiddleware, adminController.obterDetalhesSolicitacao);
 
 router.post('/funcionarios/:id/horarios', adminController.cadastrarHorariosFuncionario);
+
+
+
+
+
+// Solicitações de alteração de ponto
+router.get('/solicitacoes/:idEmpresa',
+  adminController.listarSolicitacoesPendentes
+);
+
+router.post('/solicitacoes/:idSolicitacao/processar',
+  adminController.processarSolicitacao
+);
+
+
 module.exports = router;

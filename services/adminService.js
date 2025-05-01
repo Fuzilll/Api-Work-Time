@@ -726,6 +726,144 @@ static async obterDetalhesSolicitacao(idSolicitacao, idAdmin) {
 
     return solicitacao[0];
 }
+
+
+
+
+
+
+
+
+
+
+
+
+//METODOS EM TESTE PARA solicitações de alteração de ponto 
+// No AdminService.js
+
+/**
+ * Obtém solicitações de alteração pendentes para uma empresa
+ * @param {Number} idEmpresa - ID da empresa
+ * @returns {Promise<Array>} - Lista de solicitações pendentes
+ */
+static async obterSolicitacoesAlteracaoPendentes(idEmpresa) {
+  try {
+      const sql = `
+          SELECT 
+              sa.id,
+              sa.id_registro,
+              sa.tipo_solicitacao,
+              sa.motivo,
+              sa.data_solicitacao,
+              u.nome AS nome_funcionario,
+              f.registro_emp,
+              f.departamento,
+              rp.tipo AS tipo_registro,
+              rp.data_hora AS data_hora_original,
+              rp.status AS status_registro,
+              rp.foto_url,
+              rp.latitude,
+              rp.longitude
+          FROM SOLICITACAO_ALTERACAO sa
+          JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
+          JOIN FUNCIONARIO f ON sa.id_funcionario = f.id
+          JOIN USUARIO u ON f.id_usuario = u.id
+          WHERE f.id_empresa = ? 
+          AND sa.status = 'Pendente'
+          ORDER BY sa.data_solicitacao DESC
+      `;
+
+      const solicitacoes = await db.query(sql, [idEmpresa]);
+      return solicitacoes;
+  } catch (error) {
+      console.error('[AdminService] Erro ao buscar solicitações pendentes:', error);
+      throw new AppError('Erro ao buscar solicitações de alteração', 500);
+  }
+}
+
+/**
+* Processa uma solicitação de alteração (aprovar/rejeitar)
+* @param {Number} idSolicitacao - ID da solicitação
+* @param {Number} idUsuario - ID do usuário admin
+* @param {String} acao - 'aprovar' ou 'rejeitar'
+* @param {String} motivo - Motivo da decisão
+* @returns {Promise<Object>} - Resultado da operação
+*/
+static async processarSolicitacaoAlteracao(idSolicitacao, idUsuario, acao, motivo) {
+  return await db.transaction(async (connection) => {
+      try {
+          // 1. Verificar se a solicitação existe e está pendente
+          const [solicitacao] = await connection.query(`
+              SELECT sa.*, rp.id_funcionario, f.id_empresa, u.nome AS nome_funcionario
+              FROM SOLICITACAO_ALTERACAO sa
+              JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
+              JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
+              JOIN USUARIO u ON f.id_usuario = u.id
+              WHERE sa.id = ? AND sa.status = 'Pendente'
+              FOR UPDATE
+          `, [idSolicitacao]);
+
+          if (!solicitacao.length) {
+              throw new AppError('Solicitação não encontrada ou já processada', 404);
+          }
+
+          const solicitacaoData = solicitacao[0];
+
+          // 2. Verificar se o usuário tem permissão (é admin da mesma empresa)
+          const [admin] = await connection.query(`
+              SELECT a.id FROM ADMIN a
+              JOIN USUARIO u ON a.id_usuario = u.id
+              WHERE a.id_usuario = ? AND a.id_empresa = ?
+          `, [idUsuario, solicitacaoData.id_empresa]);
+
+          if (!admin.length) {
+              throw new AppError('Você não tem permissão para processar esta solicitação', 403);
+          }
+
+          const idAdmin = admin[0].id;
+          const novoStatus = acao === 'aprovar' ? 'Aprovada' : 'Rejeitada';
+          const statusPonto = acao === 'aprovar' ? 'Aprovado' : 'Rejeitado';
+
+          // 3. Atualizar a solicitação
+          await connection.query(`
+              UPDATE SOLICITACAO_ALTERACAO 
+              SET status = ?, 
+                  id_admin_responsavel = ?,
+                  resposta_admin = ?,
+                  data_resposta = NOW()
+              WHERE id = ?
+          `, [novoStatus, idAdmin, motivo, idSolicitacao]);
+
+          // 4. Atualizar o registro de ponto
+          await connection.query(`
+              UPDATE REGISTRO_PONTO 
+              SET status = ?,
+                  id_aprovador = ?,
+                  justificativa = ?
+              WHERE id = ?
+          `, [statusPonto, idAdmin, motivo, solicitacaoData.id_registro]);
+
+          // 5. Registrar log
+          await connection.query(`
+              INSERT INTO LOG_AUDITORIA 
+              (id_usuario, acao, detalhe)
+              VALUES (?, ?, ?)
+          `, [idUsuario, `Solicitação ${novoStatus}`, `Solicitação ID ${idSolicitacao} - ${motivo}`]);
+
+          return {
+              message: `Solicitação ${novoStatus.toLowerCase()} com sucesso`,
+              data: {
+                  id: idSolicitacao,
+                  status: novoStatus,
+                  nome_funcionario: solicitacaoData.nome_funcionario
+              }
+          };
+      } catch (error) {
+          console.error('[AdminService] Erro ao processar solicitação:', error);
+          throw error;
+      }
+  });
+}
 }
 
 module.exports = AdminService;
