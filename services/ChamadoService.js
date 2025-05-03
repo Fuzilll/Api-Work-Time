@@ -5,26 +5,26 @@ class ChamadoService {
     // Criar um novo chamado
     static async criarChamado(dados) {
         const { usuario_id, empresa_id, assunto, categoria, descricao, prioridade } = dados;
-    
+
         const prioridadeMap = {
             'baixa': 'Baixa',
             'media': 'Média',
             'alta': 'Alta',
             'critica': 'Crítica'
         };
-    
+
         if (!prioridadeMap[prioridade]) {
             throw new AppError('Prioridade inválida no serviço', 400);
         }
         const prioridadeBanco = prioridadeMap[prioridade];
-    
+
         try {
             // Verificar se o usuário existe
             const usuarioRows = await db.query('SELECT id FROM USUARIO WHERE id = ?', [usuario_id]);
             if (usuarioRows.length === 0) {
                 throw new AppError('Usuário não encontrado', 404);
             }
-    
+
             // Verificar se a empresa existe (se fornecida)
             if (empresa_id) {
                 const empresaRows = await db.query('SELECT id FROM EMPRESA WHERE id = ?', [empresa_id]);
@@ -32,7 +32,7 @@ class ChamadoService {
                     throw new AppError('Empresa não encontrada', 404);
                 }
             }
-    
+
             // Inserir no banco de dados
             const insertResult = await db.query(
                 `INSERT INTO CHAMADOS (
@@ -40,19 +40,19 @@ class ChamadoService {
                 ) VALUES (?, ?, ?, ?, ?, ?, 'Aberto')`,
                 [usuario_id, empresa_id || null, assunto, categoria, descricao, prioridadeBanco]
             );
-    
+
             // Obter o chamado criado
             const chamadoRows = await db.query(
                 `SELECT * FROM CHAMADOS WHERE id = ?`,
                 [insertResult.insertId]
             );
-    
+
             if (chamadoRows.length === 0) {
                 throw new AppError('Falha ao recuperar chamado criado', 500);
             }
-    
+
             return chamadoRows[0];
-    
+
         } catch (err) {
             console.error('Erro no ChamadoService.criarChamado:', {
                 message: err.message,
@@ -60,52 +60,129 @@ class ChamadoService {
                 code: err.code,
                 sqlState: err.sqlState
             });
-    
+
             if (err.code === 'ER_NO_REFERENCED_ROW_2') {
                 throw new AppError('Usuário ou empresa inválido', 400);
             }
             if (err.code === 'ER_DATA_TOO_LONG') {
                 throw new AppError('Dados muito longos para as colunas do banco de dados', 400);
             }
-    
+
             throw new AppError('Erro interno ao criar chamado', 500);
         }
     }
     // Listar chamados com filtros
+    static async listarEmpresas() {
+        try {
+            return await db.query('SELECT id, nome FROM EMPRESA WHERE status = "Ativo" ORDER BY nome');
+        } catch (err) {
+            console.error('Erro ao listar empresas:', err);
+            throw new AppError('Erro ao listar empresas', 500);
+        }
+
+    }
+    // Adicione este método no ChamadoService
+    static async listarEmpresasAtivas() {
+        try {
+            const empresas = await db.query(
+                'SELECT id, nome FROM EMPRESA WHERE status = "Ativo" ORDER BY nome'
+            );
+
+            // Verificar se há resultados
+            if (!empresas || empresas.length === 0) {
+                return [];
+            }
+
+            return empresas;
+        } catch (err) {
+            console.error('Erro no ChamadoService.listarEmpresasAtivas:', {
+                message: err.message,
+                stack: err.stack,
+                code: err.code,
+                sqlState: err.sqlState
+            });
+            throw new AppError('Erro ao listar empresas ativas', 500);
+        }
+    }
+
     static async listarChamados(filtros = {}) {
-        const { status, prioridade, empresa_id, usuario_id } = filtros;
-        let query = `SELECT c.*, u.nome as usuario_nome, e.nome as empresa_nome 
+        try {
+            console.log('[SERVICE] Executando query com filtros:', filtros);
+            const { status, prioridade, empresa_id, usuario_id, page = 1, limit = 10 } = filtros;
+
+            // Validação dos parâmetros
+            if (isNaN(page) || isNaN(limit)) {
+                throw new AppError('Parâmetros de paginação inválidos', 400);
+            }
+
+            const offset = (page - 1) * limit;
+
+            let query = `SELECT SQL_CALC_FOUND_ROWS 
+                        c.id, c.assunto, c.categoria, c.prioridade, c.status,
+                        c.criado_em, c.descricao, c.foto_url, c.anexo_url,
+                        u.nome as usuario_nome, 
+                        e.nome as empresa_nome 
                      FROM CHAMADOS c
                      JOIN USUARIO u ON c.usuario_id = u.id
                      LEFT JOIN EMPRESA e ON c.empresa_id = e.id
                      WHERE 1=1`;
-        const params = [];
 
-        if (status) {
-            query += ' AND c.status = ?';
-            params.push(status);
+            const params = [];
+
+            console.log('[SERVICE] Query final:', query);
+            console.log('[SERVICE] Parâmetros:', params);
+
+            if (status) {
+                query += ' AND c.status = ?';
+                params.push(status);
+            }
+
+            if (prioridade) {
+                query += ' AND c.prioridade = ?';
+                params.push(prioridade);
+            }
+
+            if (empresa_id) {
+                query += ' AND c.empresa_id = ?';
+                params.push(empresa_id);
+            }
+
+            if (usuario_id) {
+                query += ' AND c.usuario_id = ?';
+                params.push(usuario_id);
+            }
+
+            query += ' ORDER BY c.criado_em DESC LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+
+            // Execução da query com tratamento de erros
+            const chamados = await db.query(query, params);
+
+            // Obter total de registros
+            const [totalResult] = await db.query('SELECT FOUND_ROWS() as total');
+            const total = totalResult[0]?.total || 0;
+            const pages = Math.ceil(total / limit);
+
+            console.log('[SERVICE] Resultado do banco:', chamados);
+            return {
+                chamados: Array.isArray(chamados) ? chamados : [],
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages
+            };
+        } catch (err) {
+            console.error('Erro no ChamadoService.listarChamados:', {
+                message: err.message,
+                stack: err.stack,
+                sqlMessage: err.sqlMessage,
+                code: err.code
+            });
+            throw new AppError('Erro ao buscar chamados no banco de dados', 500);
         }
-
-        if (prioridade) {
-            query += ' AND c.prioridade = ?';
-            params.push(prioridade);
-        }
-
-        if (empresa_id) {
-            query += ' AND c.empresa_id = ?';
-            params.push(empresa_id);
-        }
-
-        if (usuario_id) {
-            query += ' AND c.usuario_id = ?';
-            params.push(usuario_id);
-        }
-
-        query += ' ORDER BY c.criado_em DESC';
-
-        const [chamados] = await db.query(query, params);
-        return chamados;
     }
+
+
 
     // Obter um chamado por ID
     static async obterChamado(id, usuario_id, nivel) {

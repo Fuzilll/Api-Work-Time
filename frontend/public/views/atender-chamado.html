@@ -2,289 +2,232 @@
 <html lang="pt-br">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Atender Chamados</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atender Chamados</title>
+  <!-- Mantenha apenas uma versão do Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/pagina_suporte_usuarios.css">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <style>
+    /* Adicionando estilos para os badges de status */
+    .badge-custom {
+      padding: 0.35em 0.65em;
+      font-size: 0.75em;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+    }
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    .status-aberto {
+      background-color: #ffc107;
+      color: #000;
+    }
 
-    <!-- FontAwesome para ícones (opcional) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    .status-em-andamento {
+      background-color: #0d6efd;
+      color: #fff;
+    }
 
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f8f9fa;
-        }
+    .status-resolvido {
+      background-color: #198754;
+      color: #fff;
+    }
 
-        .table-striped tbody tr:nth-of-type(odd) {
-            background-color: #f1f1f1;
-        }
+    .status-fechado {
+      background-color: #6c757d;
+      color: #fff;
+    }
 
-        .modal-header {
-            background-color: #007bff;
-            color: white;
-            border-bottom: 2px solid #0056b3;
-        }
+    /* Loading overlay */
+    #loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
 
-        .modal-header .btn-close {
-            color: white;
-        }
-
-        .modal-title {
-            font-size: 1.5rem;
-        }
-
-        .modal-body {
-            font-size: 1.1rem;
-        }
-
-        .badge-custom {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-
-        .status-aberto {
-            background-color: #ffc107;
-            color: white;
-        }
-
-        .status-em-andamento {
-            background-color: #ff8000;
-            color: white;
-        }
-
-        .status-resolvido {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .status-fechado {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        .btn-custom {
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-            font-weight: bold;
-            border-radius: 5px;
-        }
-
-        .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
-        }
-
-        .btn-primary:hover {
-            background-color: #0056b3;
-            border-color: #0056b3;
-        }
-
-        .photo-container img {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
-        .btn-link {
-            font-size: 1.1rem;
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .btn-link:hover {
-            text-decoration: underline;
-        }
-
-        .modal-footer {
-            border-top: 1px solid #ddd;
-            background-color: #f9f9f9;
-        }
-    </style>
+    .spinner-border {
+      width: 3rem;
+      height: 3rem;
+    }
+  </style>
 </head>
 
 <body>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay">
+    <div class="spinner-border text-light" role="status">
+      <span class="visually-hidden">Carregando...</span>
+    </div>
+  </div>
 
+  <div class="sidebar closed" id="sidebar">
+    <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+    <div class="logo-container text-center">
+      <img src="/images/logo.png" alt="Logo" class="img-fluid">
+    </div>
+    <div id="menu"></div>
+    <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+  </div>
+
+  <div class="content">
+    <div class="topbar">
+      <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
+    </div>
     <div class="container mt-5">
-        <h2>Lista de Chamados</h2>
+      <h2>Lista de Chamados</h2>
 
+      <!-- Filtros -->
+      <div class="row mb-4 g-3">
+        <div class="col-md-4">
+          <label for="filtro-status" class="form-label">Status</label>
+          <select class="form-select" id="filtro-status">
+            <option value="">Todos</option>
+            <option value="Aberto">Aberto</option>
+            <option value="Em andamento">Em andamento</option>
+            <option value="Resolvido">Resolvido</option>
+            <option value="Fechado">Fechado</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="filtro-prioridade" class="form-label">Prioridade</label>
+          <select class="form-select" id="filtro-prioridade">
+            <option value="">Todas</option>
+            <option value="Baixa">Baixa</option>
+            <option value="Média">Média</option>
+            <option value="Alta">Alta</option>
+            <option value="Crítica">Crítica</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="filtro-empresa" class="form-label">Empresa</label>
+          <select class="form-select" id="filtro-empresa">
+            <option value="">Todas</option>
+            <!-- Opções serão carregadas dinamicamente -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Mensagem de erro -->
+      <div id="error-message" class="alert alert-danger d-none mb-3"></div>
+
+      <!-- Tabela de chamados -->
+      <div id="tabela-chamados">
         <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Assunto</th>
-                    <th>Categoria</th>
-                    <th>Prioridade</th>
-                    <th>Status</th>
-                    <th>Empresa</th>
-                    <th>Usuário</th>
-                    <th>Detalhes</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Exemplo de Chamados -->
-                <tr>
-                    <td>1</td>
-                    <td>Problema com Login</td>
-                    <td>Técnico</td>
-                    <td>Alta</td>
-                    <td><span class="badge badge-custom status-aberto">Aberto</span></td>
-                    <td>Empresa A</td>
-                    <td>João Silva</td>
-                    <td>
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal"
-                            onclick="carregarDetalhes(1)">
-                            Ver Detalhes
-                        </button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td>Erro no Sistema</td>
-                    <td>Erro</td>
-                    <td>Crítica</td>
-                    <td><span class="badge badge-custom status-em-andamento">Em Andamento</span></td>
-                    <td>Empresa B</td>
-                    <td>Ana Souza</td>
-                    <td>
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal"
-                            onclick="carregarDetalhes(2)">
-                            Ver Detalhes
-                        </button>
-                    </td>
-                </tr>
-                <!-- Fim do exemplo -->
-            </tbody>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Assunto</th>
+              <th>Categoria</th>
+              <th>Prioridade</th>
+              <th>Status</th>
+              <th>Empresa</th>
+              <th>Usuário</th>
+              <th>Detalhes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Chamados serão carregados dinamicamente -->
+          </tbody>
         </table>
+      </div>
     </div>
 
     <!-- Modal -->
-<!-- Modal de Detalhes do Chamado -->
-<div class="modal fade" id="modalDetalhes" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="modalDetalhesLabel">Detalhes do Chamado</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <p><strong>Assunto:</strong> <span id="modalAssunto"></span></p>
-            </div>
-            <div class="col-md-6">
-              <p><strong>Categoria:</strong> <span id="modalCategoria"></span></p>
-            </div>
+    <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title" id="modalDetalhesLabel">Detalhes do Chamado</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-  
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <p><strong>Prioridade:</strong> <span id="modalPrioridade"></span></p>
-            </div>
-            <div class="col-md-6">
-              <p><strong>Status:</strong> <span id="modalStatus"></span></p>
-            </div>
-          </div>
-  
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <p><strong>Empresa:</strong> <span id="modalEmpresa"></span></p>
-            </div>
-            <div class="col-md-6">
-              <p><strong>Usuário:</strong> <span id="modalUsuario"></span></p>
-            </div>
-          </div>
-  
-          <div class="mb-3">
-            <p><strong>Data de Criação:</strong> <span id="modalData"></span></p>
-          </div>
-  
-          <div class="mb-3">
-            <p><strong>Descrição:</strong></p>
-            <div class="card bg-light">
-              <div class="card-body">
-                <p id="modalDescricao" class="mb-0"></p>
+          <div class="modal-body">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p><strong>Assunto:</strong> <span id="modalAssunto"></span></p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Categoria:</strong> <span id="modalCategoria"></span></p>
               </div>
             </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p><strong>Prioridade:</strong> <span id="modalPrioridade"></span></p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p><strong>Empresa:</strong> <span id="modalEmpresa"></span></p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Usuário:</strong> <span id="modalUsuario"></span></p>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <p><strong>Data de Criação:</strong> <span id="modalData"></span></p>
+            </div>
+
+            <div class="mb-3">
+              <p><strong>Descrição:</strong></p>
+              <div class="card bg-light">
+                <div class="card-body">
+                  <p id="modalDescricao" class="mb-0"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <p><strong>Foto:</strong></p>
+              <div id="modalFotoContainer" class="text-center"></div>
+            </div>
+
+            <div class="mb-3">
+              <p><strong>Anexo:</strong></p>
+              <a id="modalAnexoLink" href="#" class="d-none" target="_blank"></a>
+            </div>
           </div>
-  
-          <div class="mb-3">
-            <p><strong>Foto:</strong></p>
-            <div id="modalFotoContainer" class="text-center"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-1"></i> Fechar
+            </button>
+            <button type="button" class="btn btn-primary" id="btnAtualizarStatus">
+              <i class="fas fa-sync-alt me-1"></i> Atualizar Status
+            </button>
           </div>
-  
-          <div class="mb-3">
-            <p><strong>Anexo:</strong></p>
-            <a id="modalAnexoLink" href="#" class="d-none" target="_blank"></a>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="fas fa-times me-1"></i> Fechar
-          </button>
-          <button type="button" class="btn btn-primary" id="btnAtualizarStatus">
-            <i class="fas fa-sync-alt me-1"></i> Atualizar Status
-          </button>
         </div>
       </div>
     </div>
   </div>
 
-    <!-- Bootstrap JS (necessário para o funcionamento do modal) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Scripts -->
+  <!-- Bootstrap Bundle com Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- jQuery (se necessário para outros scripts) -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
-    <script>
-        // Função para carregar os detalhes do chamado no modal
-        function carregarDetalhes(idChamado) {
-            // Dados do chamado simulados (normalmente viria do backend)
-            const chamados = [
-                {
-                    id: 1,
-                    assunto: 'Problema com Login',
-                    categoria: 'Técnico',
-                    prioridade: 'Alta',
-                    status: 'Aberto',
-                    descricao: 'O usuário não consegue acessar a plataforma desde ontem, apresenta erro de login.',
-                    fotoUrl: 'https://via.placeholder.com/600x400',
-                    empresa: 'Empresa A',
-                    usuario: 'João Silva'
-                },
-                {
-                    id: 2,
-                    assunto: 'Erro no Sistema',
-                    categoria: 'Erro',
-                    prioridade: 'Crítica',
-                    status: 'Em andamento',
-                    descricao: 'Erro crítico no sistema, causando travamentos constantes.',
-                    fotoUrl: 'https://via.placeholder.com/600x400',
-                    empresa: 'Empresa B',
-                    usuario: 'Ana Souza'
-                }
-            ];
-
-            const chamado = chamados.find(ch => ch.id === idChamado);
-
-            // Preenche os campos do modal com os dados do chamado
-            document.getElementById('modalAssunto').textContent = chamado.assunto;
-            document.getElementById('modalCategoria').textContent = chamado.categoria;
-            document.getElementById('modalPrioridade').textContent = chamado.prioridade;
-            document.getElementById('modalStatus').textContent = chamado.status;
-            document.getElementById('modalDescricao').textContent = chamado.descricao;
-            document.getElementById('modalFoto').src = chamado.fotoUrl;
-            document.getElementById('modalEmpresa').textContent = chamado.empresa;
-            document.getElementById('modalUsuario').textContent = chamado.usuario;
-        }
-
-        // Função para alterar o status do chamado
-        function atualizarStatusChamado() {
-            alert("Status do chamado alterado com sucesso!");
-            // Aqui, você pode implementar a lógica para atualizar o status no backend
-        }
-    </script>
+  <script src="/js/menu.js"></script>
+  <script src="/js/sidebarToggle.js" defer></script>
+  <script src="/js/alterar_modo.js" defer></script>
+  <script src="/js/atender_chamados.js"></script>
 
 </body>
 

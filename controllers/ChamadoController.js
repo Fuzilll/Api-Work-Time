@@ -2,23 +2,23 @@ const ChamadoService = require('../services/ChamadoService');
 const { AppError } = require('../errors');
 
 class ChamadoController {
-    
+
     static async criarChamado(req, res, next) {
         try {
             const { id: usuario_id } = req.usuario;
             const { empresa_id, assunto, categoria, descricao, prioridade = 'media' } = req.body;
-    
+
             if (!assunto || !descricao) {
                 throw new AppError('Assunto e descrição são obrigatórios', 400);
             }
-    
+
             const prioridadeNormalizada = prioridade.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            
+
             const prioridadesValidas = ['baixa', 'media', 'alta', 'critica'];
             if (!prioridadesValidas.includes(prioridadeNormalizada)) {
                 throw new AppError('Prioridade inválida. Valores aceitos: baixa, media, alta, critica', 400);
             }
-    
+
             const chamado = await ChamadoService.criarChamado({
                 usuario_id,
                 empresa_id: empresa_id || null,
@@ -27,12 +27,12 @@ class ChamadoController {
                 descricao,
                 prioridade: prioridadeNormalizada
             });
-    
+
             res.status(201).json({
                 success: true,
                 data: chamado
             });
-    
+
         } catch (err) {
             console.error('Erro no ChamadoController.criarChamado:', {
                 error: err.stack,
@@ -45,9 +45,30 @@ class ChamadoController {
     }
 
 
-    // Listar todos os chamados (com filtros opcionais)
+    static async listarEmpresas(req, res, next) {
+        try {
+            const empresas = await ChamadoService.listarEmpresasAtivas();
+
+            res.json({
+                success: true,
+                data: empresas
+            });
+        } catch (err) {
+            console.error('Erro no ChamadoController.listarEmpresas:', {
+                error: err.stack,
+                user: req.usuario?.id,
+                timestamp: new Date().toISOString()
+            });
+            next(err);
+        }
+    }
+
+    // No seu ChamadoController, adicione logs:
     static async listarChamados(req, res, next) {
         try {
+            console.log('[BACKEND] Parâmetros recebidos:', req.query);
+            console.log('[BACKEND] Usuário:', req.usuario);
+
             const { status, prioridade, empresa_id } = req.query;
             const { id: usuario_id, nivel } = req.usuario;
 
@@ -58,13 +79,17 @@ class ChamadoController {
                 usuario_id: nivel === 'FUNCIONARIO' ? usuario_id : null
             };
 
+            console.log('[BACKEND] Filtros aplicados:', filtros);
+
             const chamados = await ChamadoService.listarChamados(filtros);
+            console.log('[BACKEND] Resultado da consulta:', chamados);
 
             res.json({
                 success: true,
                 data: chamados
             });
         } catch (err) {
+            console.error('[BACKEND] Erro:', err);
             next(err);
         }
     }
@@ -111,10 +136,10 @@ class ChamadoController {
             const { id: usuario_id } = req.usuario;
             const { tipo, url } = req.body; // 'anexo' ou 'foto'
 
-                    //   Anexo das imagem aos chamados implementar depois
-                        if (!tipo || !url) {
-                         throw new AppError('Tipo e URL são obrigatórios', 400);
-                       }
+            //   Anexo das imagem aos chamados implementar depois
+            if (!tipo || !url) {
+                throw new AppError('Tipo e URL são obrigatórios', 400);
+            }
 
             const campo = tipo === 'anexo' ? 'anexo_url' : 'foto_url';
             const chamado = await ChamadoService.adicionarAnexo(id, usuario_id, campo, url);

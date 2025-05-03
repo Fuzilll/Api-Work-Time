@@ -1,235 +1,451 @@
 class ITSupportChamados {
-    constructor() {
-      console.log('[IT SUPPORT CHAMADOS] Inicializando sistema de chamados...');
-      this.authTokenKey = 'authToken';
-      this.userDataKey = 'usuario';
-      this.elements = {};
-      this.currentChamado = null;
+  constructor() {
+    console.log('[DEBUG] ITSupportChamados - Iniciando construtor');
+    this.API_BASE_URL = 'http://localhost:3000/api';
+    this.API_TIMEOUT = 1000000;
+    this.authTokenKey = 'authToken';
+    this.userDataKey = 'userData';
+    this.elements = {};
+    this.currentChamado = null;
+    this.loadingOverlay = document.getElementById('loading-overlay');
+
+    console.log('[DEBUG] ITSupportChamados - Elementos carregados:', {
+      loadingOverlay: !!this.loadingOverlay
+    });
+
+    this.init();
+  }
+
+  async init() {
+    console.log('[DEBUG] ITSupportChamados.init - Iniciando');
+    try {
       this.initElements();
       this.setupEventListeners();
-      this.checkAuthAndLoad();
+      await this.checkAuthAndLoad();
+      await this.loadEmpresas();
+      console.log('[DEBUG] ITSupportChamados.init - Concluído com sucesso');
+    } catch (error) {
+      console.error('[DEBUG] ITSupportChamados.init - Erro:', error);
+      throw error;
     }
-  
-    // Métodos de inicialização
-    initElements() {
-      console.log('[IT SUPPORT CHAMADOS] Inicializando elementos da interface...');
-      const elementsConfig = [
-        { id: 'filtro-status', property: 'filtroStatus', required: true },
-        { id: 'filtro-prioridade', property: 'filtroPrioridade', required: true },
-        { id: 'filtro-empresa', property: 'filtroEmpresa', required: true },
-        { id: 'tabela-chamados', property: 'tabelaChamados', required: true },
-        { id: 'loading-overlay', property: 'loadingOverlay', required: false },
-        { id: 'error-message', property: 'errorMessage', required: false },
-        { id: 'logout-btn', property: 'logoutBtn', required: false }
-      ];
-  
-      elementsConfig.forEach(({ id, property, required }) => {
-        this.elements[property] = document.getElementById(id);
-        if (!this.elements[property] && required) {
-          console.error(`[IT SUPPORT CHAMADOS] Elemento requerido com ID '${id}' não encontrado.`);
+  }
+
+
+  initElements() {
+    console.log('[DEBUG] ITSupportChamados.initElements - Iniciando');
+    this.elements = {
+      filtroStatus: document.getElementById('filtro-status'),
+      filtroPrioridade: document.getElementById('filtro-prioridade'),
+      filtroEmpresa: document.getElementById('filtro-empresa'),
+      tabelaChamados: document.getElementById('tabela-chamados'),
+      errorMessage: document.getElementById('error-message'),
+      logoutBtn: document.getElementById('logout-btn')
+    };
+
+    console.log('[DEBUG] Elementos encontrados:', {
+      filtroStatus: !!this.elements.filtroStatus,
+      filtroPrioridade: !!this.elements.filtroPrioridade,
+      filtroEmpresa: !!this.elements.filtroEmpresa,
+      tabelaChamados: !!this.elements.tabelaChamados,
+      errorMessage: !!this.elements.errorMessage,
+      logoutBtn: !!this.elements.logoutBtn
+    });
+
+    const modalElement = document.getElementById('modalDetalhes');
+    if (modalElement) {
+      this.modalDetalhes = new bootstrap.Modal(modalElement);
+      console.log('[DEBUG] Modal de detalhes inicializado');
+    } else {
+      console.warn('[DEBUG] Modal de detalhes não encontrado');
+    }
+  }
+
+  setupEventListeners() {
+    if (this.elements.filtroStatus) {
+      this.elements.filtroStatus.addEventListener('change', () => this.loadChamados());
+    }
+
+    if (this.elements.filtroPrioridade) {
+      this.elements.filtroPrioridade.addEventListener('change', () => this.loadChamados());
+    }
+
+    if (this.elements.filtroEmpresa) {
+      this.elements.filtroEmpresa.addEventListener('change', () => this.loadChamados());
+    }
+
+    if (this.elements.logoutBtn) {
+      this.elements.logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.logout();
+      });
+    }
+  }
+
+  // Adicionar método para fazer requisições com tratamento de timeout
+  async fetchWithTimeout(resource, options = {}) {
+    const { timeout = this.API_TIMEOUT } = options;
+
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+
+    clearTimeout(id);
+
+    return response;
+  }
+  async checkAuthAndLoad() {
+    console.log('[DEBUG] ITSupportChamados.checkAuthAndLoad - Iniciando');
+    try {
+      const token = localStorage.getItem(this.authTokenKey);
+      console.log('[DEBUG] Token encontrado:', !!token);
+
+      if (!token) throw new Error('Token de autenticação não encontrado');
+
+      const userData = JSON.parse(localStorage.getItem(this.userDataKey));
+      console.log('[DEBUG] Dados do usuário:', userData);
+
+      if (!userData) throw new Error('Dados do usuário não encontrados');
+
+      if (userData.nivel !== 'IT_SUPPORT') {
+        throw new Error('Acesso restrito ao suporte técnico');
+      }
+
+      this.userData = userData;
+      await this.loadChamados();
+      console.log('[DEBUG] checkAuthAndLoad - Concluído com sucesso');
+    } catch (error) {
+      console.error('[DEBUG] checkAuthAndLoad - Erro:', error);
+      this.showError(error.message || 'Erro de autenticação');
+      setTimeout(() => this.redirectToLogin(), 3000);
+    }
+  }
+
+  async loadChamados() {
+    console.log('[DEBUG] ITSupportChamados.loadChamados - Iniciando');
+    this.mostrarLoading(true);
+
+    try {
+      const filters = {
+        status: this.elements.filtroStatus?.value,
+        prioridade: this.elements.filtroPrioridade?.value,
+        empresa_id: this.elements.filtroEmpresa?.value
+      };
+
+      console.log('[DEBUG] Filtros aplicados:', filters);
+
+      const chamados = await this.buscarChamados(filters);
+      console.log('[DEBUG] Chamados recebidos:', chamados);
+
+      this.renderChamados(chamados);
+    } catch (error) {
+      console.error('[DEBUG] loadChamados - Erro:', {
+        error: error.message,
+        stack: error.stack
+      });
+
+      let errorMessage = error.message;
+      if (error.message.includes('500')) {
+        errorMessage = 'Erro interno no servidor ao carregar chamados';
+      }
+
+      this.showError(errorMessage);
+    } finally {
+      this.mostrarLoading(false);
+      console.log('[DEBUG] loadChamados - Finalizado');
+    }
+  }
+
+  async buscarChamados(filters = {}) {
+    console.log('[DEBUG] ITSupportChamados.buscarChamados - Iniciando com filtros:', filters);
+    const token = localStorage.getItem(this.authTokenKey);
+    if (!token) {
+      console.warn('[DEBUG] Token não encontrado, redirecionando para login');
+      this.redirectToLogin();
+      throw new Error('Token de autenticação não encontrado');
+    }
+
+    const cleanFilters = Object.fromEntries(
+      Object.entries(filters).filter(([_, v]) => v !== '' && v !== undefined)
+    );
+
+    const queryString = new URLSearchParams(cleanFilters).toString();
+    const url = `${this.API_BASE_URL}/chamados${queryString ? `?${queryString}` : ''}`;
+
+    console.log('[DEBUG] URL da requisição:', url);
+
+    try {
+      console.log('[DEBUG] Iniciando requisição...');
+      const response = await this.fetchWithTimeout(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
         }
       });
-  
-      // Inicializar modais
-      this.modalDetalhes = new bootstrap.Modal(document.getElementById('modalDetalhes'));
-    }
-  
-    setupEventListeners() {
-      console.log('[IT SUPPORT CHAMADOS] Configurando event listeners...');
-      
-      if (this.elements.filtroStatus) {
-        this.elements.filtroStatus.addEventListener('change', () => this.loadChamados());
-      }
-  
-      if (this.elements.filtroPrioridade) {
-        this.elements.filtroPrioridade.addEventListener('change', () => this.loadChamados());
-      }
-  
-      if (this.elements.filtroEmpresa) {
-        this.elements.filtroEmpresa.addEventListener('change', () => this.loadChamados());
-      }
-  
-      if (this.elements.logoutBtn) {
-        this.elements.logoutBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          this.logout();
-        });
-      }
-    }
-  
-    // Métodos de autenticação
-    logout() {
-      console.log('[IT SUPPORT CHAMADOS] Executando logout...');
-      localStorage.removeItem(this.authTokenKey);
-      localStorage.removeItem(this.userDataKey);
-      window.location.href = '/login';
-    }
-  
-    async checkAuthAndLoad() {
-      console.log('[IT SUPPORT CHAMADOS] Verificando autenticação...');
-      try {
-        const isAuthenticated = await this.verifyAuthentication();
-        if (isAuthenticated) {
-          console.log('[IT SUPPORT CHAMADOS] Autenticação válida, carregando dados...');
-          this.loadUserData();
-          this.loadChamados();
+      console.log('[FRONTEND] Resposta completa:', {
+        status: response.status,
+        headers: [...response.headers.entries()],
+        url: response.url
+    });
+      console.log('[DEBUG] Resposta recebida:', {
+        status: response.status,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[DEBUG] Erro na resposta:', errorData);
+
+        const errorMsg = errorData.message || `Erro ${response.status}`;
+        if (response.status === 401) {
+          console.warn('[DEBUG] Não autorizado, redirecionando...');
+          this.redirectToLogin();
         }
-      } catch (error) {
-        console.error('[IT SUPPORT CHAMADOS] Erro de autenticação:', error);
-        this.showError(error.message || 'Erro de autenticação');
-        setTimeout(() => this.logout(), 3000);
+
+        throw new Error(errorMsg);
       }
-    }
-  
-    async verifyAuthentication() {
-      const token = localStorage.getItem(this.authTokenKey);
-      if (!token) throw new Error('Token de autenticação não encontrado');
-  
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp && Date.now() >= payload.exp * 1000) {
-          throw new Error('Token expirado');
-        }
-        
-        if (payload.nivel !== 'IT_SUPPORT') {
-          throw new Error('Acesso restrito ao suporte técnico');
-        }
-        
-        return true;
-      } catch (e) {
-        throw new Error('Token inválido ou acesso não autorizado');
+
+      const responseData = await response.json();
+      console.log('[FRONTEND] Dados recebidos:', responseData);
+
+      // Ajuste para a estrutura real da resposta
+      if (!responseData?.success) {
+          throw new Error(responseData.message || 'Erro na resposta da API');
       }
-    }
-  
-    loadUserData() {
-      const userData = JSON.parse(localStorage.getItem(this.userDataKey));
-      if (!userData) throw new Error('Dados do usuário não encontrados');
-      this.userData = userData;
-    }
-  
-    // Métodos principais
-    async loadChamados() {
-      this.mostrarLoading();
-  
-      try {
-        const status = this.elements.filtroStatus.value;
-        const prioridade = this.elements.filtroPrioridade.value;
-        const empresa = this.elements.filtroEmpresa.value;
-  
-        let url = '/api/chamados?';
-        if (status) url += `status=${status}&`;
-        if (prioridade) url += `prioridade=${prioridade}&`;
-        if (empresa) url += `empresa_id=${empresa}`;
-  
-        const response = await this.fetchWithAuth(url);
-        this.renderChamados(response.data);
-  
-      } catch (error) {
-        console.error('[IT SUPPORT CHAMADOS] Erro ao carregar chamados:', error);
-        this.showError(error.message || 'Erro ao carregar chamados');
-      } finally {
-        this.esconderLoading();
+
+      return responseData.data?.chamados || responseData.chamados || [];
+    } catch (error) {
+      console.error('[DEBUG] Erro em buscarChamados:', {
+        error: error.message,
+        name: error.name,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+
+      if (error.name === 'AbortError') {
+        throw new Error('A requisição demorou muito. Verifique sua conexão.');
       }
+
+      throw error;
+    }
+  }
+  renderChamados(chamados = []) {
+    const container = this.elements.tabelaChamados;
+    if (!container) return;
+  
+    if (!Array.isArray(chamados) || chamados.length === 0) {
+      container.innerHTML = `<div class="alert alert-info">Nenhum chamado encontrado</div>`;
+      return;
     }
   
-    renderChamados(chamados) {
-      if (!this.elements.tabelaChamados) return;
-  
-      const tbody = this.elements.tabelaChamados.querySelector('tbody');
-      if (!tbody) return;
-  
-      if (!chamados || chamados.length === 0) {
-        tbody.innerHTML = `
+    const table = document.createElement('div');
+    table.className = 'table-responsive';
+    table.innerHTML = `
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
           <tr>
-            <td colspan="8" class="text-center py-4">
-              <div class="alert alert-info mb-0">
-                Nenhum chamado encontrado com os filtros selecionados
-              </div>
-            </td>
+            <th>ID</th>
+            <th>Assunto</th>
+            <!-- outros cabeçalhos -->
           </tr>
-        `;
+        </thead>
+        <tbody></tbody>
+      </table>
+    `;
+  
+    const tbody = table.querySelector('tbody');
+    chamados.forEach(chamado => {
+      tbody.appendChild(this.renderChamadoRow(chamado));
+    });
+  
+    container.innerHTML = '';
+    container.appendChild(table);
+    this.setupTableEvents(); // Configura os event listeners
+  }
+
+  renderChamadoRow(chamado) {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${chamado.id}</td>
+      <td>${chamado.assunto}</td>
+      <td>${chamado.categoria}</td>
+      <td>${this.getPrioridadeBadge(chamado.prioridade)}</td>
+      <td>${this.getStatusBadge(chamado.status)}</td>
+      <td>${chamado.empresa_nome || 'N/A'}</td>
+      <td>${chamado.usuario_nome}</td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-primary btn-detalhes" data-id="${chamado.id}">
+          <i class="fas fa-eye me-1"></i> Detalhes
+        </button>
+      </td>
+    `;
+    return row;
+  }
+  
+
+  async showDetalhesChamado(id) {
+    this.mostrarLoading(true);
+
+    try {
+      this.currentChamado = await this.buscarChamadoPorId(id);
+      this.renderDetalhesChamado();
+      this.modalDetalhes.show();
+    } catch (error) {
+      console.error('Erro ao mostrar detalhes:', error);
+      this.showError(error.message || 'Erro ao carregar detalhes');
+    } finally {
+      this.mostrarLoading(false);
+    }
+  }
+  // Adicionar carregamento de empresas
+  // Atualize o método loadEmpresas
+  async loadEmpresas() {
+    console.log('[DEBUG] ITSupportChamados.loadEmpresas - Iniciando');
+    try {
+      const token = localStorage.getItem(this.authTokenKey);
+      if (!token) {
+        console.warn('[DEBUG] Token não encontrado, redirecionando');
+        this.redirectToLogin();
         return;
       }
-  
-      tbody.innerHTML = chamados.map(chamado => `
-        <tr>
-          <td>${chamado.id}</td>
-          <td>${chamado.assunto}</td>
-          <td>${chamado.categoria}</td>
-          <td>${this.getPrioridadeBadge(chamado.prioridade)}</td>
-          <td>${this.getStatusBadge(chamado.status)}</td>
-          <td>${chamado.empresa_nome || 'N/A'}</td>
-          <td>${chamado.usuario_nome}</td>
-          <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary" 
-              onclick="itSupportChamados.showDetalhesChamado(${chamado.id})">
-              <i class="fas fa-eye me-1"></i> Detalhes
-            </button>
-          </td>
-        </tr>
-      `).join('');
-    }
-  
-    async showDetalhesChamado(id) {
-      this.mostrarLoading();
-  
-      try {
-        const response = await this.fetchWithAuth(`/api/chamados/${id}`);
-        this.currentChamado = response.data;
-        this.renderDetalhesChamado();
-        this.modalDetalhes.show();
-  
-      } catch (error) {
-        console.error('[IT SUPPORT CHAMADOS] Erro ao carregar detalhes:', error);
-        this.showError(error.message || 'Erro ao carregar detalhes do chamado');
-      } finally {
-        this.esconderLoading();
+
+      const url = `${this.API_BASE_URL}/chamados/empresas/listar`;
+      console.log('[DEBUG] URL para carregar empresas:', url);
+
+      const response = await this.fetchWithTimeout(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      console.log('[DEBUG] Resposta das empresas:', {
+        status: response.status,
+        ok: response.ok
+      });
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('[DEBUG] Content-Type inválido:', contentType, 'Texto:', text.substring(0, 100));
+        throw new Error(`Resposta inválida do servidor: ${text.substring(0, 100)}`);
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[DEBUG] Erro na resposta:', errorData);
+        throw new Error(errorData.message || `Erro ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('[DEBUG] Dados das empresas:', responseData);
+
+      if (!Array.isArray(responseData.data)) {
+        console.error('[DEBUG] Dados das empresas não é array:', responseData);
+        throw new Error('Formato de dados inválido para empresas');
+      }
+
+      this.renderEmpresas(responseData.data);
+      console.log('[DEBUG] Empresas carregadas com sucesso');
+    } catch (error) {
+      console.error('[DEBUG] Erro ao carregar empresas:', {
+        error: error.message,
+        stack: error.stack
+      });
+
+      this.showError(error.message || 'Erro ao carregar lista de empresas');
+
+      if (error.message.includes('401')) {
+        console.warn('[DEBUG] Não autorizado, redirecionando...');
+        this.redirectToLogin();
       }
     }
-  
-    renderDetalhesChamado() {
-      if (!this.currentChamado) return;
-  
-      // Preencher modal com os dados do chamado
-      document.getElementById('modalAssunto').textContent = this.currentChamado.assunto;
-      document.getElementById('modalCategoria').textContent = this.currentChamado.categoria;
-      document.getElementById('modalPrioridade').innerHTML = this.getPrioridadeBadge(this.currentChamado.prioridade);
-      document.getElementById('modalStatus').innerHTML = this.getStatusBadge(this.currentChamado.status);
-      document.getElementById('modalDescricao').textContent = this.currentChamado.descricao;
-      document.getElementById('modalEmpresa').textContent = this.currentChamado.empresa_nome || 'N/A';
-      document.getElementById('modalUsuario').textContent = this.currentChamado.usuario_nome;
-      document.getElementById('modalData').textContent = this.formatarData(this.currentChamado.criado_em);
-  
-      // Foto e anexo
-      const fotoContainer = document.getElementById('modalFotoContainer');
-      if (this.currentChamado.foto_url) {
-        fotoContainer.innerHTML = `
-          <img src="${this.currentChamado.foto_url}" 
-               class="img-fluid rounded border" 
-               alt="Foto do chamado">
-        `;
-      } else {
-        fotoContainer.innerHTML = '<p class="text-muted">Nenhuma foto enviada</p>';
+  }
+
+
+  renderEmpresas(empresas = []) {
+    const select = this.elements.filtroEmpresa;
+    if (!select) return;
+
+    select.innerHTML = `
+        <option value="">Todas</option>
+        ${empresas.map(empresa => `
+          <option value="${empresa.id}">${empresa.nome}</option>
+        `).join('')}
+      `;
+  }
+
+
+  async buscarChamadoPorId(id) {
+    const token = localStorage.getItem(this.authTokenKey);
+    if (!token) throw new Error('Usuário não autenticado');
+
+    const response = await fetch(`${this.API_BASE_URL}/chamados/${id}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
       }
-  
-      const anexoLink = document.getElementById('modalAnexoLink');
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Erro ao buscar chamado');
+    }
+
+    return await response.json();
+  }
+
+  renderDetalhesChamado() {
+    if (!this.currentChamado || !this.modalDetalhes) return;
+
+    const campos = {
+      'modalAssunto': this.currentChamado.assunto,
+      'modalCategoria': this.currentChamado.categoria,
+      'modalPrioridade': this.getPrioridadeBadge(this.currentChamado.prioridade),
+      'modalStatus': this.getStatusBadge(this.currentChamado.status),
+      'modalDescricao': this.currentChamado.descricao,
+      'modalEmpresa': this.currentChamado.empresa_nome || 'N/A',
+      'modalUsuario': this.currentChamado.usuario_nome,
+      'modalData': this.formatarData(this.currentChamado.criado_em)
+    };
+
+    Object.entries(campos).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.innerHTML = value;
+    });
+
+    const fotoContainer = document.getElementById('modalFotoContainer');
+    if (fotoContainer) {
+      fotoContainer.innerHTML = this.currentChamado.foto_url
+        ? `<img src="${this.currentChamado.foto_url}" class="img-fluid rounded" alt="Foto do chamado">`
+        : '<p class="text-muted">Nenhuma foto enviada</p>';
+    }
+
+    const anexoLink = document.getElementById('modalAnexoLink');
+    if (anexoLink) {
       if (this.currentChamado.anexo_url) {
         anexoLink.href = this.currentChamado.anexo_url;
-        anexoLink.innerHTML = `
-          <i class="fas fa-paperclip me-2"></i>Download do anexo
-        `;
+        anexoLink.innerHTML = '<i class="fas fa-paperclip me-2"></i>Download do anexo';
         anexoLink.classList.remove('d-none');
       } else {
         anexoLink.classList.add('d-none');
       }
-  
-      // Configurar botão de atualizar status
-      document.getElementById('btnAtualizarStatus').onclick = () => this.atualizarStatusChamado();
     }
-  
-    async atualizarStatusChamado() {
-      if (!this.currentChamado) return;
-  
+
+    // Configurar botão de atualizar status
+    const btnAtualizar = document.getElementById('btnAtualizarStatus');
+    if (btnAtualizar) {
+      btnAtualizar.onclick = () => this.atualizarStatusChamado();
+    }
+  }
+
+  async atualizarStatusChamado() {
+    if (!this.currentChamado) return;
+
+    try {
       const { value: status } = await Swal.fire({
         title: 'Alterar Status',
         input: 'select',
@@ -245,123 +461,154 @@ class ITSupportChamados {
           if (!value) return 'Selecione um status válido';
         }
       });
-  
+
       if (!status) return;
-  
-      try {
-        await this.fetchWithAuth(`/api/chamados/${this.currentChamado.id}`, 'PUT', { status });
-        
-        this.showSuccess('Status atualizado com sucesso!', () => {
-          this.modalDetalhes.hide();
-          this.loadChamados();
-        });
-  
-      } catch (error) {
-        console.error('[IT SUPPORT CHAMADOS] Erro ao atualizar status:', error);
-        this.showError(error.message || 'Erro ao atualizar status do chamado');
-      }
+
+      await this.atualizarChamado(this.currentChamado.id, { status });
+
+      this.showSuccess('Status atualizado com sucesso!', () => {
+        this.modalDetalhes.hide();
+        this.loadChamados();
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      this.showError(error.message || 'Erro ao atualizar status do chamado');
     }
-  
-    // Métodos de API
-    async fetchWithAuth(url, method = 'GET', body = null) {
-      const token = localStorage.getItem(this.authTokenKey);
-      if (!token) throw new Error('Token não encontrado');
-  
-      const options = {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      };
-  
-      if (body) options.body = JSON.stringify(body);
-  
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `Erro HTTP ${response.status}`);
-      }
-  
-      return await response.json();
+  }
+
+  async atualizarChamado(id, dados) {
+    const token = localStorage.getItem(this.authTokenKey);
+    if (!token) throw new Error('Usuário não autenticado');
+
+    const response = await fetch(`${this.API_BASE_URL}/chamados/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(dados)
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Erro ao atualizar chamado');
     }
-  
-    // Utilitários de UI
-    mostrarLoading() {
-      if (this.elements.loadingOverlay) {
-        this.elements.loadingOverlay.style.display = 'flex';
-      }
+
+    return await response.json();
+  }
+  // Adicione este método para configurar os event listeners
+setupTableEvents() {
+  const container = this.elements.tabelaChamados;
+  if (!container) return;
+
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-detalhes');
+    if (btn) {
+      const id = btn.dataset.id;
+      this.showDetalhesChamado(id);
     }
-  
-    esconderLoading() {
-      if (this.elements.loadingOverlay) {
-        this.elements.loadingOverlay.style.display = 'none';
-      }
+  });
+}
+
+  mostrarLoading(mostrar) {
+    if (this.loadingOverlay) {
+      this.loadingOverlay.style.display = mostrar ? 'flex' : 'none';
     }
-  
-    showError(message) {
+  }
+
+  // Adicionar tratamento para erros de rede
+  showError(message) {
+    if (typeof Swal !== 'undefined') {
       Swal.fire({
         icon: 'error',
         title: 'Erro',
         text: message,
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#dc3545'
+        confirmButtonText: 'OK'
       });
+    } else {
+      console.error('Erro:', message);
+      alert(`Erro: ${message}`);
     }
-  
-    showSuccess(message, callback = null) {
+  }
+
+  showSuccess(message, callback = null) {
+    if (typeof Swal !== 'undefined') {
       Swal.fire({
         icon: 'success',
         title: 'Sucesso',
         text: message,
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#28a745'
-      }).then(() => {
-        if (callback && typeof callback === 'function') callback();
-      });
+        confirmButtonText: 'OK'
+      }).then(() => callback && callback());
+    } else {
+      alert(`Sucesso: ${message}`);
+      callback && callback();
     }
-  
-    formatarData(dataString) {
-      if (!dataString) return 'N/A';
-      const options = { 
-        day: '2-digit', 
-        month: '2-digit', 
+  }
+
+  redirectToLogin() {
+    localStorage.removeItem(this.authTokenKey);
+    localStorage.removeItem(this.userDataKey);
+    window.location.href = '/login';
+  }
+
+  logout() {
+    this.redirectToLogin();
+  }
+
+  formatarData(dataString) {
+    if (!dataString) return 'N/A';
+    try {
+      const options = {
+        day: '2-digit',
+        month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
       };
       return new Date(dataString).toLocaleDateString('pt-BR', options);
-    }
-  
-    getStatusBadge(status) {
-      const statusClasses = {
-        'Aberto': 'bg-warning text-dark',
-        'Em andamento': 'bg-primary',
-        'Resolvido': 'bg-success',
-        'Fechado': 'bg-secondary'
-      };
-      const classe = statusClasses[status] || 'bg-light text-dark';
-      return `<span class="badge ${classe}">${status}</span>`;
-    }
-  
-    getPrioridadeBadge(prioridade) {
-      const prioridadeClasses = {
-        'Baixa': 'bg-success',
-        'Média': 'bg-info',
-        'Alta': 'bg-warning text-dark',
-        'Crítica': 'bg-danger'
-      };
-      const classe = prioridadeClasses[prioridade] || 'bg-light text-dark';
-      return `<span class="badge ${classe}">${prioridade}</span>`;
+    } catch (e) {
+      console.error('Erro ao formatar data:', e);
+      return 'Data inválida';
     }
   }
-  
-  // Inicialização
-  document.addEventListener('DOMContentLoaded', () => {
-    try {
-      window.itSupportChamados = new ITSupportChamados();
-    } catch (error) {
-      console.error('Erro na inicialização do ITSupportChamados:', error);
+
+  getStatusBadge(status) {
+    const statusClasses = {
+      'Aberto': 'bg-warning text-dark',
+      'Em andamento': 'bg-primary',
+      'Resolvido': 'bg-success',
+      'Fechado': 'bg-secondary'
+    };
+    const classe = statusClasses[status] || 'bg-light text-dark';
+    return `<span class="badge ${classe}">${status}</span>`;
+  }
+
+  getPrioridadeBadge(prioridade) {
+    const prioridadeClasses = {
+      'Baixa': 'bg-success',
+      'Média': 'bg-info',
+      'Alta': 'bg-warning text-dark',
+      'Crítica': 'bg-danger'
+    };
+    const classe = prioridadeClasses[prioridade] || 'bg-light text-dark';
+    return `<span class="badge ${classe}">${prioridade}</span>`;
+  }
+
+}
+
+// Inicialização com logs
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('[DEBUG] DOM completamente carregado, iniciando ITSupportChamados');
+  try {
+    window.itSupportChamados = new ITSupportChamados();
+    console.log('[DEBUG] ITSupportChamados inicializado com sucesso');
+  } catch (error) {
+    console.error('[DEBUG] Erro na inicialização:', {
+      error: error.message,
+      stack: error.stack
+    });
+
+    if (typeof Swal !== 'undefined') {
       Swal.fire({
         icon: 'error',
         title: 'Erro',
@@ -370,5 +617,9 @@ class ITSupportChamados {
       }).then(() => {
         window.location.href = '/login';
       });
+    } else {
+      alert('Erro ao carregar o sistema de chamados. Redirecionando para login...');
+      window.location.href = '/login';
     }
-  });
+  }
+});
