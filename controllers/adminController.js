@@ -490,7 +490,8 @@ static async listarSolicitacoesPendentes(req, res, next) {
       }
 
       const solicitacoes = await AdminService.obterSolicitacoesAlteracaoPendentes(id_empresa);
-      
+      console.log('[AdminController] Solicitações aaaaaaaaaaa',solicitacoes)
+
       res.json({
           success: true,
           data: solicitacoes

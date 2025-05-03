@@ -181,6 +181,9 @@ class App {
     this.app.use('/api/admin', authMiddleware.autenticacao, require('./routes/adminRoutes'));
     this.app.use('/api/dashboard', authMiddleware.autenticacao, require('./routes/dashboardRoutes'));
 
+    //testando
+    this.app.use('/api/chamados', authMiddleware.autenticacao, require('./routes/chamadoRoutes'));
+
     // 6. Rota fallback (DEVE ser a última)
     this.app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, 'frontend/public/index.html'));

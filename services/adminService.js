@@ -774,6 +774,7 @@ static async obterSolicitacoesAlteracaoPendentes(idEmpresa) {
       `;
 
       const solicitacoes = await db.query(sql, [idEmpresa]);
+      console.log('[AdminService] Solicitações aaaaaaaaaaa',solicitacoes)
       return solicitacoes;
   } catch (error) {
       console.error('[AdminService] Erro ao buscar solicitações pendentes:', error);

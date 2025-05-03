@@ -28,55 +28,171 @@
     <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
   </div>
 
- <div class="content">
-  <div class="topbar">
-    <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
-  </div>
-  <div class="container mt-5">
-    <div class="form-container">
-      <h2>Solicitar Ajuda</h2>
-      <p>Se você está enfrentando algum problema ou precisa de ajuda, preencha o formulário abaixo.</p>
-      <form action="/enviar-chamado" method="POST">
-        <div class="form-group">
-          <label for="assunto">Assunto</label>
-          <input type="text" class="form-control" id="assunto" name="assunto" required>
-        </div>
-        <div class="form-group">
-          <label for="descricao">Descrição do Problema</label>
-          <textarea class="form-control" id="descricao" name="descricao" rows="4" required></textarea>
-        </div>
-        <div class="form-group">
-          <label for="prioridade">Prioridade</label>
-          <select class="form-control" id="prioridade" name="prioridade">
-            <option value="baixa">Baixa</option>
-            <option value="media">Média</option>
-            <option value="alta">Alta</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="categoria">Categoria</label>
-          <select class="form-control" id="categoria" name="categoria">
-            <option value="tecnico">Problema Técnico</option>
-            <option value="duvida">Dúvida sobre Funcionalidade</option>
-            <option value="erro">Relatar Erro</option>
-            <option value="outros">Outros</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="anexo">Anexar Arquivos</label>
-          <input type="file" class="form-control-file" id="anexo" name="anexo">
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">Enviar Solicitação</button>
-      </form>
+  <div class="content">
+    <div class="topbar">
+      <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
     </div>
-  </div>
- </div>
+      <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h2 class="card-title h5 mb-4">Criar Novo Chamado</h2>
 
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.0/dist/umd/popper.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
-  <script src="/js/sidebarToggle.js"></script>
-  <script src="/js/alterar_modo.js"></script>
+                <form id="form-chamado">
+                  <div class="mb-3">
+                    <label for="assunto" class="form-label">Assunto *</label>
+                    <input type="text" class="form-control" id="assunto" name="assunto" required>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição do Problema *</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="4" required></textarea>
+                  </div>
+
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="prioridade" class="form-label">Prioridade</label>
+                      <select class="form-select" id="prioridade" name="prioridade">
+                        <option value="baixa">Baixa</option>
+                        <option value="media" selected>Média</option>
+                        <option value="alta">Alta</option>
+                        <option value="critica">Crítica</option>
+                      </select>
+                    </div>
+
+                    <div class="col-md-6">
+                      <label for="categoria" class="form-label">Categoria</label>
+                      <select class="form-select" id="categoria" name="categoria">
+                        <option value="tecnico">Problema Técnico</option>
+                        <option value="duvida">Dúvida sobre Funcionalidade</option>
+                        <option value="erro">Relatar Erro</option>
+                        <option value="outros">Outros</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="mb-4">
+                    <label for="anexo" class="form-label">Anexar Arquivos</label>
+                    <input type="file" class="form-control" id="anexo" name="anexo" accept="image/*,.pdf,.doc,.docx">
+                    <div class="form-text">Formatos aceitos: JPG, PNG, PDF, DOC (até 5MB)</div>
+                  </div>
+
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fas fa-paper-plane me-2"></i>Enviar Solicitação
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal de Detalhes -->
+    <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">Detalhes do Chamado</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p><strong>Assunto:</strong> <span id="modalAssunto"></span></p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Categoria:</strong> <span id="modalCategoria"></span></p>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p><strong>Prioridade:</strong> <span id="modalPrioridade"></span></p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p><strong>Empresa:</strong> <span id="modalEmpresa"></span></p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Usuário:</strong> <span id="modalUsuario"></span></p>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <p><strong>Data:</strong> <span id="modalData"></span></p>
+            </div>
+
+            <div class="mb-4">
+              <p><strong>Descrição:</strong></p>
+              <div class="card bg-light">
+                <div class="card-body">
+                  <p id="modalDescricao" class="mb-0"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <p><strong>Foto:</strong></p>
+              <div id="modalFotoContainer" class="text-center">
+                <p class="text-muted">Nenhuma foto enviada</p>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <p><strong>Anexo:</strong></p>
+              <a id="modalAnexoLink" href="#" class="d-none" target="_blank">
+                <i class="fas fa-paperclip me-2"></i>Download do anexo
+              </a>
+              <span id="modalSemAnexo" class="text-muted">Nenhum anexo enviado</span>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-2"></i>Fechar
+            </button>
+            <button type="button" id="btnAtualizarStatus" class="btn btn-primary">
+              <i class="fas fa-sync-alt me-2"></i>Atualizar Status
+            </button>
+          </div>
+        </div>
+      </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay"
+    class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-none justify-content-center align-items-center"
+    style="z-index: 1100;">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Carregando...</span>
+    </div>
+    <span class="ms-3 text-white">Processando...</span>
+  </div>
+
+  <!-- Scripts -->
+  <!-- Bootstrap Bundle com Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- jQuery (se necessário para outros scripts) -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+  <!-- Scripts Customizados -->
+  <script src="/js/sidebarToggle.js" defer></script>
+  <script src="/js/alterar_modo.js" defer></script>
+  <script src="/js/pagina_suporte_usuarios.js" defer></script>
 
 </body>
 

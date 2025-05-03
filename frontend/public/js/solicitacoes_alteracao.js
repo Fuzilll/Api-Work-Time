@@ -1,237 +1,444 @@
-// Variáveis globais
-let solicitacoes = [];
-let solicitacaoSelecionada = null;
-let acaoSelecionada = null;
-
-// Elementos DOM
-const tableBody = document.querySelector('#solicitacoesTable tbody');
-const modal = document.getElementById('modalAprovarRejeitar');
-const spanClose = document.getElementsByClassName('close')[0];
-const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
-const btnCancelarAcao = document.getElementById('btnCancelarAcao');
-const modalTitulo = document.getElementById('modalTitulo');
-const modalFuncionario = document.getElementById('modalFuncionario');
-const modalDataHora = document.getElementById('modalDataHora');
-const modalMotivo = document.getElementById('modalMotivo');
-const motivoAdmin = document.getElementById('motivoAdmin');
-
-/**
- * Carrega as solicitações de alteração pendentes
- * @async
- */
-async function carregarSolicitacoes() {
-    try {
-        console.log('[Solicitacoes] Carregando solicitações...');
-        const response = await fetch('/api/admin/solicitacoes/pendentes');
+class SolicitacoesManager {
+    constructor() {
+      console.log('[SOLICITAÇÕES MANAGER] Inicializando gerenciador de solicitações...');
+      try {
+        this.authTokenKey = 'authToken';
+        this.elements = {};
+        this.solicitacoes = [];
+        this.solicitacaoSelecionada = null;
+        this.acaoSelecionada = null;
         
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
-        }
+        console.log('[SOLICITAÇÕES MANAGER] Iniciando inicialização de elementos...');
+        this.initElements();
         
-        const { data } = await response.json();
-        solicitacoes = data;
-        renderizarTabela();
-    } catch (error) {
-        console.error('[Solicitacoes] Erro ao carregar solicitações:', error);
-        exibirNotificacao('Erro ao carregar solicitações. Tente novamente.', 'error');
+        console.log('[SOLICITAÇÕES MANAGER] Configurando event listeners...');
+        this.setupEventListeners();
+        
+        console.log('[SOLICITAÇÕES MANAGER] Verificando autenticação...');
+        this.checkAuthAndLoad();
+        
+        console.log('[SOLICITAÇÕES MANAGER] Inicialização completa');
+      } catch (error) {
+        console.error('[SOLICITAÇÕES MANAGER] Erro na inicialização:', error);
+        this.showError('Erro ao iniciar o sistema');
+      }
     }
-}
-
-/**
- * Renderiza a tabela de solicitações
- */
-function renderizarTabela() {
-    tableBody.innerHTML = '';
-    
-    if (solicitacoes.length === 0) {
-        tableBody.innerHTML = `
-            <tr class="no-data">
-                <td colspan="7">Nenhuma solicitação pendente encontrada</td>
-            </tr>
+  
+    // Métodos de inicialização
+    initElements() {
+      console.log('[SOLICITAÇÕES MANAGER] Inicializando elementos da interface...');
+      const elementsConfig = [
+        { id: 'solicitacoesTable', property: 'tabelaSolicitacoes', required: true },
+        { id: 'modalAprovarRejeitar', property: 'modal', required: true },
+        { id: 'modalTitulo', property: 'modalTitulo', required: true },
+        { id: 'modalFuncionario', property: 'modalFuncionario', required: true },
+        { id: 'modalDataHora', property: 'modalDataHora', required: true },
+        { id: 'modalMotivo', property: 'modalMotivo', required: true },
+        { id: 'motivoAdmin', property: 'motivoAdmin', required: true },
+        { id: 'btnConfirmarAcao', property: 'btnConfirmar', required: true },
+        { id: 'btnCancelarAcao', property: 'btnCancelar', required: true },
+        { id: 'loading-overlay', property: 'loadingOverlay', required: false },
+        { id: 'error-message', property: 'errorMessage', required: false },
+        { id: 'close-modal', property: 'closeModal', required: false }
+      ];
+  
+      elementsConfig.forEach(({ id, property, required }) => {
+        this.elements[property] = document.getElementById(id);
+        if (!this.elements[property] && required) {
+          console.error(`[SOLICITAÇÕES MANAGER] Elemento requerido com ID '${id}' não encontrado.`);
+        }
+      });
+    }
+  
+    setupEventListeners() {
+      console.log('[SOLICITAÇÕES MANAGER] Configurando event listeners...');
+      
+      // Eventos do modal
+      if (this.elements.closeModal) {
+        this.elements.closeModal.addEventListener('click', () => this.fecharModal());
+      }
+      
+      if (this.elements.btnCancelar) {
+        this.elements.btnCancelar.addEventListener('click', () => this.fecharModal());
+      }
+      
+      if (this.elements.btnConfirmar) {
+        this.elements.btnConfirmar.addEventListener('click', () => this.processarAcao());
+      }
+      
+      // Fechar modal ao clicar fora
+      window.addEventListener('click', (event) => {
+        if (event.target === this.elements.modal) {
+          this.fecharModal();
+        }
+      });
+    }
+  
+    // Métodos de autenticação (similar ao AdminDashboard)
+    async checkAuthAndLoad() {
+      console.log('[SOLICITAÇÕES MANAGER] Verificando autenticação...');
+      try {
+        const isAuthenticated = await this.verifyAuthentication();
+        if (isAuthenticated) {
+          console.log('[SOLICITAÇÕES MANAGER] Autenticação válida, carregando solicitações...');
+          await this.carregarSolicitacoes();
+        }
+      } catch (error) {
+        console.error('[SOLICITAÇÕES MANAGER] Erro de autenticação:', {
+          error: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString()
+        });
+        this.showError(error.message || 'Erro de autenticação');
+        setTimeout(() => {
+          console.log('[SOLICITAÇÕES MANAGER] Redirecionando para login após erro de autenticação...');
+          this.logout();
+        }, 3000);
+      }
+    }
+  
+    async verifyAuthentication() {
+      console.debug('[SOLICITAÇÕES MANAGER] Iniciando verificação de token...');
+      const token = localStorage.getItem(this.authTokenKey);
+     
+      if (!token) {
+        console.warn('[SOLICITAÇÕES MANAGER] Nenhum token encontrado no localStorage');
+        throw new Error('Token de autenticação não encontrado');
+      }
+  
+      try {
+        console.debug('[SOLICITAÇÕES MANAGER] Token encontrado, decodificando...');
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.debug('[SOLICITAÇÕES MANAGER] Payload do token:', payload);
+  
+        if (payload.exp && Date.now() >= payload.exp * 1000) {
+          console.warn('[SOLICITAÇÕES MANAGER] Token expirado', {
+            expiration: new Date(payload.exp * 1000),
+            currentTime: new Date()
+          });
+          throw new Error('Token expirado');
+        }
+       
+        if (!payload.nivel) {
+          console.warn('[SOLICITAÇÕES MANAGER] Token não contém informação de nível', payload);
+          throw new Error('Token incompleto - falta informação de nível de acesso');
+        }
+       
+        if (payload.nivel.toUpperCase() !== 'ADMIN') {
+          console.warn('[SOLICITAÇÕES MANAGER] Tentativa de acesso não autorizado', {
+            nivelUsuario: payload.nivel,
+            required: 'ADMIN'
+          });
+          throw new Error('Acesso restrito a administradores');
+        }
+       
+        console.log('[SOLICITAÇÕES MANAGER] Token válido e permissões confirmadas');
+        return true;
+      } catch (e) {
+        console.error('[SOLICITAÇÕES MANAGER] Falha na verificação do token', {
+          error: e.message,
+          stack: e.stack,
+          token: token ? 'presente' : 'ausente',
+          timestamp: new Date().toISOString()
+        });
+        throw new Error('Token inválido ou acesso não autorizado');
+      }
+    }
+  
+    logout() {
+      console.log('[SOLICITAÇÕES MANAGER] Executando logout...');
+      localStorage.removeItem(this.authTokenKey);
+      console.debug('[SOLICITAÇÕES MANAGER] Token removido do localStorage');
+      window.location.href = 'login.html';
+    }
+  
+    // Métodos principais
+    async carregarSolicitacoes() {
+      console.log('[SOLICITAÇÕES MANAGER] Carregando solicitações...');
+      try {
+        this.mostrarLoading();
+  
+        const response = await this.fetchWithAuth('/api/admin/solicitacoes/pendentes');
+        this.solicitacoes = response.data || response;
+        console.debug('[SOLICITAÇÕES MANAGER] Dados recebidos:', this.solicitacoes);
+  
+        if (!this.solicitacoes) {
+          throw new Error('Dados inválidos das solicitações');
+        }
+  
+        this.renderizarTabela();
+  
+      } catch (erro) {
+        console.error('[SOLICITAÇÕES MANAGER] Erro ao carregar solicitações', {
+          error: erro.message,
+          stack: erro.stack,
+          timestamp: new Date().toISOString()
+        });
+        this.showError(erro.message || 'Erro ao carregar solicitações');
+      } finally {
+        this.esconderLoading();
+      }
+    }
+  
+    renderizarTabela() {
+      console.debug('[SOLICITAÇÕES MANAGER] Renderizando tabela...');
+      const tbody = this.elements.tabelaSolicitacoes.querySelector('tbody');
+      
+      if (!tbody) {
+        console.error('[SOLICITAÇÕES MANAGER] Elemento tbody não encontrado');
+        return;
+      }
+  
+      tbody.innerHTML = '';
+      
+      if (this.solicitacoes.length === 0) {
+        tbody.innerHTML = `
+          <tr class="no-data">
+            <td colspan="7">Nenhuma solicitação pendente encontrada</td>
+          </tr>
         `;
         return;
-    }
-    
-    solicitacoes.forEach(solicitacao => {
+      }
+      
+      this.solicitacoes.forEach(solicitacao => {
         const row = document.createElement('tr');
         row.dataset.id = solicitacao.id;
         
         row.innerHTML = `
-            <td>${solicitacao.nome_funcionario}</td>
-            <td>${formatarDataHora(solicitacao.data_hora_original)}</td>
-            <td>${solicitacao.tipo_registro}</td>
-            <td>${solicitacao.departamento}</td>
-            <td title="${solicitacao.motivo}">
-                ${truncarTexto(solicitacao.motivo, 50)}
-            </td>
-            <td><span class="badge badge-pendente">Pendente</span></td>
-            <td class="actions">
-                <button class="btn btn-approve" data-id="${solicitacao.id}">
-                    <i class="fas fa-check"></i> Aprovar
-                </button>
-                <button class="btn btn-reject" data-id="${solicitacao.id}">
-                    <i class="fas fa-times"></i> Rejeitar
-                </button>
-            </td>
+          <td>${solicitacao.nome_funcionario}</td>
+          <td>${this.formatarDataHora(solicitacao.data_hora_original)}</td>
+          <td>${solicitacao.tipo_registro}</td>
+          <td>${solicitacao.departamento}</td>
+          <td title="${solicitacao.motivo}">
+            ${this.truncarTexto(solicitacao.motivo, 50)}
+          </td>
+          <td><span class="badge badge-pendente">Pendente</span></td>
+          <td class="actions">
+            <button class="btn btn-approve" data-id="${solicitacao.id}">
+              <i class="fas fa-check"></i> Aprovar
+            </button>
+            <button class="btn btn-reject" data-id="${solicitacao.id}">
+              <i class="fas fa-times"></i> Rejeitar
+            </button>
+          </td>
         `;
         
-        tableBody.appendChild(row);
-    });
-
-    adicionarListenersBotoes();
-}
-
-/**
- * Formata data/hora para exibição
- * @param {string} dataHora - Data/hora no formato ISO
- * @returns {string} Data/hora formatada
- */
-function formatarDataHora(dataHora) {
-    if (!dataHora) return '-';
-    const dt = new Date(dataHora);
-    return dt.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-/**
- * Trunca texto para o tamanho especificado
- * @param {string} texto - Texto original
- * @param {number} maxLength - Tamanho máximo
- * @returns {string} Texto truncado
- */
-function truncarTexto(texto, maxLength) {
-    if (!texto) return '';
-    return texto.length > maxLength 
+        tbody.appendChild(row);
+      });
+  
+      // Adiciona listeners aos botões recém-criados
+      document.querySelectorAll('.btn-approve').forEach(btn => {
+        btn.addEventListener('click', (e) => this.abrirModal(e.target.closest('button').dataset.id, 'Aprovar'));
+      });
+      
+      document.querySelectorAll('.btn-reject').forEach(btn => {
+        btn.addEventListener('click', (e) => this.abrirModal(e.target.closest('button').dataset.id, 'Rejeitar'));
+      });
+    }
+  
+    abrirModal(idSolicitacao, acao) {
+      console.debug(`[SOLICITAÇÕES MANAGER] Abrindo modal para ${acao} solicitação ${idSolicitacao}`);
+      
+      this.solicitacaoSelecionada = this.solicitacoes.find(s => s.id == idSolicitacao);
+      this.acaoSelecionada = acao;
+      
+      if (!this.solicitacaoSelecionada) {
+        this.showError('Solicitação não encontrada');
+        return;
+      }
+      
+      // Preencher modal
+      this.elements.modalTitulo.textContent = `${acao} Solicitação`;
+      this.elements.modalFuncionario.textContent = this.solicitacaoSelecionada.nome_funcionario;
+      this.elements.modalDataHora.textContent = this.formatarDataHora(this.solicitacaoSelecionada.data_hora_original);
+      this.elements.modalMotivo.textContent = this.solicitacaoSelecionada.motivo;
+      this.elements.motivoAdmin.value = '';
+      
+      // Configurar botão de confirmação
+      this.elements.btnConfirmar.textContent = acao;
+      this.elements.btnConfirmar.className = `btn ${acao === 'Aprovar' ? 'btn-success' : 'btn-danger'}`;
+      
+      // Mostrar modal
+      this.elements.modal.style.display = 'block';
+    }
+  
+    fecharModal() {
+      console.debug('[SOLICITAÇÕES MANAGER] Fechando modal...');
+      this.elements.modal.style.display = 'none';
+      this.solicitacaoSelecionada = null;
+      this.acaoSelecionada = null;
+    }
+  
+    async processarAcao() {
+      console.debug(`[SOLICITAÇÕES MANAGER] Processando ação ${this.acaoSelecionada}...`);
+      
+      const motivo = this.elements.motivoAdmin.value.trim();
+      
+      if (!motivo || motivo.length < 5) {
+        this.showError('Informe um motivo válido (mínimo 5 caracteres)');
+        return;
+      }
+      
+      try {
+        this.mostrarLoading();
+        
+        const response = await this.fetchWithAuth(
+          `/api/admin/solicitacoes/${this.solicitacaoSelecionada.id}/processar`,
+          'POST',
+          {
+            acao: this.acaoSelecionada.toLowerCase(),
+            motivo: motivo
+          }
+        );
+  
+        this.exibirNotificacao(
+          response.message || 'Ação processada com sucesso',
+          'success'
+        );
+        
+        this.fecharModal();
+        await this.carregarSolicitacoes();
+      } catch (erro) {
+        console.error('[SOLICITAÇÕES MANAGER] Erro ao processar ação:', {
+          error: erro.message,
+          stack: erro.stack,
+          timestamp: new Date().toISOString()
+        });
+        this.showError(erro.message || 'Erro ao processar solicitação');
+      } finally {
+        this.esconderLoading();
+      }
+    }
+  
+    // Métodos utilitários
+    async fetchWithAuth(url, method = 'GET', body = null) {
+      console.debug(`[SOLICITAÇÕES MANAGER] Fazendo requisição autenticada: ${method} ${url}`);
+      const token = localStorage.getItem(this.authTokenKey);
+      if (!token) {
+        console.error('[SOLICITAÇÕES MANAGER] Token não encontrado durante requisição');
+        throw new Error('Token não encontrado');
+      }
+  
+      try {
+        const options = {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        };
+  
+        if (body) {
+          options.body = JSON.stringify(body);
+        }
+  
+        const response = await fetch(url, options);
+        console.debug(`[SOLICITAÇÕES MANAGER] Resposta recebida: ${response.status}`);
+  
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          console.error('[SOLICITAÇÕES MANAGER] Erro na resposta da API', {
+            status: response.status,
+            error: error.message || 'Sem mensagem de erro',
+            url
+          });
+          throw new Error(error.message || `Erro HTTP ${response.status}`);
+        }
+  
+        const data = await response.json();
+        console.debug('[SOLICITAÇÕES MANAGER] Dados da resposta:', data);
+        return data;
+      } catch (erro) {
+        console.error('[SOLICITAÇÕES MANAGER] Erro na requisição', {
+          error: erro.message,
+          stack: erro.stack,
+          url,
+          method,
+          timestamp: new Date().toISOString()
+        });
+        throw erro;
+      }
+    }
+  
+    formatarDataHora(dataHora) {
+      if (!dataHora) return '-';
+      try {
+        const dt = new Date(dataHora);
+        return dt.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (error) {
+        console.warn('[SOLICITAÇÕES MANAGER] Erro ao formatar data/hora:', {
+          dataHora,
+          error: error.message
+        });
+        return dataHora;
+      }
+    }
+  
+    truncarTexto(texto, maxLength) {
+      if (!texto) return '';
+      return texto.length > maxLength 
         ? `${texto.substring(0, maxLength)}...` 
         : texto;
-}
-
-/**
- * Adiciona listeners aos botões de ação
- */
-function adicionarListenersBotoes() {
-    document.querySelectorAll('.btn-approve').forEach(btn => {
-        btn.addEventListener('click', (e) => abrirModal(e.target.dataset.id, 'Aprovar'));
-    });
-    
-    document.querySelectorAll('.btn-reject').forEach(btn => {
-        btn.addEventListener('click', (e) => abrirModal(e.target.dataset.id, 'Rejeitar'));
-    });
-}
-
-/**
- * Abre o modal para aprovar/rejeitar solicitação
- * @param {string} idSolicitacao - ID da solicitação
- * @param {string} acao - Ação a ser realizada ('Aprovar' ou 'Rejeitar')
- */
-function abrirModal(idSolicitacao, acao) {
-    solicitacaoSelecionada = solicitacoes.find(s => s.id == idSolicitacao);
-    acaoSelecionada = acao;
-    
-    if (!solicitacaoSelecionada) {
-        exibirNotificacao('Solicitação não encontrada', 'error');
-        return;
     }
-    
-    // Preencher modal
-    modalTitulo.textContent = `${acao} Solicitação`;
-    modalFuncionario.textContent = solicitacaoSelecionada.nome_funcionario;
-    modalDataHora.textContent = formatarDataHora(solicitacaoSelecionada.data_hora_original);
-    modalMotivo.textContent = solicitacaoSelecionada.motivo;
-    motivoAdmin.value = '';
-    
-    // Configurar botão de confirmação
-    btnConfirmarAcao.textContent = acao;
-    btnConfirmarAcao.className = `btn ${acao === 'Aprovar' ? 'btn-success' : 'btn-danger'}`;
-    
-    // Mostrar modal
-    modal.style.display = 'block';
-}
-
-/**
- * Fecha o modal
- */
-function fecharModal() {
-    modal.style.display = 'none';
-    solicitacaoSelecionada = null;
-    acaoSelecionada = null;
-}
-
-/**
- * Processa a ação de aprovar/rejeitar
- * @async
- */
-async function processarAcao() {
-    const motivo = motivoAdmin.value.trim();
-    
-    if (!motivo || motivo.length < 5) {
-        exibirNotificacao('Informe um motivo válido (mínimo 5 caracteres)', 'warning');
-        return;
-    }
-    
-    try {
-        console.log(`[Solicitacoes] Processando ${acaoSelecionada} para solicitação ${solicitacaoSelecionada.id}`);
-        
-        const response = await fetch(`/api/admin/solicitacoes/${solicitacaoSelecionada.id}/processar`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                acao: acaoSelecionada.toLowerCase(),
-                motivo: motivo
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Erro ao processar solicitação');
-        }
-        
-        const { message } = await response.json();
-        exibirNotificacao(message, 'success');
-        fecharModal();
-        await carregarSolicitacoes();
-    } catch (error) {
-        console.error('[Solicitacoes] Erro ao processar ação:', error);
-        exibirNotificacao(error.message || 'Erro ao processar solicitação', 'error');
-    }
-}
-
-/**
- * Exibe uma notificação para o usuário
- * @param {string} mensagem - Mensagem a ser exibida
- * @param {string} tipo - Tipo de notificação ('success', 'error', 'warning')
- */
-function exibirNotificacao(mensagem, tipo) {
-    // Implementação depende da biblioteca de notificação usada
-    // Exemplo com Toastr:
-    if (typeof toastr !== 'undefined') {
+  
+    exibirNotificacao(mensagem, tipo = 'success') {
+      console.debug(`[SOLICITAÇÕES MANAGER] Exibindo notificação: ${tipo} - ${mensagem}`);
+      // Implementação pode usar toastr, alert ou outro sistema de notificação
+      if (typeof toastr !== 'undefined') {
         toastr[tipo](mensagem);
-    } else {
+      } else {
         alert(`${tipo.toUpperCase()}: ${mensagem}`);
+      }
     }
-}
-
-// Event Listeners
-spanClose.addEventListener('click', fecharModal);
-btnCancelarAcao.addEventListener('click', fecharModal);
-btnConfirmarAcao.addEventListener('click', processarAcao);
-window.addEventListener('click', (event) => {
-    if (event.target === modal) {
-        fecharModal();
+  
+    // Métodos de UI
+    mostrarLoading() {
+      if (this.elements.loadingOverlay) {
+        this.elements.loadingOverlay.style.display = 'flex';
+      }
     }
-});
-
-// Inicialização
-document.addEventListener('DOMContentLoaded', () => {
-    if (window.location.pathname.includes('solicitacoes.html')) {
-        carregarSolicitacoes();
+  
+    esconderLoading() {
+      if (this.elements.loadingOverlay) {
+        this.elements.loadingOverlay.style.display = 'none';
+      }
     }
-});
+  
+    showError(message) {
+      if (this.elements.errorMessage) {
+        this.elements.errorMessage.textContent = message;
+        this.elements.errorMessage.style.display = 'block';
+        setTimeout(() => {
+          if (this.elements.errorMessage) {
+            this.elements.errorMessage.style.display = 'none';
+          }
+        }, 5000);
+      } else {
+        alert(`Erro: ${message}`);
+      }
+    }
+  }
+  
+  // Inicialização
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('[SOLICITAÇÕES MANAGER] DOM carregado, iniciando aplicação...');
+    try {
+      if (window.location.pathname.includes('solicitacoes-alteracao-ponto.html')) {
+        window.solicitacoesManager = new SolicitacoesManager();
+      }
+    } catch (error) {
+      console.error('[SOLICITAÇÕES MANAGER] Erro fatal na inicialização', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      alert('Erro ao carregar o gerenciador de solicitações. Redirecionando...');
+      window.location.href = 'login.html';
+    }
+  });

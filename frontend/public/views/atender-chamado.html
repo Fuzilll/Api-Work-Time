@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -105,166 +106,186 @@
         }
     </style>
 </head>
+
 <body>
 
-<div class="container mt-5">
-    <h2>Lista de Chamados</h2>
+    <div class="container mt-5">
+        <h2>Lista de Chamados</h2>
 
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Assunto</th>
-                <th>Categoria</th>
-                <th>Prioridade</th>
-                <th>Status</th>
-                <th>Empresa</th>
-                <th>Usuário</th>
-                <th>Detalhes</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Exemplo de Chamados -->
-            <tr>
-                <td>1</td>
-                <td>Problema com Login</td>
-                <td>Técnico</td>
-                <td>Alta</td>
-                <td><span class="badge badge-custom status-aberto">Aberto</span></td>
-                <td>Empresa A</td>
-                <td>João Silva</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal" onclick="carregarDetalhes(1)">
-                        Ver Detalhes
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td>2</td>
-                <td>Erro no Sistema</td>
-                <td>Erro</td>
-                <td>Crítica</td>
-                <td><span class="badge badge-custom status-em-andamento">Em Andamento</span></td>
-                <td>Empresa B</td>
-                <td>Ana Souza</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal" onclick="carregarDetalhes(2)">
-                        Ver Detalhes
-                    </button>
-                </td>
-            </tr>
-            <!-- Fim do exemplo -->
-        </tbody>
-    </table>
-</div>
-
-<!-- Modal -->
-<div class="modal fade" id="chamadoModal" tabindex="-1" aria-labelledby="chamadoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="chamadoModalLabel">Detalhes do Chamado</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Detalhes do Chamado -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <p><strong>Assunto:</strong> <span id="modalAssunto">Problema com Login</span></p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Categoria:</strong> <span id="modalCategoria">Técnico</span></p>
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <p><strong>Prioridade:</strong> <span id="modalPrioridade">Alta</span></p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Status:</strong> <span id="modalStatus" class="badge status-aberto">Aberto</span></p>
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <p><strong>Empresa:</strong> <span id="modalEmpresa">Empresa A</span></p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Usuário:</strong> <span id="modalUsuario">João Silva</span></p>
-                    </div>
-                </div>
-
-                <p><strong>Descrição:</strong></p>
-                <p id="modalDescricao">O usuário não consegue acessar a plataforma desde ontem, apresenta erro de login.</p>
-                
-                <!-- Foto do Chamado -->
-                <p><strong>Foto:</strong></p>
-                <div class="photo-container">
-                    <img id="modalFoto" src="https://via.placeholder.com/600x400" alt="Foto do Chamado">
-                </div> 
-
-                <p><strong>Anexo:</strong> <a href="#" class="btn-link" target="_blank">Clique aqui para ver o anexo</a></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" onclick="atualizarStatusChamado()">Alterar Status</button>
-            </div>
-        </div>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Assunto</th>
+                    <th>Categoria</th>
+                    <th>Prioridade</th>
+                    <th>Status</th>
+                    <th>Empresa</th>
+                    <th>Usuário</th>
+                    <th>Detalhes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Exemplo de Chamados -->
+                <tr>
+                    <td>1</td>
+                    <td>Problema com Login</td>
+                    <td>Técnico</td>
+                    <td>Alta</td>
+                    <td><span class="badge badge-custom status-aberto">Aberto</span></td>
+                    <td>Empresa A</td>
+                    <td>João Silva</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal"
+                            onclick="carregarDetalhes(1)">
+                            Ver Detalhes
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Erro no Sistema</td>
+                    <td>Erro</td>
+                    <td>Crítica</td>
+                    <td><span class="badge badge-custom status-em-andamento">Em Andamento</span></td>
+                    <td>Empresa B</td>
+                    <td>Ana Souza</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chamadoModal"
+                            onclick="carregarDetalhes(2)">
+                            Ver Detalhes
+                        </button>
+                    </td>
+                </tr>
+                <!-- Fim do exemplo -->
+            </tbody>
+        </table>
     </div>
-</div>
 
-<!-- Bootstrap JS (necessário para o funcionamento do modal) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Modal -->
+<!-- Modal de Detalhes do Chamado -->
+<div class="modal fade" id="modalDetalhes" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="modalDetalhesLabel">Detalhes do Chamado</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <p><strong>Assunto:</strong> <span id="modalAssunto"></span></p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Categoria:</strong> <span id="modalCategoria"></span></p>
+            </div>
+          </div>
+  
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <p><strong>Prioridade:</strong> <span id="modalPrioridade"></span></p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+            </div>
+          </div>
+  
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <p><strong>Empresa:</strong> <span id="modalEmpresa"></span></p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Usuário:</strong> <span id="modalUsuario"></span></p>
+            </div>
+          </div>
+  
+          <div class="mb-3">
+            <p><strong>Data de Criação:</strong> <span id="modalData"></span></p>
+          </div>
+  
+          <div class="mb-3">
+            <p><strong>Descrição:</strong></p>
+            <div class="card bg-light">
+              <div class="card-body">
+                <p id="modalDescricao" class="mb-0"></p>
+              </div>
+            </div>
+          </div>
+  
+          <div class="mb-3">
+            <p><strong>Foto:</strong></p>
+            <div id="modalFotoContainer" class="text-center"></div>
+          </div>
+  
+          <div class="mb-3">
+            <p><strong>Anexo:</strong></p>
+            <a id="modalAnexoLink" href="#" class="d-none" target="_blank"></a>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-1"></i> Fechar
+          </button>
+          <button type="button" class="btn btn-primary" id="btnAtualizarStatus">
+            <i class="fas fa-sync-alt me-1"></i> Atualizar Status
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<script>
-    // Função para carregar os detalhes do chamado no modal
-    function carregarDetalhes(idChamado) {
-        // Dados do chamado simulados (normalmente viria do backend)
-        const chamados = [
-            {
-                id: 1,
-                assunto: 'Problema com Login',
-                categoria: 'Técnico',
-                prioridade: 'Alta',
-                status: 'Aberto',
-                descricao: 'O usuário não consegue acessar a plataforma desde ontem, apresenta erro de login.',
-                fotoUrl: 'https://via.placeholder.com/600x400',
-                empresa: 'Empresa A',
-                usuario: 'João Silva'
-            },
-            {
-                id: 2,
-                assunto: 'Erro no Sistema',
-                categoria: 'Erro',
-                prioridade: 'Crítica',
-                status: 'Em andamento',
-                descricao: 'Erro crítico no sistema, causando travamentos constantes.',
-                fotoUrl: 'https://via.placeholder.com/600x400',
-                empresa: 'Empresa B',
-                usuario: 'Ana Souza'
-            }
-        ];
+    <!-- Bootstrap JS (necessário para o funcionamento do modal) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
-        const chamado = chamados.find(ch => ch.id === idChamado);
+    <script>
+        // Função para carregar os detalhes do chamado no modal
+        function carregarDetalhes(idChamado) {
+            // Dados do chamado simulados (normalmente viria do backend)
+            const chamados = [
+                {
+                    id: 1,
+                    assunto: 'Problema com Login',
+                    categoria: 'Técnico',
+                    prioridade: 'Alta',
+                    status: 'Aberto',
+                    descricao: 'O usuário não consegue acessar a plataforma desde ontem, apresenta erro de login.',
+                    fotoUrl: 'https://via.placeholder.com/600x400',
+                    empresa: 'Empresa A',
+                    usuario: 'João Silva'
+                },
+                {
+                    id: 2,
+                    assunto: 'Erro no Sistema',
+                    categoria: 'Erro',
+                    prioridade: 'Crítica',
+                    status: 'Em andamento',
+                    descricao: 'Erro crítico no sistema, causando travamentos constantes.',
+                    fotoUrl: 'https://via.placeholder.com/600x400',
+                    empresa: 'Empresa B',
+                    usuario: 'Ana Souza'
+                }
+            ];
 
-        // Preenche os campos do modal com os dados do chamado
-        document.getElementById('modalAssunto').textContent = chamado.assunto;
-        document.getElementById('modalCategoria').textContent = chamado.categoria;
-        document.getElementById('modalPrioridade').textContent = chamado.prioridade;
-        document.getElementById('modalStatus').textContent = chamado.status;
-        document.getElementById('modalDescricao').textContent = chamado.descricao;
-        document.getElementById('modalFoto').src = chamado.fotoUrl;
-        document.getElementById('modalEmpresa').textContent = chamado.empresa;
-        document.getElementById('modalUsuario').textContent = chamado.usuario;
-    }
+            const chamado = chamados.find(ch => ch.id === idChamado);
 
-    // Função para alterar o status do chamado
-    function atualizarStatusChamado() {
-        alert("Status do chamado alterado com sucesso!");
-        // Aqui, você pode implementar a lógica para atualizar o status no backend
-    }
-</script>
+            // Preenche os campos do modal com os dados do chamado
+            document.getElementById('modalAssunto').textContent = chamado.assunto;
+            document.getElementById('modalCategoria').textContent = chamado.categoria;
+            document.getElementById('modalPrioridade').textContent = chamado.prioridade;
+            document.getElementById('modalStatus').textContent = chamado.status;
+            document.getElementById('modalDescricao').textContent = chamado.descricao;
+            document.getElementById('modalFoto').src = chamado.fotoUrl;
+            document.getElementById('modalEmpresa').textContent = chamado.empresa;
+            document.getElementById('modalUsuario').textContent = chamado.usuario;
+        }
+
+        // Função para alterar o status do chamado
+        function atualizarStatusChamado() {
+            alert("Status do chamado alterado com sucesso!");
+            // Aqui, você pode implementar a lógica para atualizar o status no backend
+        }
+    </script>
 
 </body>
+
 </html>
