@@ -1,5 +1,7 @@
 const ChamadoService = require('../services/ChamadoService');
 const { AppError } = require('../errors');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 class ChamadoController {
 
@@ -136,22 +138,64 @@ class ChamadoController {
             const { id: usuario_id } = req.usuario;
             const { tipo, url } = req.body; // 'anexo' ou 'foto'
 
-            //   Anexo das imagem aos chamados implementar depois
+            console.log(`[adicionarAnexo] Início - Chamado ID: ${id}, Usuário ID: ${usuario_id}, Tipo: ${tipo}, URL: ${url}`);
+
             if (!tipo || !url) {
+                console.warn('[adicionarAnexo] Tipo ou URL ausente');
                 throw new AppError('Tipo e URL são obrigatórios', 400);
             }
 
             const campo = tipo === 'anexo' ? 'anexo_url' : 'foto_url';
             const chamado = await ChamadoService.adicionarAnexo(id, usuario_id, campo, url);
 
+            console.log(`[adicionarAnexo] Sucesso - Anexo adicionado ao chamado ID: ${id}`);
+
             res.json({
                 success: true,
                 data: chamado
             });
         } catch (err) {
+            console.error(`[adicionarAnexo] Erro - ${err.message}`);
             next(err);
         }
     }
+
+    static async uploadMidia(req, res, next) {
+        try {
+            const { id } = req.params;
+            const { id: usuario_id } = req.usuario;
+
+            console.log('[uploadMidia] Início - Chamado ID:', id, 'Usuário ID:', usuario_id);
+            console.log('[uploadMidia] Arquivo recebido:', req.file);
+
+            if (!req.file) {
+                console.warn('[uploadMidia] Nenhum arquivo recebido');
+                throw new AppError('Nenhum arquivo enviado', 400);
+            }
+
+            // Verifique o tipo pelo nome do campo ou extensão do arquivo
+            const tipo = req.file.mimetype.startsWith('image/') ? 'foto' : 'anexo';
+            console.log('[uploadMidia] Tipo determinado:', tipo);
+
+            const chamado = await ChamadoService.adicionarMidiaChamado(
+                id,
+                usuario_id,
+                tipo,
+                req.file
+            );
+
+            console.log('[uploadMidia] Sucesso - Mídia adicionada:', chamado);
+
+            res.json({
+                success: true,
+                data: chamado
+            });
+        } catch (error) {
+            console.error('[uploadMidia] Erro:', error.message, error.stack);
+            next(error);
+        }
+    }
+
 }
 
 module.exports = ChamadoController;

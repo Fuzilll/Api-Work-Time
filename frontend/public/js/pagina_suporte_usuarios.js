@@ -257,6 +257,112 @@ class ChamadoManager {
             throw new Error('Falha ao enviar anexo: ' + error.message);
         }
     }
+    async enviarMidia(chamadoId, tipo, file) {
+        this.mostrarLoading(true);
+        
+        try {
+          const token = localStorage.getItem(this.authTokenKey);
+          if (!token) {
+            throw new Error('Usuário não autenticado');
+          }
+    
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('tipo', tipo);
+    
+          const response = await fetch(`${this.API_BASE_URL}/chamados/${chamadoId}/midia`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
+    
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Erro ao enviar mídia');
+          }
+    
+          return await response.json();
+        } catch (error) {
+          console.error('Erro ao enviar mídia:', error);
+          throw error;
+        } finally {
+          this.mostrarLoading(false);
+        }
+      }
+    
+      // Método para lidar com upload de foto no formulário
+      async handleFotoUpload(chamadoId, fileInput) {
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+          return;
+        }
+    
+        const file = fileInput.files[0];
+        
+        // Verificar tipo de arquivo
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+          this.showError('Tipo de arquivo inválido. Use apenas imagens (JPEG, PNG, GIF)');
+          return;
+        }
+    
+        // Verificar tamanho do arquivo (limite de 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          this.showError('A imagem deve ter no máximo 5MB');
+          return;
+        }
+    
+        try {
+          await this.enviarMidia(chamadoId, 'foto', file);
+          this.showSuccess('Foto enviada com sucesso!');
+          if (this.currentChamado && this.currentChamado.id === chamadoId) {
+            await this.loadChamadoDetails(chamadoId); // Recarrega os detalhes
+          }
+        } catch (error) {
+          this.showError(error.message || 'Erro ao enviar foto');
+        }
+      }
+      async enviarMidia(chamadoId, tipo, file) {
+        console.log('[enviarMidia] Iniciando upload:', { chamadoId, tipo, file });
+        this.mostrarLoading(true);
+        
+        try {
+            const token = localStorage.getItem(this.authTokenKey);
+            if (!token) {
+                throw new Error('Usuário não autenticado');
+            }
+    
+            const formData = new FormData();
+            formData.append('file', file);
+            console.log('[enviarMidia] Arquivo adicionado ao FormData');
+    
+            const response = await fetch(`${this.API_BASE_URL}/chamados/${chamadoId}/midia`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+    
+            console.log('[enviarMidia] Resposta recebida:', response);
+    
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                console.error('[enviarMidia] Erro na resposta:', error);
+                throw new Error(error.message || 'Erro ao enviar mídia');
+            }
+    
+            const result = await response.json();
+            console.log('[enviarMidia] Upload bem-sucedido:', result);
+            return result;
+        } catch (error) {
+            console.error('[enviarMidia] Erro no upload:', error);
+            throw error;
+        } finally {
+            this.mostrarLoading(false);
+        }
+    }
 
     async loadChamados() {
         if (!this.elements.chamadosContainer) return;
