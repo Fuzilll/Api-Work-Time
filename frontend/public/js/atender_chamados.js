@@ -288,19 +288,24 @@ class ITSupportChamados {
   
 
   async showDetalhesChamado(id) {
+    console.log('[DEBUG] showDetalhesChamado - Iniciando para o ID:', id);
     this.mostrarLoading(true);
-
+  
     try {
       this.currentChamado = await this.buscarChamadoPorId(id);
+      console.log('[DEBUG] Dados recebidos do chamado:', this.currentChamado);
+      
       this.renderDetalhesChamado();
       this.modalDetalhes.show();
+      console.log('[DEBUG] Modal exibido com sucesso');
     } catch (error) {
-      console.error('Erro ao mostrar detalhes:', error);
+      console.error('[DEBUG] Erro ao mostrar detalhes:', error);
       this.showError(error.message || 'Erro ao carregar detalhes');
     } finally {
       this.mostrarLoading(false);
     }
   }
+  
   // Adicionar carregamento de empresas
   // Atualize o método loadEmpresas
   async loadEmpresas() {
@@ -383,62 +388,88 @@ class ITSupportChamados {
   async buscarChamadoPorId(id) {
     const token = localStorage.getItem(this.authTokenKey);
     if (!token) throw new Error('Usuário não autenticado');
-
+  
     const response = await fetch(`${this.API_BASE_URL}/chamados/${id}`, {
       headers: {
         "Authorization": `Bearer ${token}`
       }
     });
-
+  
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.message || 'Erro ao buscar chamado');
     }
-
-    return await response.json();
+  
+    const responseData = await response.json();
+    
+    // Verificar a estrutura da resposta e retornar os dados corretamente
+    if (responseData.success && responseData.data) {
+      return responseData.data; // Ajuste conforme a estrutura real da sua API
+    }
+    
+    throw new Error('Formato de dados inválido');
   }
 
   renderDetalhesChamado() {
-    if (!this.currentChamado || !this.modalDetalhes) return;
-
+    if (!this.currentChamado || !this.modalDetalhes) {
+      console.error('Chamado ou modal não disponível');
+      return;
+    }
+  
+    console.log('[DEBUG] Dados do chamado para renderização:', this.currentChamado);
+  
+    // Mapeamento de campos do modal
     const campos = {
-      'modalAssunto': this.currentChamado.assunto,
-      'modalCategoria': this.currentChamado.categoria,
-      'modalPrioridade': this.getPrioridadeBadge(this.currentChamado.prioridade),
-      'modalStatus': this.getStatusBadge(this.currentChamado.status),
-      'modalDescricao': this.currentChamado.descricao,
-      'modalEmpresa': this.currentChamado.empresa_nome || 'N/A',
-      'modalUsuario': this.currentChamado.usuario_nome,
-      'modalData': this.formatarData(this.currentChamado.criado_em)
+      'modalAssunto': this.currentChamado.assunto || 'Não informado',
+      'modalCategoria': this.currentChamado.categoria || 'Não informado',
+      'modalPrioridade': this.getPrioridadeBadge(this.currentChamado.prioridade || 'Não informado'),
+      'modalStatus': this.getStatusBadge(this.currentChamado.status || 'Não informado'),
+      'modalDescricao': this.currentChamado.descricao || 'Não informado',
+      'modalEmpresa': this.currentChamado.empresa_nome || this.currentChamado.empresa?.nome || 'N/A',
+      'modalUsuario': this.currentChamado.usuario_nome || this.currentChamado.usuario?.nome || 'N/A',
+      'modalData': this.formatarData(this.currentChamado.criado_em) || 'Data não disponível'
     };
-
+  
+    // Preencher os campos do modal
     Object.entries(campos).forEach(([id, value]) => {
       const element = document.getElementById(id);
-      if (element) element.innerHTML = value;
+      if (element) {
+        element.innerHTML = value;
+        console.log(`[DEBUG] Campo ${id} preenchido com:`, value);
+      } else {
+        console.warn(`[DEBUG] Elemento não encontrado: ${id}`);
+      }
     });
-
+  
+    // Tratar foto
     const fotoContainer = document.getElementById('modalFotoContainer');
     if (fotoContainer) {
-      fotoContainer.innerHTML = this.currentChamado.foto_url
-        ? `<img src="${this.currentChamado.foto_url}" class="img-fluid rounded" alt="Foto do chamado">`
-        : '<p class="text-muted">Nenhuma foto enviada</p>';
+      if (this.currentChamado.foto_url) {
+        fotoContainer.innerHTML = `<img src="${this.currentChamado.foto_url}" class="img-fluid rounded" alt="Foto do chamado">`;
+        console.log('[DEBUG] Foto do chamado carregada:', this.currentChamado.foto_url);
+      } else {
+        fotoContainer.innerHTML = '<p class="text-muted">Nenhuma foto enviada</p>';
+      }
     }
-
+  
+    // Tratar anexo
     const anexoLink = document.getElementById('modalAnexoLink');
     if (anexoLink) {
       if (this.currentChamado.anexo_url) {
         anexoLink.href = this.currentChamado.anexo_url;
         anexoLink.innerHTML = '<i class="fas fa-paperclip me-2"></i>Download do anexo';
         anexoLink.classList.remove('d-none');
+        console.log('[DEBUG] Anexo do chamado carregado:', this.currentChamado.anexo_url);
       } else {
         anexoLink.classList.add('d-none');
       }
     }
-
+  
     // Configurar botão de atualizar status
     const btnAtualizar = document.getElementById('btnAtualizarStatus');
     if (btnAtualizar) {
       btnAtualizar.onclick = () => this.atualizarStatusChamado();
+      console.log('[DEBUG] Botão de atualizar status configurado');
     }
   }
 
