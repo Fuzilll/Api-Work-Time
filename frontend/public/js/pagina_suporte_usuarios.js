@@ -118,6 +118,7 @@ class ChamadoManager {
     
             const empresaId = this.userData.empresa_id ? parseInt(this.userData.empresa_id) : null;
     
+            // Criar objeto com os dados do chamado
             const chamadoData = {
                 usuario_id: this.userData.id,
                 empresa_id: empresaId,
@@ -127,26 +128,24 @@ class ChamadoManager {
                 categoria: formData.get('categoria') || 'outros'
             };
     
-            console.log('Dados do chamado a serem enviados:', chamadoData);
-    
-            // Criar o chamado
+            // 1. Primeiro cria o chamado
             const response = await this.salvarChamado(chamadoData);
-            console.log('Resposta do servidor:', response);
-    
-            // Verificar se o chamado foi criado com ID válido
+            
             if (!response || !response.data || !response.data.id) {
-                throw new Error('Não foi possível obter o ID do chamado criado na resposta do servidor');
+                throw new Error('Não foi possível obter o ID do chamado criado');
             }
     
-            // Envio de anexo será implementado posteriormente
-            // if (anexo) {
-            //     try {
-            //         await this.enviarAnexo(response.data.id, anexo);
-            //     } catch (anexoError) {
-            //         console.error('Erro ao enviar anexo:', anexoError);
-            //         this.showError('Chamado criado, mas o anexo não foi enviado: ' + anexoError.message);
-            //     }
-            // }
+            const chamadoId = response.data.id;
+    
+            // 2. Se houver anexo, envia após a criação do chamado
+            if (anexo) {
+                try {
+                    await this.enviarMidia(chamadoId, 'foto', anexo);
+                } catch (anexoError) {
+                    console.error('Erro ao enviar anexo:', anexoError);
+                    this.showError('Chamado criado, mas o anexo não foi enviado: ' + anexoError.message);
+                }
+            }
     
             this.showSuccess('Chamado criado com sucesso!', () => {
                 this.elements.formChamado.reset();
@@ -162,19 +161,18 @@ class ChamadoManager {
             this.mostrarLoading(false);
         }
     }
-    
     async salvarChamado(chamadoData) {
         const token = localStorage.getItem(this.authTokenKey);
         if (!token) {
             throw new Error('Usuário não autenticado');
         }
-    
+
         try {
             const dadosParaEnvio = { ...chamadoData };
             if (dadosParaEnvio.empresa_id === null) {
                 delete dadosParaEnvio.empresa_id;
             }
-    
+
             const response = await fetch(`${this.API_BASE_URL}/chamados`, {
                 method: "POST",
                 headers: {
@@ -183,38 +181,38 @@ class ChamadoManager {
                 },
                 body: JSON.stringify(dadosParaEnvio)
             });
-    
+
             const responseData = await response.json();
-    
+
             if (!response.ok) {
                 let errorMessage = responseData.message || `Erro ${response.status}`;
-                
+
                 if (response.status === 400 && errorMessage.toLowerCase().includes('empresa')) {
                     errorMessage = 'ID da empresa inválido ou não encontrado';
                 }
-    
+
                 if (responseData.errors) {
                     errorMessage = Object.values(responseData.errors).join(', ');
                 }
-    
+
                 throw new Error(errorMessage);
             }
-    
+
             // Verifica se a resposta tem a estrutura esperada
             if (!responseData || !responseData.success) {
                 console.error('Resposta inesperada da API:', responseData);
                 throw new Error('Estrutura de resposta da API inválida');
             }
-    
+
             return responseData;
-    
+
         } catch (error) {
             console.error('Erro na requisição:', error);
-    
+
             if (error.message.includes('Failed to fetch')) {
                 throw new Error('Não foi possível conectar ao servidor. Verifique sua conexão.');
             }
-    
+
             throw error;
         }
     }
@@ -258,85 +256,19 @@ class ChamadoManager {
         }
     }
     async enviarMidia(chamadoId, tipo, file) {
-        this.mostrarLoading(true);
-        
-        try {
-          const token = localStorage.getItem(this.authTokenKey);
-          if (!token) {
-            throw new Error('Usuário não autenticado');
-          }
-    
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('tipo', tipo);
-    
-          const response = await fetch(`${this.API_BASE_URL}/chamados/${chamadoId}/midia`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            body: formData
-          });
-    
-          if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || 'Erro ao enviar mídia');
-          }
-    
-          return await response.json();
-        } catch (error) {
-          console.error('Erro ao enviar mídia:', error);
-          throw error;
-        } finally {
-          this.mostrarLoading(false);
-        }
-      }
-    
-      // Método para lidar com upload de foto no formulário
-      async handleFotoUpload(chamadoId, fileInput) {
-        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-          return;
-        }
-    
-        const file = fileInput.files[0];
-        
-        // Verificar tipo de arquivo
-        const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        if (!validTypes.includes(file.type)) {
-          this.showError('Tipo de arquivo inválido. Use apenas imagens (JPEG, PNG, GIF)');
-          return;
-        }
-    
-        // Verificar tamanho do arquivo (limite de 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          this.showError('A imagem deve ter no máximo 5MB');
-          return;
-        }
-    
-        try {
-          await this.enviarMidia(chamadoId, 'foto', file);
-          this.showSuccess('Foto enviada com sucesso!');
-          if (this.currentChamado && this.currentChamado.id === chamadoId) {
-            await this.loadChamadoDetails(chamadoId); // Recarrega os detalhes
-          }
-        } catch (error) {
-          this.showError(error.message || 'Erro ao enviar foto');
-        }
-      }
-      async enviarMidia(chamadoId, tipo, file) {
         console.log('[enviarMidia] Iniciando upload:', { chamadoId, tipo, file });
         this.mostrarLoading(true);
-        
+
         try {
             const token = localStorage.getItem(this.authTokenKey);
             if (!token) {
                 throw new Error('Usuário não autenticado');
             }
-    
+
             const formData = new FormData();
             formData.append('file', file);
             console.log('[enviarMidia] Arquivo adicionado ao FormData');
-    
+
             const response = await fetch(`${this.API_BASE_URL}/chamados/${chamadoId}/midia`, {
                 method: 'POST',
                 headers: {
@@ -344,15 +276,15 @@ class ChamadoManager {
                 },
                 body: formData
             });
-    
+
             console.log('[enviarMidia] Resposta recebida:', response);
-    
+
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
                 console.error('[enviarMidia] Erro na resposta:', error);
                 throw new Error(error.message || 'Erro ao enviar mídia');
             }
-    
+
             const result = await response.json();
             console.log('[enviarMidia] Upload bem-sucedido:', result);
             return result;
@@ -361,6 +293,38 @@ class ChamadoManager {
             throw error;
         } finally {
             this.mostrarLoading(false);
+        }
+    }
+
+    // Método para lidar com upload de foto no formulário
+    async handleFotoUpload(chamadoId, fileInput) {
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+            return;
+        }
+
+        const file = fileInput.files[0];
+
+        // Verificar tipo de arquivo
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+            this.showError('Tipo de arquivo inválido. Use apenas imagens (JPEG, PNG, GIF)');
+            return;
+        }
+
+        // Verificar tamanho do arquivo (limite de 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            this.showError('A imagem deve ter no máximo 5MB');
+            return;
+        }
+
+        try {
+            await this.enviarMidia(chamadoId, 'foto', file);
+            this.showSuccess('Foto enviada com sucesso!');
+            if (this.currentChamado && this.currentChamado.id === chamadoId) {
+                await this.loadChamadoDetails(chamadoId); // Recarrega os detalhes
+            }
+        } catch (error) {
+            this.showError(error.message || 'Erro ao enviar foto');
         }
     }
 

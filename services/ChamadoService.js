@@ -298,45 +298,45 @@ class ChamadoService {
             if (!['foto', 'anexo'].includes(tipo)) {
                 throw new AppError('Tipo de mídia inválido', 400);
             }
-
+    
             // Verificar se o arquivo foi fornecido
             if (!file || !file.buffer) {
                 throw new AppError('Arquivo não fornecido', 400);
             }
-
+    
             // Verificar se o chamado existe e pertence ao usuário
             const [chamado] = await db.query(
                 'SELECT usuario_id FROM CHAMADOS WHERE id = ?',
                 [id]
             );
-
+    
             if (!chamado) {
                 throw new AppError('Chamado não encontrado', 404);
             }
-
+    
             // Verificar permissão (usuário deve ser o criador ou IT_SUPPORT/ADMIN)
             const [usuario] = await db.query(
                 'SELECT nivel FROM USUARIO WHERE id = ?',
                 [usuario_id]
             );
-
+    
             if (usuario.nivel === 'FUNCIONARIO' && chamado.usuario_id !== usuario_id) {
                 throw new AppError('Você não tem permissão para modificar este chamado', 403);
             }
-
+    
             // Fazer upload para o Cloudinary
             const uploadResult = await CloudinaryService.uploadImage(file.buffer, {
                 public_id: `chamado_${id}_${tipo}_${Date.now()}`,
                 transformation: tipo === 'foto' ? { quality: 'auto', fetch_format: 'auto' } : {}
             });
-
+    
             // Atualizar o chamado com a URL
             const campo = tipo === 'foto' ? 'foto_url' : 'anexo_url';
             await db.query(
                 `UPDATE CHAMADOS SET ${campo} = ? WHERE id = ?`,
                 [uploadResult.secure_url, id]
             );
-
+    
             // Retornar o chamado atualizado
             return await this.obterChamadoPorId(id);
         } catch (error) {

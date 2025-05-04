@@ -159,21 +159,54 @@ class ChamadoController {
             next(err);
         }
     }
+    async uploadFile(url, file, additionalData = {}) {
+        const token = localStorage.getItem(this.authTokenKey);
+        if (!token) {
+            throw new Error('Usuário não autenticado');
+        }
 
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Adiciona dados adicionais se necessário
+        Object.entries(additionalData).forEach(([key, value]) => {
+            formData.append(key, value);
+        });
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Erro no upload');
+        }
+
+        return await response.json();
+    }
     static async uploadMidia(req, res, next) {
         try {
             const { id } = req.params;
             const { id: usuario_id } = req.usuario;
 
             console.log('[uploadMidia] Início - Chamado ID:', id, 'Usuário ID:', usuario_id);
-            console.log('[uploadMidia] Arquivo recebido:', req.file);
 
             if (!req.file) {
                 console.warn('[uploadMidia] Nenhum arquivo recebido');
                 throw new AppError('Nenhum arquivo enviado', 400);
             }
 
-            // Verifique o tipo pelo nome do campo ou extensão do arquivo
+            console.log('[uploadMidia] Arquivo recebido:', {
+                originalname: req.file.originalname,
+                mimetype: req.file.mimetype,
+                size: req.file.size
+            });
+
+            // Determinar o tipo pelo mimetype
             const tipo = req.file.mimetype.startsWith('image/') ? 'foto' : 'anexo';
             console.log('[uploadMidia] Tipo determinado:', tipo);
 
@@ -184,7 +217,10 @@ class ChamadoController {
                 req.file
             );
 
-            console.log('[uploadMidia] Sucesso - Mídia adicionada:', chamado);
+            console.log('[uploadMidia] Sucesso - Mídia adicionada:', {
+                chamadoId: chamado.id,
+                url: tipo === 'foto' ? chamado.foto_url : chamado.anexo_url
+            });
 
             res.json({
                 success: true,
@@ -195,7 +231,6 @@ class ChamadoController {
             next(error);
         }
     }
-
 }
 
 module.exports = ChamadoController;

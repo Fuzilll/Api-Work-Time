@@ -1,17 +1,20 @@
-// services/CloudinaryService.js
 const cloudinary = require('cloudinary').v2;
 const { AppError } = require('../errors');
 
 class CloudinaryService {
     constructor() {
-        cloudinary.config({
-            cloud_name: process.env.cloud_name,
-            api_key: process.env.api_key,
-            api_secret: process.env.CLOUDINARY_API_SECRET,
-            secure: true
-        });
-        console.log('Cloudinary configurado com sucesso');
-
+        try {
+            cloudinary.config({
+                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.CLOUDINARY_API_KEY,
+                api_secret: process.env.CLOUDINARY_API_SECRET,
+                secure: true
+            });
+            console.log('Cloudinary configurado com sucesso');
+        } catch (error) {
+            console.error('Erro ao configurar Cloudinary:', error);
+            throw new AppError('Erro na configuração do Cloudinary', 500);
+        }
     }
 
     async uploadImage(fileBuffer, options = {}) {
@@ -25,9 +28,10 @@ class CloudinaryService {
                     },
                     (error, result) => {
                         if (error) {
-                            console.error('Cloudinary upload error:', error);
+                            console.error('Erro no upload para Cloudinary:', error);
                             reject(new AppError('Falha ao fazer upload da imagem', 500));
                         } else {
+                            console.log('Upload bem-sucedido:', result.secure_url);
                             resolve(result);
                         }
                     }
@@ -36,7 +40,7 @@ class CloudinaryService {
                 uploadStream.end(fileBuffer);
             });
         } catch (error) {
-            console.error('Error in CloudinaryService.uploadImage:', error);
+            console.error('Erro no CloudinaryService.uploadImage:', error);
             throw new AppError('Erro ao processar upload da imagem', 500);
         }
     }
@@ -45,11 +49,11 @@ class CloudinaryService {
         try {
             const result = await cloudinary.uploader.destroy(publicId);
             if (result.result !== 'ok') {
-                throw new Error('Failed to delete image');
+                throw new Error('Falha ao deletar imagem');
             }
             return true;
         } catch (error) {
-            console.error('Error deleting image from Cloudinary:', error);
+            console.error('Erro ao deletar imagem do Cloudinary:', error);
             throw new AppError('Erro ao remover imagem', 500);
         }
     }

@@ -72,10 +72,10 @@
                   </div>
                 </div>
 
+                <!-- Por apenas o campo de upload dentro do formulário principal -->
                 <div class="mb-4">
                   <label for="anexo" class="form-label">Anexar Arquivos</label>
-                  <input type="file" id="anexo" accept="image/*" class="form-control" accept="image/*,.pdf,.doc,.docx"
-                    onchange="chamadoManager.handleFotoUpload(chamadoManager.currentChamado.id, this)">
+                  <input type="file" id="anexo" class="form-control" accept="image/*,.pdf,.doc,.docx">
                   <div class="form-text">Formatos aceitos: JPG, PNG, PDF, DOC (até 5MB)</div>
                 </div>
 
@@ -84,7 +84,6 @@
                     <i class="fas fa-paper-plane me-2"></i>Enviar Solicitação
                   </button>
                 </div>
-              </form>
             </div>
           </div>
         </div>
