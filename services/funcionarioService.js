@@ -231,39 +231,53 @@ static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
 }
 
 
-  static async registrarPonto(idUsuario, dados) {
-    return await db.transaction(async (connection) => {
-      const [funcionario] = await connection.query(
-        `SELECT f.id, f.id_empresa 
-         FROM FUNCIONARIO f 
-         WHERE f.id_usuario = ?`,
-        [idUsuario]
-      );
+static async registrarPonto(idUsuario, dados) {
+  return await db.transaction(async (connection) => {
+    // Obter funcionário
+    const [funcionario] = await connection.query(
+      `SELECT f.id, f.id_empresa 
+       FROM FUNCIONARIO f 
+       WHERE f.id_usuario = ?`,
+      [idUsuario]
+    );
 
-      if (!funcionario) {
-        throw new AppError('Funcionário não encontrado', 404);
-      }
+    if (!funcionario) {
+      throw new AppError('Funcionário não encontrado', 404);
+    }
 
-      const { latitude, longitude } = dados;
-      if (!this.validarGeolocalizacao(latitude, longitude, funcionario.id_empresa)) {
-        throw new AppError('Localização fora do raio permitido', 400);
-      }
+    // Validar geolocalização
+    const { latitude, longitude } = dados;
+    if (!this.validarGeolocalizacao(latitude, longitude, funcionario.id_empresa)) {
+      throw new AppError('Localização fora do raio permitido', 400);
+    }
 
-      const [result] = await connection.query(
-        `INSERT INTO REGISTRO_PONTO 
-         (id_funcionario, tipo, foto_url, data_hora, latitude, longitude, status) 
-         VALUES (?, ?, ?, NOW(), ?, ?, 'Pendente')`,
-        [funcionario.id, dados.tipo, dados.fotoUrl, latitude, longitude]
-      );
+    // Fazer upload da foto se existir
+    let fotoUrl = '';
+    if (dados.foto) {
+      const uploadResult = await CloudinaryService.uploadImage(dados.foto, {
+        public_id: `ponto_${funcionario.id}_${Date.now()}`,
+        folder: 'pontos'
+      });
+      fotoUrl = uploadResult.secure_url;
+    }
 
-      const [ponto] = await connection.query(
-        `SELECT * FROM REGISTRO_PONTO WHERE id = ?`,
-        [result.insertId]
-      );
+    // Inserir registro
+    const [result] = await connection.query(
+      `INSERT INTO REGISTRO_PONTO 
+       (id_funcionario, tipo, foto_url, data_hora, latitude, longitude, status) 
+       VALUES (?, ?, ?, NOW(), ?, ?, 'Pendente')`,
+      [funcionario.id, dados.tipo, fotoUrl, latitude, longitude]
+    );
 
-      return ponto[0];
-    });
-  }
+    // Retornar o registro criado
+    const [ponto] = await connection.query(
+      `SELECT * FROM REGISTRO_PONTO WHERE id = ?`,
+      [result.insertId]
+    );
+
+    return ponto[0];
+  });
+}
 
   static async listarPontos(idFuncionario, filtros = {}) {
     const { dataInicio, dataFim, limit } = filtros;

@@ -2,89 +2,98 @@
 const db = require('../config/db'); 
 // Importa o erro personalizado para tratamento de exceções
 const { AppError } = require('../errors');
+const CloudinaryService = require('./CloudinaryService');
 
 class RegistroService {
   // Método para cadastrar um novo registro de ponto
   static async cadastrarRegistro(dados) {
-    // Desestrutura os dados recebidos para utilizar as variáveis individualmente
-    const { 
-      id_funcionario, 
-      tipo, 
-      foto_url, 
-      latitude, 
-      longitude, 
-      precisao_geolocalizacao, 
-      dispositivo 
-    } = dados;
+    try {
+      const { 
+        id_funcionario, 
+        tipo, 
+        foto, 
+        latitude, 
+        longitude, 
+        precisao_geolocalizacao, 
+        dispositivo 
+      } = dados;
 
-    // Verifica se o funcionário existe no banco de dados
-    const [funcionario] = await db.query(
-      'SELECT id, id_empresa FROM FUNCIONARIO WHERE id = ?',
-      [id_funcionario] // Passa o ID do funcionário como parâmetro
-    );
+      // Verificar se o funcionário existe
+      const [funcionario] = await db.query(
+        'SELECT id, id_empresa FROM FUNCIONARIO WHERE id = ?',
+        [id_funcionario]
+      );
 
-    // Se o funcionário não for encontrado, lança um erro com status 404
-    if (!funcionario) {
-      throw new AppError('Funcionário não encontrado', 404);
-    }
-
-    // Verifica as configurações da empresa relacionadas ao ponto
-    const [config] = await db.query(
-      `SELECT requer_foto, requer_geolocalizacao 
-       FROM CONFIGURACAO_PONTO 
-       WHERE id_empresa = ?`,
-      [funcionario.id_empresa] // Passa o ID da empresa para consultar a configuração
-    );
-
-    // Verifica se existem configurações e valida requisitos de foto e geolocalização
-    if (config) {
-      if (config.requer_foto && !foto_url) {
-        throw new AppError('Foto é obrigatória para registro de ponto', 400); // Lança erro se foto não for fornecida
+      if (!funcionario) {
+        throw new AppError('Funcionário não encontrado', 404);
       }
-      
-      if (config.requer_geolocalizacao && (!latitude || !longitude)) {
-        throw new AppError('Geolocalização é obrigatória para registro de ponto', 400); // Lança erro se coordenadas não forem fornecidas
+
+      // Verificar configurações da empresa
+      const [config] = await db.query(
+        `SELECT requer_foto, requer_geolocalizacao 
+         FROM CONFIGURACAO_PONTO 
+         WHERE id_empresa = ?`,
+        [funcionario.id_empresa]
+      );
+
+      // Validações
+      if (config) {
+        if (config.requer_foto && !foto) {
+          throw new AppError('Foto é obrigatória para registro de ponto', 400);
+        }
+        
+        if (config.requer_geolocalizacao && (!latitude || !longitude)) {
+          throw new AppError('Geolocalização é obrigatória para registro de ponto', 400);
+        }
       }
-    }
 
-    // Insere o registro de ponto no banco de dados
-    const [result] = await db.query(
-      `INSERT INTO REGISTRO_PONTO (
-        id_funcionario, tipo, foto_url, latitude, longitude,
-        precisao_geolocalizacao, dispositivo, hash_registro
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, SHA2(CONCAT(?, ?, ?, ?, ?, NOW()), 256))`,
-      [
-        id_funcionario, tipo, foto_url, latitude, longitude,
-        precisao_geolocalizacao, dispositivo,
-        id_funcionario, tipo, foto_url, latitude, longitude
-      ] // Dados do registro e hash gerado pela concatenação de informações para segurança
-    );
+      // Fazer upload da foto para o Cloudinary
+      let fotoUrl = '';
+      if (foto) {
+        const uploadResult = await CloudinaryService.uploadImage(foto, {
+          public_id: `ponto_${id_funcionario}_${Date.now()}`,
+          folder: 'pontos'
+        });
+        fotoUrl = uploadResult.secure_url;
+      }
 
-    // Busca os dados do funcionário para envio de notificação
-    funcionario = await db.query(
-      `SELECT u.email, u.nome 
-      FROM FUNCIONARIO f
-      JOIN USUARIO u ON f.id_usuario = u.id
-      WHERE f.id = ?`,
-      [dados.id_funcionario] // Busca os dados de contato do funcionário
-    );
+      // Inserir registro no banco
+      const [result] = await db.query(
+        `INSERT INTO REGISTRO_PONTO (
+          id_funcionario, tipo, foto_url, latitude, longitude,
+          precisao_geolocalizacao, dispositivo, hash_registro
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, SHA2(CONCAT(?, ?, ?, ?, ?, NOW()), 256))`,
+        [
+          id_funcionario, 
+          tipo, 
+          fotoUrl, 
+          latitude, 
+          longitude,
+          precisao_geolocalizacao, 
+          dispositivo,
+          id_funcionario, 
+          tipo, 
+          fotoUrl, 
+          latitude, 
+          longitude
+        ]
+      );
 
-    // Se o funcionário for encontrado, envia um email de notificação
-    if (funcionario) {
-      await emailService.enviarEmailNotificacaoPonto(funcionario.email, {
-        nome: funcionario.nome,
-        tipo: dados.tipo,
-        dataHora: new Date(),
-        status: 'Pendente' // Status 'Pendente', ou 'Aprovado' se for automático
+      return {
+        id: result.insertId,
+        status: 'Pendente',
+        data_hora: new Date(),
+        foto_url: fotoUrl
+      };
+
+    } catch (error) {
+      console.error('Erro no RegistroService.cadastrarRegistro:', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
       });
+      throw error;
     }
-
-    // Retorna o resultado da operação com ID do novo registro e status 'Pendente'
-    return {
-      id: result.insertId,
-      status: 'Pendente',  // Status inicial do ponto
-      data_hora: new Date() // Marca a data e hora do registro
-    };
   }
 
   // Método para buscar os registros de ponto de um funcionário específico

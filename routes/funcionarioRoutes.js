@@ -4,6 +4,8 @@ const FuncionarioController = require('../controllers/funcionarioController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { validate } = require('../middlewares/validators');
 const funcionarioSchema = require('../validators/funcionarioSchema');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Middleware de autenticação para todas as rotas
 router.use(authMiddleware.autenticacao);
@@ -12,12 +14,12 @@ router.use(authMiddleware.verificarNivel(['FUNCIONARIO']));
 // Rotas do dashboard
 router.get('/dashboard', FuncionarioController.carregarDashboard);
 
-// Rotas de pontos
 router.post(
   '/pontos',
-  validate(funcionarioSchema.registrarPonto),
+  upload.single('foto'),
   FuncionarioController.registrarPonto
 );
+
 
 router.get(
   '/pontos',

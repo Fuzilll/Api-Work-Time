@@ -4,11 +4,13 @@ const registroController = require('../controllers/registroController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { validate } = require('../middlewares/validators');
 const registroSchema = require('../validators/registroSchema');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Rotas públicas (para integração com app mobile)
 router.post(
   '/registrar',
-  validate(registroSchema.cadastro),
+  upload.single('foto'), // Processa o upload da foto
   registroController.cadastrarRegistro
 );
 

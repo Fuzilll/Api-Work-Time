@@ -5,23 +5,34 @@ const { AppError } = require('../errors');
 
 class RegistroController {
   // Método para cadastrar um novo registro
-  // Recebe a requisição (req), a resposta (res), e o próximo middleware (next)
   static async cadastrarRegistro(req, res, next) {
     try {
-      // Chama o serviço de registro para cadastrar o novo registro, passando os dados do corpo da requisição
-      const registro = await RegistroService.cadastrarRegistro(req.body);
+      // Extrai os dados do corpo da requisição
+      const dadosRegistro = {
+        id_funcionario: req.body.id_funcionario,
+        tipo: req.body.tipo,
+        foto: req.file?.buffer, // Assume que o multer está processando o upload
+        latitude: req.body.latitude,
+        longitude: req.body.longitude,
+        precisao_geolocalizacao: req.body.precisao_geolocalizacao,
+        dispositivo: req.body.dispositivo
+      };
 
-      // Se o cadastro for bem-sucedido, retorna a resposta com status 201 e os dados do registro
+      // Validações básicas
+      if (!dadosRegistro.id_funcionario || !dadosRegistro.tipo) {
+        throw new AppError('ID do funcionário e tipo de registro são obrigatórios', 400);
+      }
+
+      const registro = await RegistroService.cadastrarRegistro(dadosRegistro);
+
       res.status(201).json({
-        success: true,  // Indica que a operação foi bem-sucedida
-        data: registro  // Retorna o registro cadastrado
+        success: true,
+        data: registro
       });
     } catch (err) {
-      // Em caso de erro, passa o erro para o próximo middleware de tratamento de erros
       next(err);
     }
   }
-
   // Método para buscar os registros de um funcionário específico
   // A identificação do funcionário é passada via parâmetro da URL
   static async buscarRegistrosFuncionario(req, res, next) {

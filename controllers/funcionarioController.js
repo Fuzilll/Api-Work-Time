@@ -44,9 +44,16 @@ class FuncionarioController {
     try {
       const ponto = await FuncionarioService.registrarPonto(
         req.usuario.id,
-        req.body
+        {
+          tipo: req.body.tipo,
+          foto: req.file?.buffer, // Recebe o buffer da imagem
+          latitude: req.body.latitude,
+          longitude: req.body.longitude,
+          precisao_geolocalizacao: req.body.precisao_geolocalizacao,
+          dispositivo: req.body.dispositivo
+        }
       );
-
+  
       res.status(201).json({
         success: true,
         data: ponto
