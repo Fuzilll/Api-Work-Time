@@ -1,5 +1,5 @@
 // Importa a configuração do banco de dados
-const db = require('../config/db'); 
+const db = require('../config/db');
 // Importa o erro personalizado para tratamento de exceções
 const { AppError } = require('../errors');
 const CloudinaryService = require('./CloudinaryService');
@@ -8,93 +8,65 @@ class RegistroService {
   // Método para cadastrar um novo registro de ponto
   static async cadastrarRegistro(dados) {
     try {
-      const { 
-        id_funcionario, 
-        tipo, 
-        foto, 
-        latitude, 
-        longitude, 
-        precisao_geolocalizacao, 
-        dispositivo 
+      const {
+        id_funcionario,
+        tipo,
+        foto, // Pode ser Base64 ou URL
+        foto_url, // URL direta
+        latitude,
+        longitude,
+        precisao_geolocalizacao,
+        dispositivo
       } = dados;
 
-      // Verificar se o funcionário existe
-      const [funcionario] = await db.query(
-        'SELECT id, id_empresa FROM FUNCIONARIO WHERE id = ?',
-        [id_funcionario]
-      );
+      // Atribuindo id_funcionario a id_usuario
+      const id_usuario = id_funcionario;
 
-      if (!funcionario) {
-        throw new AppError('Funcionário não encontrado', 404);
-      }
+      // Log para verificar o id_usuario
+      let fotoUrl = foto_url || ''; // Usa foto_url se existir
 
-      // Verificar configurações da empresa
-      const [config] = await db.query(
-        `SELECT requer_foto, requer_geolocalizacao 
-         FROM CONFIGURACAO_PONTO 
-         WHERE id_empresa = ?`,
-        [funcionario.id_empresa]
-      );
-
-      // Validações
-      if (config) {
-        if (config.requer_foto && !foto) {
-          throw new AppError('Foto é obrigatória para registro de ponto', 400);
-        }
-        
-        if (config.requer_geolocalizacao && (!latitude || !longitude)) {
-          throw new AppError('Geolocalização é obrigatória para registro de ponto', 400);
-        }
-      }
-
-      // Fazer upload da foto para o Cloudinary
-      let fotoUrl = '';
-      if (foto) {
+      // Se não tem URL mas tem foto (Base64), faz upload
+      if (!fotoUrl && foto) {
         const uploadResult = await CloudinaryService.uploadImage(foto, {
-          public_id: `ponto_${id_funcionario}_${Date.now()}`,
-          folder: 'pontos'
+            public_id: `ponto_${id_usuario}_${Date.now()}`,
+            folder: 'pontos'
         });
         fotoUrl = uploadResult.secure_url;
-      }
+    }
 
-      // Inserir registro no banco
-      const [result] = await db.query(
-        `INSERT INTO REGISTRO_PONTO (
-          id_funcionario, tipo, foto_url, latitude, longitude,
-          precisao_geolocalizacao, dispositivo, hash_registro
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, SHA2(CONCAT(?, ?, ?, ?, ?, NOW()), 256))`,
+      // Agora vamos chamar o procedimento armazenado no banco de dados
+      const [resultados] = await db.query(
+        `CALL registrarPonto(?, ?, ?, ?, ?, ?, ?)`,
         [
-          id_funcionario, 
-          tipo, 
-          fotoUrl, 
-          latitude, 
-          longitude,
-          precisao_geolocalizacao, 
-          dispositivo,
-          id_funcionario, 
-          tipo, 
-          fotoUrl, 
-          latitude, 
-          longitude
+          id_usuario,               // id_usuario agora corretamente atribuído
+          tipo,                      // Tipo do ponto: 'Entrada', 'Saida', etc.
+          fotoUrl,           // URL da foto 
+          latitude,                  // Latitude
+          longitude,                 // Longitude
+          precisao_geolocalizacao,   // Precisão da geolocalização
+          dispositivo                // Dispositivo usado para registrar o ponto
         ]
       );
 
+      // Se o ponto foi registrado com sucesso, retornamos o resultado
       return {
-        id: result.insertId,
-        status: 'Pendente',
+        status: 'Ponto registrado com sucesso',
         data_hora: new Date(),
-        foto_url: fotoUrl
+        foto_url: fotoUrl || 'Nenhuma foto fornecida'
       };
 
     } catch (error) {
+      // Log do erro para depuração
       console.error('Erro no RegistroService.cadastrarRegistro:', {
         error: error.message,
         stack: error.stack,
         timestamp: new Date().toISOString()
       });
-      throw error;
+      throw error;  // Re-throw the error for higher-level handling
     }
   }
+
+
 
   // Método para buscar os registros de ponto de um funcionário específico
   static async buscarRegistrosFuncionario(idFuncionario) {

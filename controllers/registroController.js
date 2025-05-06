@@ -17,7 +17,7 @@ class RegistroController {
         precisao_geolocalizacao: req.body.precisao_geolocalizacao,
         dispositivo: req.body.dispositivo
       };
-
+      console.log('[Controller]dadosRegistro',dadosRegistro)
       // Validações básicas
       if (!dadosRegistro.id_funcionario || !dadosRegistro.tipo) {
         throw new AppError('ID do funcionário e tipo de registro são obrigatórios', 400);

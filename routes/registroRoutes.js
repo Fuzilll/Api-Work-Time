@@ -7,15 +7,17 @@ const registroSchema = require('../validators/registroSchema');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
+
+
+// Rotas protegidas
+router.use(authMiddleware.autenticacao);
+
 // Rotas públicas (para integração com app mobile)
 router.post(
   '/registrar',
   upload.single('foto'), // Processa o upload da foto
   registroController.cadastrarRegistro
 );
-
-// Rotas protegidas
-router.use(authMiddleware.autenticacao);
 
 // Rotas para funcionários
 router.get(
