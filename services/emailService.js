@@ -1,164 +1,105 @@
 const nodemailer = require('nodemailer');
 const { AppError } = require('../errors');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const handlebars = require('handlebars');
 
 class EmailService {
   constructor() {
-    // Verificar se email está habilitado
-    if (process.env.EMAIL_ENABLED === 'false') {
-      console.log('⚠️  Serviço de email desativado (modo desenvolvimento)');
-      return;
-    }
-
-    
+    // Configuração mais robusta do transporter
     this.transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: process.env.EMAIL_PORT,
-      secure: process.env.EMAIL_SECURE === 'true',
+      secure: false, // true para 465, false para outras portas
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
+      },
+      tls: {
+        // Apenas para desenvolvimento - remova em produção
+        rejectUnauthorized: false
       }
+    ,
+      debug: true, // Habilita logs detalhados
+      logger: true  // Habilita logs no console
     });
 
     this.verifyConnection();
   }
 
   async verifyConnection() {
-    // Pular verificação se email estiver desativado
-    if (process.env.EMAIL_ENABLED === 'false') return;
-
     try {
       await this.transporter.verify();
-      console.log('✅ Serviço de email configurado com sucesso');
-    } catch (err) {
-      console.error('❌ Falha na configuração do email:', err.message);
-      if (process.env.NODE_ENV === 'production') {
-        throw new AppError('Serviço de email não configurado corretamente', 500);
+      console.log('✅ Serviço de email configurado e pronto');
+    } catch (error) {
+      console.error('❌ Falha na configuração do email:', error);
+      if (error.code === 'ECONNECTION') {
+        console.error('Verifique:');
+        console.error('- Serviço SMTP está online');
+        console.error('- Host e porta corretos');
+        console.error('- Firewall permite conexões na porta SMTP');
+      } else if (error.code === 'EAUTH') {
+        console.error('Erro de autenticação - verifique usuário e senha');
       }
     }
   }
 
-  async enviarEmailRecuperacao(email, token) {
+  async enviarEmailRegistroPonto(destinatario, dados) {
     try {
-      const resetUrl = `${process.env.FRONTEND_URL}/resetar-senha?token=${token}`;
-      
-      // Carregar template HTML
-      const templatePath = path.join(__dirname, '../templates/email/recuperacaoSenha.html');
+      // Verifica se o email está habilitado
+      if (process.env.EMAIL_ENABLED !== 'true') {
+        console.log('Serviço de email desabilitado (EMAIL_ENABLED=false)');
+        return;
+      }
+
+      // Verifica se há um destinatário válido
+      if (!destinatario) {
+        console.warn('Tentativa de enviar email sem destinatário');
+        return;
+      }
+
+      // Carrega o template
+      const templatePath = path.join(__dirname, '../templates/email/email-registro-ponto.hbs');
       const templateSource = fs.readFileSync(templatePath, 'utf8');
       const template = handlebars.compile(templateSource);
       
+      // Formata a data
+      const dataFormatada = new Date(dados.dataHora).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
       const html = template({
-        nome: 'Usuário', // Pode ser personalizado buscando do banco
-        resetUrl,
-        expiracao: '1 hora' // Pode ser dinâmico baseado nas configurações
+        ...dados,
+        dataHora: dataFormatada,
+        empresa: dados.empresa || 'Work Time System',
+        year: new Date().getFullYear()
       });
 
       const mailOptions = {
-        from: `"Work Time System" <${process.env.EMAIL_FROM}>`,
-        to: email,
-        subject: 'Recuperação de Senha - Work Time',
-        html,
-        text: `Para resetar sua senha, acesse o link: ${resetUrl}\n\nO link expira em 1 hora.`
+        from: process.env.EMAIL_FROM,
+        to: destinatario,
+        subject: `Registro de Ponto - ${dados.tipo}`,
+        html: html,
+        text: `Olá ${dados.nome},\n\nSeu registro de ${dados.tipo} foi realizado com sucesso em ${dataFormatada}.\n\nDispositivo: ${dados.dispositivo}\n\nAtenciosamente,\nEquipe ${dados.empresa || 'Work Time'}`,
+        priority: 'normal'
       };
 
-      await this.transporter.sendMail(mailOptions);
-      console.log(`Email de recuperação enviado para: ${email}`);
-    } catch (err) {
-      console.error('Erro ao enviar email de recuperação:', err);
-      throw new AppError('Falha ao enviar email de recuperação', 500);
-    }
-  }
-
-  async enviarEmailConfirmacaoCadastro(email, nome) {
-    try {
-      const loginUrl = `${process.env.FRONTEND_URL}/login`;
-      
-      const templatePath = path.join(__dirname, '../templates/email/confirmacaoCadastro.html');
-      const templateSource = fs.readFileSync(templatePath, 'utf8');
-      const template = handlebars.compile(templateSource);
-      
-      const html = template({
-        nome,
-        loginUrl
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`Email enviado para ${destinatario}`, info.messageId);
+      return info;
+    } catch (error) {
+      console.error('Erro ao enviar email:', {
+        error: error.message,
+        stack: error.stack,
+        code: error.code,
+        response: error.response
       });
-
-      const mailOptions = {
-        from: `"Work Time System" <${process.env.EMAIL_FROM}>`,
-        to: email,
-        subject: 'Cadastro Realizado - Work Time',
-        html,
-        text: `Olá ${nome},\n\nSeu cadastro foi realizado com sucesso!\n\nAcesse o sistema: ${loginUrl}`
-      };
-
-      await this.transporter.sendMail(mailOptions);
-      console.log(`Email de confirmação enviado para: ${email}`);
-    } catch (err) {
-      console.error('Erro ao enviar email de confirmação:', err);
-      throw new AppError('Falha ao enviar email de confirmação', 500);
     }
   }
-
-  async enviarEmailNotificacaoPonto(email, dados) {
-    try {
-      const { nome, tipo, dataHora, status } = dados;
-      
-      const templatePath = path.join(__dirname, '../templates/email/notificacaoPonto.html');
-      const templateSource = fs.readFileSync(templatePath, 'utf8');
-      const template = handlebars.compile(templateSource);
-      
-      const html = template({
-        nome,
-        tipo,
-        dataHora: new Date(dataHora).toLocaleString('pt-BR'),
-        status
-      });
-
-      const mailOptions = {
-        from: `"Work Time System" <${process.env.EMAIL_FROM}>`,
-        to: email,
-        subject: `Registro de Ponto ${status} - ${tipo}`,
-        html,
-        text: `Olá ${nome},\n\nSeu registro de ponto (${tipo}) foi ${status}.\n\nData/Hora: ${new Date(dataHora).toLocaleString('pt-BR')}`
-      };
-
-      await this.transporter.sendMail(mailOptions);
-      console.log(`Notificação de ponto enviada para: ${email}`);
-    } catch (err) {
-      console.error('Erro ao enviar notificação de ponto:', err);
-      throw new AppError('Falha ao enviar notificação de ponto', 500);
-    }
-  }
-      /**
-     * Envia email de notificação quando uma solicitação é respondida
-     * @param {Object} data - Dados da solicitação
-     */
-      async enviarEmailRespostaSolicitacao(data) {
-        try {
-            const { nome_funcionario, email_funcionario, status, resposta_admin } = data;
-            
-            const mailOptions = {
-                from: `"Sistema de Ponto" <${process.env.EMAIL_FROM}>`,
-                to: email_funcionario,
-                subject: `Sua solicitação de alteração de ponto foi ${status}`,
-                html: `
-                    <h1>Olá, ${nome_funcionario}!</h1>
-                    <p>Sua solicitação de alteração de ponto foi <strong>${status.toLowerCase()}</strong>.</p>
-                    ${resposta_admin ? `<p><strong>Resposta do administrador:</strong> ${resposta_admin}</p>` : ''}
-                    <p>Acesse o sistema para mais detalhes.</p>
-                `
-            };
-            
-            await this.transporter.sendMail(mailOptions);
-        } catch (error) {
-            console.error('Erro ao enviar email:', error);
-            throw new AppError('Erro ao enviar email de notificação', 500);
-        }
-    }
-
 }
 
-// Exportar uma instância singleton
 module.exports = new EmailService();

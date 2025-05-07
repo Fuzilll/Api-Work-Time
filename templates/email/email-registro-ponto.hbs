@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Registro de Ponto</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 5px; }
+        .header { text-align: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .content { padding: 20px 0; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #777; text-align: center; }
+        .button { display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Work Time System</h2>
+        </div>
+        <div class="content">
+            <p>Olá <strong>{{nome}}</strong>,</p>
+            <p>Seu registro de ponto do tipo <strong>{{tipo}}</strong> foi realizado com sucesso.</p>
+            
+            <p><strong>Data/Hora:</strong> {{dataHora}}</p>
+            <p><strong>Dispositivo:</strong> {{dispositivo}}</p>
+            
+            <p style="margin-top: 30px;">
+                <a href="{{dashboardUrl}}" class="button">Acessar Dashboard</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>Este é um email automático, por favor não responda.</p>
+            <p>&copy; {{year}} {{empresa}}. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

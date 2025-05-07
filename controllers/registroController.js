@@ -11,7 +11,7 @@ class RegistroController {
       const dadosRegistro = {
         id_funcionario: req.body.id_funcionario,
         tipo: req.body.tipo,
-        foto: req.file?.buffer, // Assume que o multer está processando o upload
+        foto_url: req.body.foto_url, 
         latitude: req.body.latitude,
         longitude: req.body.longitude,
         precisao_geolocalizacao: req.body.precisao_geolocalizacao,

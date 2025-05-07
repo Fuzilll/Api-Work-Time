@@ -3,71 +3,118 @@ const db = require('../config/db');
 // Importa o erro personalizado para tratamento de exceções
 const { AppError } = require('../errors');
 const CloudinaryService = require('./CloudinaryService');
+const EmailService = require('./emailService');
 
 class RegistroService {
-  // Método para cadastrar um novo registro de ponto
-  static async cadastrarRegistro(dados) {
-    try {
-      const {
-        id_funcionario,
+// Método refatorado para cadastrar um novo registro de ponto usando ID do usuário
+static async cadastrarRegistro(dados) {
+  try {
+    const {
+      id_usuario,  // Alterado para receber ID do usuário
+      tipo,
+      foto_url,
+      foto,
+      latitude,
+      longitude,
+      precisao_geolocalizacao,
+      dispositivo
+    } = dados;
+
+    // Validação dos dados
+    if (!id_usuario || !tipo) {
+      throw new AppError('ID do usuário e tipo de registro são obrigatórios', 400);
+    }
+
+    // Busca informações do usuário e funcionário
+    const [usuario] = await db.query(
+      `SELECT 
+        u.id as id_usuario,
+        u.nome, 
+        u.email,
+        f.id as id_funcionario,
+        e.nome as empresa_nome,
+        e.id as id_empresa
+      FROM USUARIO u
+      LEFT JOIN FUNCIONARIO f ON f.id_usuario = u.id
+      LEFT JOIN EMPRESA e ON f.id_empresa = e.id
+      WHERE u.id = ?`, 
+      [id_usuario]
+    );
+
+    if (!usuario || !usuario.id_funcionario) {
+      throw new AppError('Usuário não é um funcionário válido ou não encontrado', 404);
+    }
+
+    // Processamento da foto
+    let fotoUrl = foto_url || '';
+    if (!fotoUrl && foto) {
+      const uploadResult = await CloudinaryService.uploadImage(foto, {
+        public_id: `ponto_${usuario.id_funcionario}_${Date.now()}`,
+        folder: 'pontos',
+        transformation: [
+          { width: 800, height: 600, crop: 'limit' },
+          { quality: 'auto' }
+        ]
+      });
+      fotoUrl = uploadResult.secure_url;
+    }
+
+    // Registra no banco de dados usando a procedure
+    const [resultados] = await db.query(
+      `CALL registrarPonto(?, ?, ?, ?, ?, ?, ?)`,
+      [
+        usuario.id_usuario,  // Passando o ID do usuário para a procedure
         tipo,
-        foto, // Pode ser Base64 ou URL
-        foto_url, // URL direta
+        fotoUrl,
         latitude,
         longitude,
         precisao_geolocalizacao,
         dispositivo
-      } = dados;
+      ]
+    );
 
-      // Atribuindo id_funcionario a id_usuario
-      const id_usuario = id_funcionario;
-
-      // Log para verificar o id_usuario
-      let fotoUrl = foto_url || ''; // Usa foto_url se existir
-
-      // Se não tem URL mas tem foto (Base64), faz upload
-      if (!fotoUrl && foto) {
-        const uploadResult = await CloudinaryService.uploadImage(foto, {
-            public_id: `ponto_${id_usuario}_${Date.now()}`,
-            folder: 'pontos'
-        });
-        fotoUrl = uploadResult.secure_url;
-    }
-
-      // Agora vamos chamar o procedimento armazenado no banco de dados
-      const [resultados] = await db.query(
-        `CALL registrarPonto(?, ?, ?, ?, ?, ?, ?)`,
-        [
-          id_usuario,               // id_usuario agora corretamente atribuído
-          tipo,                      // Tipo do ponto: 'Entrada', 'Saida', etc.
-          fotoUrl,           // URL da foto 
-          latitude,                  // Latitude
-          longitude,                 // Longitude
-          precisao_geolocalizacao,   // Precisão da geolocalização
-          dispositivo                // Dispositivo usado para registrar o ponto
-        ]
-      );
-
-      // Se o ponto foi registrado com sucesso, retornamos o resultado
-      return {
-        status: 'Ponto registrado com sucesso',
-        data_hora: new Date(),
-        foto_url: fotoUrl || 'Nenhuma foto fornecida'
-      };
-
-    } catch (error) {
-      // Log do erro para depuração
-      console.error('Erro no RegistroService.cadastrarRegistro:', {
-        error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
+    // Envio de email assíncrono e não bloqueante usando dados do usuário
+    if (process.env.EMAIL_ENABLED === 'true' && usuario.email) {
+      this.enviarEmailConfirmacao(usuario, tipo, dispositivo, fotoUrl).catch(error => {
+        console.error('Falha no envio de email:', error);
       });
-      throw error;  // Re-throw the error for higher-level handling
     }
+
+    return {
+      success: true,
+      data: {
+        id_funcionario: usuario.id_funcionario,
+        id_usuario: usuario.id_usuario,
+        tipo,
+        data_hora: new Date(),
+        foto_url: fotoUrl || null,
+        latitude,
+        longitude,
+        dispositivo
+      },
+      message: 'Ponto registrado com sucesso'
+    };
+
+  } catch (error) {
+    console.error('Erro no cadastro de registro:', error);
+    throw error instanceof AppError ? error : new AppError('Erro ao registrar ponto', 500);
   }
+}
 
+// Método refatorado para enviar email de confirmação usando dados do usuário
+static async enviarEmailConfirmacao(usuario, tipo, dispositivo, fotoUrl) {
+  const emailData = {
+    nome: usuario.nome,
+    tipo: tipo,
+    dataHora: new Date(),
+    dispositivo: dispositivo,
+    fotoUrl: fotoUrl,
+    empresa: usuario.empresa_nome,
+    dashboardUrl: `${process.env.FRONTEND_URL}/dashboard`
+  };
 
-
+  await EmailService.enviarEmailRegistroPonto(usuario.email, emailData);
+}
   // Método para buscar os registros de ponto de um funcionário específico
   static async buscarRegistrosFuncionario(idFuncionario) {
     // Verifica se o funcionário existe no banco de dados
