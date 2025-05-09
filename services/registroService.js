@@ -10,7 +10,7 @@ class RegistroService {
 static async cadastrarRegistro(dados) {
   try {
     const {
-      id_usuario,  // Alterado para receber ID do usuário
+      id_funcionario,  
       tipo,
       foto_url,
       foto,
@@ -21,7 +21,7 @@ static async cadastrarRegistro(dados) {
     } = dados;
 
     // Validação dos dados
-    if (!id_usuario || !tipo) {
+    if (!id_funcionario || !tipo) {
       throw new AppError('ID do usuário e tipo de registro são obrigatórios', 400);
     }
 
@@ -38,10 +38,10 @@ static async cadastrarRegistro(dados) {
       LEFT JOIN FUNCIONARIO f ON f.id_usuario = u.id
       LEFT JOIN EMPRESA e ON f.id_empresa = e.id
       WHERE u.id = ?`, 
-      [id_usuario]
+      [id_funcionario]
     );
 
-    if (!usuario || !usuario.id_funcionario) {
+    if (!usuario || !id_funcionario) {
       throw new AppError('Usuário não é um funcionário válido ou não encontrado', 404);
     }
 
