@@ -61,5 +61,35 @@ module.exports = {
 
     // Campo de busca textual (nome, email, etc), aceita vazio
     busca: Joi.string().allow('')
+  }), filtrosFuncionario: Joi.object({
+    status: Joi.string().valid('Ativo', 'Inativo'),
+    departamento: Joi.string(),
+    nome: Joi.string(),
+    registro_emp: Joi.string()
+  }),
+
+  horariosFuncionario: Joi.object({
+    horarios: Joi.array().items(
+      Joi.object({
+        dia_semana: Joi.string().valid(
+          'Segunda', 'Terca', 'Quarta', 'Quinta',
+          'Sexta', 'Sabado', 'Domingo'
+        ).required(),
+        hora_entrada: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
+        hora_saida: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
+        intervalo_inicio: Joi.string().pattern(/^\d{2}:\d{2}$/).allow(null),
+        intervalo_fim: Joi.string().pattern(/^\d{2}:\d{2}$/).allow(null)
+      })
+    ).min(1)
+  }), atualizarFuncionario: Joi.object({
+    nome: Joi.string().min(3).max(100),
+    email: Joi.string().email(),
+    registro_emp: Joi.string(),
+    funcao: Joi.string(),
+    departamento: Joi.string().allow(null, ''),
+    data_admissao: Joi.date(),
+    salario_base: Joi.number().positive().allow(null),
+    tipo_contrato: Joi.string().valid('CLT', 'PJ', 'Estagiario', 'Temporario'),
+    status: Joi.string().valid('Ativo', 'Inativo')
   })
 };

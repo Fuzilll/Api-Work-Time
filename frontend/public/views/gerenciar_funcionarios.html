@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciar Funcionários</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Estilo personalizado -->
+    <link rel="stylesheet" href="/css/dashboard_admin.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar closed" id="sidebar">
+        <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+        <div class="logo-container text-center">
+            <img src="/images/logo.png" alt="Logo" class="img-fluid">
+        </div>
+        <div id="menu"></div>
+        <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+    </div>
+
+    <!-- Conteúdo principal -->
+    <div class="content">
+        <!-- Topbar -->
+        <div class="topbar">
+            <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
+        </div>
+
+        <div class="container mt-4">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold">Gerenciar Funcionários</h2>
+                    <p class="text-muted">Gerencie os funcionários e seus horários</p>
+                </div>
+                <div class="btn-toolbar gap-2">
+                    <button class="btn btn-outline-secondary" id="btnExport">
+                        <i class="fas fa-download me-1"></i> Exportar
+                    </button>
+                    <button class="btn btn-primary" id="btnNovoFuncionario">
+                        <i class="fas fa-plus me-1"></i> Novo Funcionário
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filter-card mb-4">
+                <form id="formFiltros">
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-3">
+                            <label for="filtroStatus" class="form-label">Status</label>
+                            <select id="filtroStatus" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Inativo">Inativo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label for="filtroDepartamento" class="form-label">Departamento</label>
+                            <select id="filtroDepartamento" class="form-select">
+                                <option value="">Todos</option>
+                                <!-- Preenchido via JS -->
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label for="filtroNome" class="form-label">Nome</label>
+                            <input type="text" id="filtroNome" class="form-control" placeholder="Buscar por nome">
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label for="filtroMatricula" class="form-label">Matrícula</label>
+                            <input type="text" id="filtroMatricula" class="form-control" placeholder="Buscar por matrícula">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-filter me-1"></i> Filtrar
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="fas fa-undo me-1"></i> Limpar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tabela de Funcionários -->
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="tabelaFuncionarios">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Matrícula</th>
+                                    <th>Departamento</th>
+                                    <th>Função</th>
+                                    <th>Status</th>
+                                    <th>Registros</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paginação -->
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center" id="paginacao">
+                    <!-- Preenchido via JS -->
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Modal Horários -->
+        <div class="modal fade" id="modalHorarios" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Horários de Trabalho</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered horario-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dia</th>
+                                        <th>Entrada</th>
+                                        <th>Saída</th>
+                                        <th>Intervalo Início</th>
+                                        <th>Intervalo Fim</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="horariosBody">
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btnSalvarHorarios">
+                            <i class="fas fa-save me-1"></i> Salvar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Confirmação -->
+        <div class="modal fade" id="modalConfirmacao" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="confirmacaoTitulo">Confirmação</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="confirmacaoMensagem">
+                        <!-- Preenchido via JS -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger" id="btnConfirmarAcao">
+                            <i class="fas fa-check-circle me-1"></i> Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading e mensagens de erro -->
+        <div id="loading-overlay" style="display:none;">
+            <div class="spinner"></div>
+        </div>
+        <div id="error-message" class="alert alert-danger" style="display:none;"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/menu.js"></script>
+    <script src="/js/sidebarToggle.js"></script>
+    <script src="/js/gerenciar_funcionarios.js"></script>
+    <script src="/js/alterar_modo.js"></script>
+</body>
+</html>

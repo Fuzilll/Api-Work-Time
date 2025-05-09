@@ -4,75 +4,87 @@ const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { validate } = require('../middlewares/validators');
 const adminSchema = require('../validators/adminSchema');
-const DashboardController = require('../controllers/dashboardController');
 
 // Middlewares globais
 router.use(authMiddleware.autenticacao);
 router.use(authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']));
 
-router.delete(
-  '/funcionarios/:id',
-  adminController.excluirFuncionario
+// =============================================
+// ROTAS DE FUNCIONÁRIOS
+// =============================================
+router.get('/funcionarios', 
+  validate(adminSchema.filtrosFuncionario, 'query'),
+  adminController.listarFuncionarios
 );
-
-// Rotas de relatórios
-router.get(
-  '/resumo',
-  adminController.resumoFuncionarios
-);
-
-router.get(
-  '/relatorios/pontos',
-  validate(adminSchema.filtrosRelatorio, 'query'),
-  adminController.relatorioPontos
-);
-
-// Rotas de pontos
-router.get(
-  '/pontos',
-  validate(adminSchema.filtrosRelatorio, 'query'),
-  adminController.buscarPontos
-);
-
-router.get(
-  '/pontos/pendentes',
-  authMiddleware.checkPermission('gerenciar_pontos'),
-  adminController.carregarPontosPendentes
-);
-
 
 router.post('/funcionarios',
-  authMiddleware.autenticacao,
-  authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']),
   validate(adminSchema.cadastroFuncionario),
   adminController.cadastrarFuncionario
 );
 
-router.put(
-  '/pontos/:id/status',
-  authMiddleware.autenticacao,
-  authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']),
+router.get('/funcionarios/:id',
+  adminController.obterFuncionario
+);
+
+router.put('/funcionarios/:id',
+  validate(adminSchema.atualizarFuncionario),
+  adminController.atualizarFuncionario
+);
+
+router.put('/funcionarios/:id/horarios',
+  validate(adminSchema.horariosFuncionario),
+  adminController.atualizarHorariosFuncionario
+);
+
+router.put('/funcionarios/:id/desativar',
+  adminController.desativarFuncionario
+);
+
+router.delete('/funcionarios/:id',
+  adminController.excluirFuncionario
+);
+
+router.get('/admin/departamentos', 
+  authMiddleware, 
+  adminController.listarDepartamentos
+);
+
+// =============================================
+// ROTAS DE PONTOS
+// =============================================
+router.get('/pontos',
+  validate(adminSchema.filtrosRelatorio, 'query'),
+  adminController.buscarPontos
+);
+
+router.get('/pontos/pendentes',
+  adminController.carregarPontosPendentes
+);
+
+router.get('/pontos/:id/detalhes',
+  adminController.obterDetalhesPonto
+);
+
+router.put('/pontos/:id/status',
   validate(adminSchema.atualizarStatusPonto),
   adminController.atualizarStatusPonto
 );
 
-router.get(
-  '/pontos/:id/detalhes',
-  authMiddleware.autenticacao,
-  authMiddleware.verificarNivel(['ADMIN', 'IT_SUPPORT']),
-  authMiddleware.checkPermission('gerenciar_pontos'),
-  adminController.obterDetalhesPonto
+// =============================================
+// ROTAS DE RELATÓRIOS
+// =============================================
+router.get('/resumo',
+  adminController.resumoFuncionarios
 );
 
-router.put(
-  '/funcionarios/:id/desativar',
-  adminController.desativarFuncionario
+router.get('/relatorios/pontos',
+  validate(adminSchema.filtrosRelatorio, 'query'),
+  adminController.relatorioPontos
 );
 
-router.post('/funcionarios/:id/horarios', adminController.cadastrarHorariosFuncionario);
-
-
-// Rotas de Solicitações
+// =============================================
+// ROTAS DE SOLICITAÇÕES
+// =============================================
 router.get('/solicitacoes/pendentes', 
   adminController.listarSolicitacoesPendentes
 );
@@ -84,7 +96,5 @@ router.get('/solicitacoes/:id',
 router.post('/solicitacoes/:id/processar', 
   adminController.processarSolicitacao
 );
-
-
 
 module.exports = router;

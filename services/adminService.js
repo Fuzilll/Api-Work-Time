@@ -328,13 +328,13 @@ class AdminService {
          WHERE rp.id = ? FOR UPDATE`,
         [idPonto]
       );
-  
+
       if (!ponto?.length) {
         throw new AppError('Ponto não encontrado', 404);
       }
-  
+
       const pontoData = ponto[0];
-  
+
       // 2. Buscar informações do usuário aprovador
       const [usuarioRows] = await conn.query(
         `SELECT 
@@ -349,14 +349,14 @@ class AdminService {
          WHERE u.id = ?`,
         [idUsuarioAprovador]
       );
-  
+
       if (!usuarioRows?.length) {
         throw new AppError('Usuário não encontrado', 404);
       }
-  
+
       const user = usuarioRows[0];
       let idAdmin = user.admin_id;
-  
+
       // 3. Verificar permissões
       if (user.nivel === 'IT_SUPPORT') {
         if (!idAdmin) {
@@ -372,7 +372,7 @@ class AdminService {
       } else {
         throw new AppError('Usuário não autorizado para aprovar pontos', 403);
       }
-  
+
       // 4. Atualizar status do ponto
       await conn.query(
         `UPDATE REGISTRO_PONTO 
@@ -380,7 +380,7 @@ class AdminService {
          WHERE id = ?`,
         [status, idAdmin, justificativa, idPonto]
       );
-  
+
       // 5. Registrar ocorrência se rejeitado
       if (status === 'Rejeitado') {
         await conn.query(
@@ -390,7 +390,7 @@ class AdminService {
           [pontoData.id_funcionario, 'PontoRejeitado', justificativa, idAdmin]
         );
       }
-  
+
       // 6. Inserir log de auditoria
       const acao = status === 'Aprovado' ? 'Aprovação de Ponto' : 'Rejeição de Ponto';
       const detalhe = `Ponto ID ${idPonto}, status alterado para "${status}"${justificativa ? `, justificativa: ${justificativa}` : ''}`;
@@ -398,7 +398,7 @@ class AdminService {
         `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) VALUES (?, ?, ?)`,
         [idUsuarioAprovador, acao, detalhe]
       );
-  
+
       // 7. Retornar dados atualizados do ponto
       const [pontoAtualizadoRows] = await conn.query(
         `SELECT rp.*, u.nome as nome_funcionario 
@@ -408,18 +408,18 @@ class AdminService {
          WHERE rp.id = ?`,
         [idPonto]
       );
-  
+
       return {
         ...pontoAtualizadoRows[0],
         justificativa: status === 'Rejeitado' ? justificativa : null
       };
     });
   }
-  
-  
 
-  
-  
+
+
+
+
   /**
  * Registra uma ocorrência para um funcionário
  * @param {Object} conn - Conexão de banco de dados
@@ -464,36 +464,36 @@ class AdminService {
       JOIN USUARIO u ON f.id_usuario = u.id
       WHERE f.id_empresa = ?
     `;
-  
+
     const params = [idEmpresa];
-  
+
     if (filtros.status) {
       sql += ` AND rp.status = ?`;
       params.push(filtros.status);
     }
-  
+
     if (filtros.dataInicio && filtros.dataFim) {
       sql += ` AND DATE(rp.data_hora) BETWEEN ? AND ?`;
       params.push(filtros.dataInicio, filtros.dataFim);
     }
-  
+
     if (filtros.departamento) {
       sql += ` AND f.departamento = ?`;
       params.push(filtros.departamento);
     }
-  
+
     if (filtros.nome && filtros.nome.trim()) {
       sql += ` AND u.nome LIKE ?`;
       params.push(`%${filtros.nome.trim()}%`);
     }
-  
+
     sql += ` ORDER BY rp.data_hora DESC`;
-  
+
     return await db.query(sql, params);
   }
-  
 
-  
+
+
   /**
     * Carrega pontos com possíveis irregularidades para análise manual
     * @param {Number} idEmpresa - ID da empresa
@@ -581,7 +581,39 @@ class AdminService {
     });
   }
 
+  /**
+   * Reativa um funcionário previamente desativado
+   */
+  static async reativarFuncionario(idFuncionario, idEmpresa) {
+    const [result] = await db.query(`
+      UPDATE USUARIO u
+      JOIN FUNCIONARIO f ON u.id = f.id_usuario
+      SET u.status = 'Ativo'
+      WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Inativo'
+  `, [idFuncionario, idEmpresa]);
 
+    if (result.affectedRows === 0) {
+      throw new AppError('Funcionário inativo não encontrado nesta empresa', 404);
+    }
+
+    return { message: 'Funcionário reativado com sucesso' };
+  }
+
+  /**
+  * Verifica se um funcionário existe e pertence à empresa
+  */
+  static async verificarFuncionarioExistente(idFuncionario) {
+    const [funcionario] = await db.query(
+      'SELECT id FROM FUNCIONARIO WHERE id = ?',
+      [idFuncionario]
+    );
+
+    if (!funcionario.length) {
+      throw new AppError('Funcionário não encontrado', 404);
+    }
+
+    return funcionario[0];
+  }
   //solicitações de alteração de ponto 
   /**
  * Processa a resposta do admin para uma solicitação de alteração
@@ -591,85 +623,85 @@ class AdminService {
  * @param {String} resposta - Resposta do admin
  * @returns {Promise<Object>} - Resultado do processamento
  */
-static async responderSolicitacaoAlteracao(idSolicitacao, idAdmin, acao, resposta) {
+  static async responderSolicitacaoAlteracao(idSolicitacao, idAdmin, acao, resposta) {
     return await db.transaction(async (connection) => {
-        // 1. Verificar se a solicitação existe e está pendente
-        const [solicitacao] = await connection.query(
-            `SELECT sa.*, rp.id_funcionario, u.nome as nome_funcionario, u.email
+      // 1. Verificar se a solicitação existe e está pendente
+      const [solicitacao] = await connection.query(
+        `SELECT sa.*, rp.id_funcionario, u.nome as nome_funcionario, u.email
              FROM SOLICITACAO_ALTERACAO sa
              JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
              JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
              JOIN USUARIO u ON f.id_usuario = u.id
              WHERE sa.id = ? AND sa.status = 'Pendente' FOR UPDATE`,
-            [idSolicitacao]
-        );
+        [idSolicitacao]
+      );
 
-        if (!solicitacao.length) {
-            throw new AppError('Solicitação não encontrada ou já processada', 404);
-        }
+      if (!solicitacao.length) {
+        throw new AppError('Solicitação não encontrada ou já processada', 404);
+      }
 
-        const solicitacaoData = solicitacao[0];
+      const solicitacaoData = solicitacao[0];
 
-        // 2. Verificar se o admin tem permissão
-        const [admin] = await connection.query(
-            `SELECT id FROM ADMIN WHERE id = ? AND id = ?`,
-            [idAdmin, solicitacaoData.id_admin_responsavel]
-        );
+      // 2. Verificar se o admin tem permissão
+      const [admin] = await connection.query(
+        `SELECT id FROM ADMIN WHERE id = ? AND id = ?`,
+        [idAdmin, solicitacaoData.id_admin_responsavel]
+      );
 
-        if (!admin.length) {
-            throw new AppError('Você não tem permissão para responder esta solicitação', 403);
-        }
+      if (!admin.length) {
+        throw new AppError('Você não tem permissão para responder esta solicitação', 403);
+      }
 
-        // 3. Atualizar a solicitação
-        await connection.query(
-            `UPDATE SOLICITACAO_ALTERACAO 
+      // 3. Atualizar a solicitação
+      await connection.query(
+        `UPDATE SOLICITACAO_ALTERACAO 
              SET status = ?, resposta_admin = ?, data_resposta = NOW()
              WHERE id = ?`,
-            [acao, resposta, idSolicitacao]
-        );
+        [acao, resposta, idSolicitacao]
+      );
 
-        // 4. Atualizar o registro de ponto
-        let statusPonto = acao === 'Aprovada' ? 'Aprovado' : 'Rejeitado';
-        await connection.query(
-            `UPDATE REGISTRO_PONTO 
+      // 4. Atualizar o registro de ponto
+      let statusPonto = acao === 'Aprovada' ? 'Aprovado' : 'Rejeitado';
+      await connection.query(
+        `UPDATE REGISTRO_PONTO 
              SET status = ?, id_aprovador = ?
              WHERE id = ?`,
-            [statusPonto, idAdmin, solicitacaoData.id_registro]
-        );
+        [statusPonto, idAdmin, solicitacaoData.id_registro]
+      );
 
-        // 5. Registrar log
-        await connection.query(
-            `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
+      // 5. Registrar log
+      await connection.query(
+        `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
              VALUES (?, ?, ?)`,
-            [
-                idAdmin,
-                `Resposta Solicitação Alteração Ponto`,
-                `Solicitação ID ${idSolicitacao} ${acao}. Resposta: ${resposta}`
-            ]
-        );
+        [
+          idAdmin,
+          `Resposta Solicitação Alteração Ponto`,
+          `Solicitação ID ${idSolicitacao} ${acao}. Resposta: ${resposta}`
+        ]
+      );
 
-        // 6. Retornar dados para envio de email
-        return {
-            id: idSolicitacao,
-            id_registro: solicitacaoData.id_registro,
-            id_funcionario: solicitacaoData.id_funcionario,
-            nome_funcionario: solicitacaoData.nome_funcionario,
-            email_funcionario: solicitacaoData.email,
-            status: acao,
-            resposta_admin: resposta,
-            data_resposta: new Date()
-        };
+      // 6. Retornar dados para envio de email
+      return {
+        id: idSolicitacao,
+        id_registro: solicitacaoData.id_registro,
+        id_funcionario: solicitacaoData.id_funcionario,
+        nome_funcionario: solicitacaoData.nome_funcionario,
+        email_funcionario: solicitacaoData.email,
+        status: acao,
+        resposta_admin: resposta,
+        data_resposta: new Date()
+      };
     });
-}
+  }
 
-/**
- * Lista solicitações de alteração pendentes para um admin
- * @param {Number} idAdmin - ID do admin
- * @returns {Promise<Array>} - Lista de solicitações
- */
-static async listarSolicitacoesPendentes(idAdmin) {
+  /**
+   * Lista solicitações de alteração pendentes para um admin
+   * @param {Number} idAdmin - ID do admin
+   * @returns {Promise<Array>} - Lista de solicitações
+   */
+  static async listarSolicitacoesPendentes(idAdmin) {
     const [solicitacoes] = await db.query(
-        `SELECT 
+      `SELECT 
             sa.id,
             sa.id_registro,
             sa.motivo,
@@ -685,21 +717,21 @@ static async listarSolicitacoesPendentes(idAdmin) {
          JOIN USUARIO u ON f.id_usuario = u.id
          WHERE sa.id_admin_responsavel = ? AND sa.status = 'Pendente'
          ORDER BY sa.data_solicitacao DESC`,
-        [idAdmin]
+      [idAdmin]
     );
 
     return solicitacoes;
-}
+  }
 
-/**
- * Obtém detalhes de uma solicitação específica
- * @param {Number} idSolicitacao - ID da solicitação
- * @param {Number} idAdmin - ID do admin (para validação)
- * @returns {Promise<Object>} - Detalhes da solicitação
- */
-static async obterDetalhesSolicitacao(idSolicitacao, idAdmin) {
+  /**
+   * Obtém detalhes de uma solicitação específica
+   * @param {Number} idSolicitacao - ID da solicitação
+   * @param {Number} idAdmin - ID do admin (para validação)
+   * @returns {Promise<Object>} - Detalhes da solicitação
+   */
+  static async obterDetalhesSolicitacao(idSolicitacao, idAdmin) {
     const [solicitacao] = await db.query(
-        `SELECT 
+      `SELECT 
             sa.*,
             u.nome as nome_funcionario,
             f.departamento,
@@ -717,15 +749,15 @@ static async obterDetalhesSolicitacao(idSolicitacao, idAdmin) {
          LEFT JOIN ADMIN adm ON sa.id_admin_responsavel = adm.id
          LEFT JOIN USUARIO aprovador ON adm.id_usuario = aprovador.id
          WHERE sa.id = ? AND sa.id_admin_responsavel = ?`,
-        [idSolicitacao, idAdmin]
+      [idSolicitacao, idAdmin]
     );
 
     if (!solicitacao.length) {
-        throw new AppError('Solicitação não encontrada', 404);
+      throw new AppError('Solicitação não encontrada', 404);
     }
 
     return solicitacao[0];
-}
+  }
 
 
 
@@ -738,16 +770,16 @@ static async obterDetalhesSolicitacao(idSolicitacao, idAdmin) {
 
 
 
-//METODOS EM TESTE PARA solicitações de alteração de ponto 
-// No AdminService.js
+  //METODOS EM TESTE PARA solicitações de alteração de ponto 
+  // No AdminService.js
 
-/**
- * Obtém solicitações de alteração pendentes para uma empresa
- * @param {Number} idEmpresa - ID da empresa
- * @returns {Promise<Array>} - Lista de solicitações pendentes
- */
-static async obterSolicitacoesAlteracaoPendentes(idEmpresa) {
-  try {
+  /**
+   * Obtém solicitações de alteração pendentes para uma empresa
+   * @param {Number} idEmpresa - ID da empresa
+   * @returns {Promise<Array>} - Lista de solicitações pendentes
+   */
+  static async obterSolicitacoesAlteracaoPendentes(idEmpresa) {
+    try {
       const sql = `
           SELECT 
               sa.id,
@@ -774,27 +806,27 @@ static async obterSolicitacoesAlteracaoPendentes(idEmpresa) {
       `;
 
       const solicitacoes = await db.query(sql, [idEmpresa]);
-      console.log('[AdminService] Solicitações aaaaaaaaaaa',solicitacoes)
+      console.log('[AdminService] Solicitações aaaaaaaaaaa', solicitacoes)
       return solicitacoes;
-  } catch (error) {
+    } catch (error) {
       console.error('[AdminService] Erro ao buscar solicitações pendentes:', error);
       throw new AppError('Erro ao buscar solicitações de alteração', 500);
+    }
   }
-}
 
-/**
-* Processa uma solicitação de alteração (aprovar/rejeitar)
-* @param {Number} idSolicitacao - ID da solicitação
-* @param {Number} idUsuario - ID do usuário admin
-* @param {String} acao - 'aprovar' ou 'rejeitar'
-* @param {String} motivo - Motivo da decisão
-* @returns {Promise<Object>} - Resultado da operação
-*/
-static async processarSolicitacaoAlteracao(idSolicitacao, idUsuario, acao, motivo) {
-  return await db.transaction(async (connection) => {
+  /**
+  * Processa uma solicitação de alteração (aprovar/rejeitar)
+  * @param {Number} idSolicitacao - ID da solicitação
+  * @param {Number} idUsuario - ID do usuário admin
+  * @param {String} acao - 'aprovar' ou 'rejeitar'
+  * @param {String} motivo - Motivo da decisão
+  * @returns {Promise<Object>} - Resultado da operação
+  */
+  static async processarSolicitacaoAlteracao(idSolicitacao, idUsuario, acao, motivo) {
+    return await db.transaction(async (connection) => {
       try {
-          // 1. Verificar se a solicitação existe e está pendente
-          const [solicitacao] = await connection.query(`
+        // 1. Verificar se a solicitação existe e está pendente
+        const [solicitacao] = await connection.query(`
               SELECT sa.*, rp.id_funcionario, f.id_empresa, u.nome AS nome_funcionario
               FROM SOLICITACAO_ALTERACAO sa
               JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
@@ -804,29 +836,29 @@ static async processarSolicitacaoAlteracao(idSolicitacao, idUsuario, acao, motiv
               FOR UPDATE
           `, [idSolicitacao]);
 
-          if (!solicitacao.length) {
-              throw new AppError('Solicitação não encontrada ou já processada', 404);
-          }
+        if (!solicitacao.length) {
+          throw new AppError('Solicitação não encontrada ou já processada', 404);
+        }
 
-          const solicitacaoData = solicitacao[0];
+        const solicitacaoData = solicitacao[0];
 
-          // 2. Verificar se o usuário tem permissão (é admin da mesma empresa)
-          const [admin] = await connection.query(`
+        // 2. Verificar se o usuário tem permissão (é admin da mesma empresa)
+        const [admin] = await connection.query(`
               SELECT a.id FROM ADMIN a
               JOIN USUARIO u ON a.id_usuario = u.id
               WHERE a.id_usuario = ? AND a.id_empresa = ?
           `, [idUsuario, solicitacaoData.id_empresa]);
 
-          if (!admin.length) {
-              throw new AppError('Você não tem permissão para processar esta solicitação', 403);
-          }
+        if (!admin.length) {
+          throw new AppError('Você não tem permissão para processar esta solicitação', 403);
+        }
 
-          const idAdmin = admin[0].id;
-          const novoStatus = acao === 'aprovar' ? 'Aprovada' : 'Rejeitada';
-          const statusPonto = acao === 'aprovar' ? 'Aprovado' : 'Rejeitado';
+        const idAdmin = admin[0].id;
+        const novoStatus = acao === 'aprovar' ? 'Aprovada' : 'Rejeitada';
+        const statusPonto = acao === 'aprovar' ? 'Aprovado' : 'Rejeitado';
 
-          // 3. Atualizar a solicitação
-          await connection.query(`
+        // 3. Atualizar a solicitação
+        await connection.query(`
               UPDATE SOLICITACAO_ALTERACAO 
               SET status = ?, 
                   id_admin_responsavel = ?,
@@ -835,8 +867,8 @@ static async processarSolicitacaoAlteracao(idSolicitacao, idUsuario, acao, motiv
               WHERE id = ?
           `, [novoStatus, idAdmin, motivo, idSolicitacao]);
 
-          // 4. Atualizar o registro de ponto
-          await connection.query(`
+        // 4. Atualizar o registro de ponto
+        await connection.query(`
               UPDATE REGISTRO_PONTO 
               SET status = ?,
                   id_aprovador = ?,
@@ -844,27 +876,235 @@ static async processarSolicitacaoAlteracao(idSolicitacao, idUsuario, acao, motiv
               WHERE id = ?
           `, [statusPonto, idAdmin, motivo, solicitacaoData.id_registro]);
 
-          // 5. Registrar log
-          await connection.query(`
+        // 5. Registrar log
+        await connection.query(`
               INSERT INTO LOG_AUDITORIA 
               (id_usuario, acao, detalhe)
               VALUES (?, ?, ?)
           `, [idUsuario, `Solicitação ${novoStatus}`, `Solicitação ID ${idSolicitacao} - ${motivo}`]);
 
-          return {
-              message: `Solicitação ${novoStatus.toLowerCase()} com sucesso`,
-              data: {
-                  id: idSolicitacao,
-                  status: novoStatus,
-                  nome_funcionario: solicitacaoData.nome_funcionario
-              }
-          };
+        return {
+          message: `Solicitação ${novoStatus.toLowerCase()} com sucesso`,
+          data: {
+            id: idSolicitacao,
+            status: novoStatus,
+            nome_funcionario: solicitacaoData.nome_funcionario
+          }
+        };
       } catch (error) {
-          console.error('[AdminService] Erro ao processar solicitação:', error);
-          throw error;
+        console.error('[AdminService] Erro ao processar solicitação:', error);
+        throw error;
       }
-  });
+    });
+  }
+  static async listarFuncionarios(idEmpresa, filtros = {}) {
+    let sql = `
+      SELECT 
+          f.id,
+          u.nome,
+          u.email,
+          u.status,
+          f.registro_emp,
+          f.funcao,
+          f.departamento,
+          f.data_admissao,
+          f.tipo_contrato,
+          COUNT(rp.id) AS total_registros
+      FROM FUNCIONARIO f
+      JOIN USUARIO u ON f.id_usuario = u.id
+      LEFT JOIN REGISTRO_PONTO rp ON f.id = rp.id_funcionario
+      WHERE f.id_empresa = ?
+  `;
+
+    const params = [idEmpresa];
+
+    if (filtros.status) {
+      sql += ` AND u.status = ?`;
+      params.push(filtros.status);
+    }
+
+    if (filtros.departamento) {
+      sql += ` AND f.departamento = ?`;
+      params.push(filtros.departamento);
+    }
+
+    if (filtros.nome) {
+      sql += ` AND u.nome LIKE ?`;
+      params.push(`%${filtros.nome}%`);
+    }
+
+    if (filtros.registro_emp) {
+      sql += ` AND f.registro_emp LIKE ?`;
+      params.push(`%${filtros.registro_emp}%`);
+    }
+
+    sql += ` GROUP BY f.id ORDER BY u.nome`;
+
+    return await db.query(sql, params);
+  }
+  static async obterHorariosFuncionario(idFuncionario) {
+    const sql = `
+      SELECT 
+          dia_semana,
+          hora_entrada,
+          hora_saida,
+          intervalo_inicio,
+          intervalo_fim
+      FROM HORARIO_TRABALHO
+      WHERE id_funcionario = ?
+      ORDER BY 
+          CASE dia_semana
+              WHEN 'Segunda' THEN 1
+              WHEN 'Terca' THEN 2
+              WHEN 'Quarta' THEN 3
+              WHEN 'Quinta' THEN 4
+              WHEN 'Sexta' THEN 5
+              WHEN 'Sabado' THEN 6
+              WHEN 'Domingo' THEN 7
+          END
+  `;
+
+    return await db.query(sql, [idFuncionario]);
+  }
+  static async atualizarHorariosFuncionario(idFuncionario, horarios) {
+    return await db.transaction(async (connection) => {
+      // 1. Remover horários existentes
+      await connection.query(
+        'DELETE FROM HORARIO_TRABALHO WHERE id_funcionario = ?',
+        [idFuncionario]
+      );
+
+      // 2. Inserir novos horários
+      if (horarios && horarios.length > 0) {
+        const values = horarios.map(h => [
+          idFuncionario,
+          h.dia_semana,
+          h.hora_entrada,
+          h.hora_saida,
+          h.intervalo_inicio || null,
+          h.intervalo_fim || null
+        ]);
+
+        await connection.query(
+          `INSERT INTO HORARIO_TRABALHO (
+                    id_funcionario, dia_semana, hora_entrada, 
+                    hora_saida, intervalo_inicio, intervalo_fim
+                ) VALUES ?`,
+          [values]
+        );
+      }
+
+      // 3. Retornar os horários atualizados
+      return await this.obterHorariosFuncionario(idFuncionario);
+    });
+  }
+  static async listarDepartamentos(idEmpresa) {
+  const [departamentos] = await db.query(
+    `SELECT DISTINCT departamento 
+     FROM FUNCIONARIO 
+     WHERE id_empresa = ? AND departamento IS NOT NULL
+     ORDER BY departamento`,
+    [idEmpresa]
+  );
+  return departamentos.map(d => d.departamento);
 }
+  static async obterFuncionario(idFuncionario, idEmpresa) {
+    const sql = `
+        SELECT 
+            f.id,
+            u.nome,
+            u.email,
+            u.cpf,
+            u.status,
+            f.registro_emp,
+            f.funcao,
+            f.departamento,
+            f.data_admissao,
+            f.salario_base,
+            f.tipo_contrato
+        FROM FUNCIONARIO f
+        JOIN USUARIO u ON f.id_usuario = u.id
+        WHERE f.id = ? AND f.id_empresa = ?
+    `;
+
+    const [funcionario] = await db.query(sql, [idFuncionario, idEmpresa]);
+
+    if (!funcionario) {
+      throw new AppError('Funcionário não encontrado', 404);
+    }
+
+    // Obter horários do funcionário
+    const horarios = await this.obterHorariosFuncionario(idFuncionario);
+
+    return {
+      ...funcionario,
+      horarios
+    };
+  }
+  static async atualizarFuncionario(idFuncionario, idEmpresa, dadosAtualizacao) {
+    return await db.transaction(async (connection) => {
+      // 1. Verificar se o funcionário existe e pertence à empresa
+      const [funcionario] = await connection.query(
+        `SELECT f.id, f.id_usuario 
+             FROM FUNCIONARIO f 
+             WHERE f.id = ? AND f.id_empresa = ?`,
+        [idFuncionario, idEmpresa]
+      );
+
+      if (!funcionario.length) {
+        throw new AppError('Funcionário não encontrado nesta empresa', 404);
+      }
+
+      const idUsuario = funcionario[0].id_usuario;
+
+      // 2. Atualizar dados na tabela USUARIO
+      if (dadosAtualizacao.nome || dadosAtualizacao.email || dadosAtualizacao.status) {
+        const camposUsuario = {};
+        if (dadosAtualizacao.nome) camposUsuario.nome = dadosAtualizacao.nome;
+        if (dadosAtualizacao.email) camposUsuario.email = dadosAtualizacao.email;
+        if (dadosAtualizacao.status) camposUsuario.status = dadosAtualizacao.status;
+
+        await connection.query(
+          `UPDATE USUARIO SET ? WHERE id = ?`,
+          [camposUsuario, idUsuario]
+        );
+      }
+
+      // 3. Atualizar dados na tabela FUNCIONARIO
+      const camposFuncionario = { ...dadosAtualizacao };
+      delete camposFuncionario.nome;
+      delete camposFuncionario.email;
+      delete camposFuncionario.status;
+
+      if (Object.keys(camposFuncionario).length > 0) {
+        await connection.query(
+          `UPDATE FUNCIONARIO SET ? WHERE id = ?`,
+          [camposFuncionario, idFuncionario]
+        );
+      }
+
+      // 4. Retornar os dados atualizados
+      const [funcionarioAtualizado] = await connection.query(
+        `SELECT 
+                f.id,
+                u.nome,
+                u.email,
+                u.status,
+                f.registro_emp,
+                f.funcao,
+                f.departamento,
+                f.data_admissao,
+                f.salario_base,
+                f.tipo_contrato
+             FROM FUNCIONARIO f
+             JOIN USUARIO u ON f.id_usuario = u.id
+             WHERE f.id = ?`,
+        [idFuncionario]
+      );
+
+      return funcionarioAtualizado[0];
+    });
+  }
 }
 
 module.exports = AdminService;

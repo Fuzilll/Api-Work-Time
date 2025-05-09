@@ -161,7 +161,17 @@ class AdminController {
       next(err);
     }
   }
-
+static async listarDepartamentos(req, res, next) {
+  try {
+    const departamentos = await AdminService.listarDepartamentos(req.usuario.id_empresa);
+    res.json({
+      success: true,
+      data: departamentos
+    });
+  } catch (err) {
+    next(err);
+  }
+}
   /**
   * @api {get} /api/admin/pontos/analise Listar Pontos para Análise
   * @apiName CarregarPontosParaAnalise
@@ -217,36 +227,6 @@ class AdminController {
     }
   }
   /**
-   * 
-   * testando
-   * 
-   * static async atualizarStatusPonto(req, res, next) {
-    try {
-        // Verifica se o usuário tem permissão
-        if (!req.usuario.permissoes?.aprovar_pontos && req.usuario.nivel !== 'ADMIN') {
-            throw new AppError('Você não tem permissão para aprovar/rejeitar pontos', 403);
-        }
-
-        // Chama a stored procedure apropriada
-        const procedure = req.body.status === 'Aprovado' ? 'APROVARPONTO' : 'REPROVARPONTO';
-        const resultado = await Database.callProcedure(procedure, [
-            req.params.id,              // ID do ponto
-            req.usuario.id,             // ID do usuário autenticado (aprovador)
-            req.body.justificativa      // Justificativa
-        ]);
-
-        res.json({
-            success: true,
-            data: resultado[0] // Assumindo que o resultado é um array com o retorno da procedure
-        });
-    } catch (err) {
-        next(err);
-    }
-}
-
-
-   */
-  /**
    * @api {get} /api/admin/pontos/pendentes Listar Pontos Pendentes
    * @apiName CarregarPontosPendentes
    * @apiGroup Admin
@@ -276,8 +256,6 @@ class AdminController {
       next(err);
     }
   }
-
-
 
   /**
    * Desativa um funcionário (sem excluir do banco)
@@ -399,38 +377,6 @@ static async responderSolicitacao(req, res, next) {
       next(err);
   }
 }
-/**
- * @api {get} /api/admin/solicitacoes/pendentes Listar Solicitações Pendentes
- * @apiName ListarSolicitacoesPendentes
- * @apiGroup Admin
- */
-static async listarSolicitacoesPendentes(req, res, next) {
-  try {
-      // Verifica se o usuário é um admin
-      if (req.usuario.nivel !== 'ADMIN') {
-          throw new AppError('Apenas administradores podem listar solicitações', 403);
-      }
-      
-      // Obtém o ID do admin associado ao usuário
-      const [admin] = await db.query(
-          'SELECT id FROM ADMIN WHERE id_usuario = ?',
-          [req.usuario.id]
-      );
-      
-      if (!admin.length) {
-          throw new AppError('Administrador não encontrado', 404);
-      }
-      
-      const solicitacoes = await AdminService.listarSolicitacoesPendentes(admin[0].id);
-      
-      res.json({
-          success: true,
-          data: solicitacoes
-      });
-  } catch (err) {
-      next(err);
-  }
-}
 
 /**
 * @api {get} /api/admin/solicitacoes/:id Obter Detalhes da Solicitação
@@ -490,7 +436,8 @@ static async listarSolicitacoesPendentes(req, res, next) {
       }
 
       const solicitacoes = await AdminService.obterSolicitacoesAlteracaoPendentes(id_empresa);
-      console.log('[AdminController] Solicitações aaaaaaaaaaa',solicitacoes)
+      console.log('[AdminController] Solicitações',solicitacoes)
+
 
       res.json({
           success: true,
@@ -544,7 +491,95 @@ static async processarSolicitacao(req, res, next) {
       next(error);
   }
 }
+static async listarFuncionarios(req, res, next) {
+  try {
+      const funcionarios = await AdminService.listarFuncionarios(
+          req.usuario.id_empresa,
+          {
+              status: req.query.status,
+              departamento: req.query.departamento,
+              nome: req.query.nome,
+              registro_emp: req.query.registro_emp
+          }
+      );
+      
+      res.json({
+          success: true,
+          data: funcionarios
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+static async obterHorariosFuncionario(req, res, next) {
+  try {
+      const horarios = await AdminService.obterHorariosFuncionario(
+          req.params.id
+      );
+      
+      res.json({
+          success: true,
+          data: horarios
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+static async atualizarHorariosFuncionario(req, res, next) {
+  try {
+      const horariosAtualizados = await AdminService.atualizarHorariosFuncionario(
+          req.params.id,
+          req.body.horarios
+      );
 
+      res.json({
+          success: true,
+          data: horariosAtualizados,
+          message: 'Horários atualizados com sucesso'
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+static async obterFuncionario(req, res, next) {
+  try {
+      const funcionario = await AdminService.obterFuncionario(
+          req.params.id,
+          req.usuario.id_empresa
+      );
+      
+      res.json({
+          success: true,
+          data: funcionario
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+static async atualizarFuncionario(req, res, next) {
+  try {
+      // Remover campos que não devem ser atualizados
+      const dadosAtualizacao = { ...req.body };
+      delete dadosAtualizacao.id;
+      delete dadosAtualizacao.id_empresa;
+      delete dadosAtualizacao.id_usuario;
+      delete dadosAtualizacao.cpf;
+
+      const funcionarioAtualizado = await AdminService.atualizarFuncionario(
+          req.params.id,
+          req.usuario.id_empresa,
+          dadosAtualizacao
+      );
+
+      res.json({
+          success: true,
+          data: funcionarioAtualizado,
+          message: 'Funcionário atualizado com sucesso'
+      });
+  } catch (err) {
+      next(err);
+  }
+}
 }
 
 // Exporta a classe para uso nas rotas (ex: admin.routes.js)

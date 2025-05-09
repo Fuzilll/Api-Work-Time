@@ -184,6 +184,36 @@ class AuthService {
       throw new AppError('Falha ao carregar dados do dashboard', 500);
     }
   }
+  
+  static async logout() {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao realizar logout');
+      }
+
+      // Limpa os dados locais
+      localStorage.clear();
+      sessionStorage.clear();
+
+      return await response.json();
+    } catch (error) {
+      console.error('Erro durante logout:', error);
+      // Força a limpeza mesmo em caso de erro
+      localStorage.clear();
+      sessionStorage.clear();
+      throw error;
+    }
+  }
+
 }
 
 // Exporta o AuthService para uso em outros módulos

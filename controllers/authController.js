@@ -75,11 +75,6 @@ static async logout(req, res, next) {
   console.log('[BACKEND] Requisição de logout recebida');
 
   try {
-      const token = req.headers.authorization?.split(' ')[1];
-      const userId = req.session.id_usuario || 'N/A';
-      
-      console.log(`[BACKEND] Iniciando logout para usuário ${userId}`);
-
       // 1. Destrói a sessão
       await new Promise((resolve, reject) => {
           req.session.destroy(err => {
@@ -88,27 +83,27 @@ static async logout(req, res, next) {
                   reject(new AppError('Falha ao encerrar a sessão', 500));
                   return;
               }
-              console.log(`[BACKEND] Sessão destruída com sucesso`);
+              
+              // 2. Configurações para limpeza dos cookies
+              const cookieOptions = {
+                  path: '/',
+                  httpOnly: true,
+                  secure: process.env.NODE_ENV === 'production',
+                  sameSite: 'strict',
+                  domain: process.env.COOKIE_DOMAIN || undefined
+              };
+
+              // 3. Remove todos os cookies relacionados à autenticação
+              res.clearCookie('connect.sid', cookieOptions);
+              res.clearCookie('token', cookieOptions);
+              
+              console.log('[BACKEND] Logout realizado com sucesso');
               resolve();
           });
       });
 
-      // 2. Configurações para limpeza dos cookies
-      const cookieOptions = {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          domain: process.env.COOKIE_DOMAIN || undefined
-      };
-
-      // 3. Remove todos os cookies relacionados à autenticação
-      res.clearCookie('connect.sid', cookieOptions);
-      res.clearCookie('token', cookieOptions);
-      console.log('[BACKEND] Cookies de autenticação removidos');
-
       // 4. Resposta de sucesso
-      res.json({
+      res.status(200).json({
           success: true,
           message: 'Logout realizado com sucesso'
       });

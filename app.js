@@ -150,6 +150,8 @@ class App {
     this.app.get('/login', (req, res) => {
       res.sendFile(path.join(__dirname, 'frontend/public/views/login.html'));
     });
+    this.app.post('/api/auth/logout', require('./controllers/authController').logout);
+    
     this.app.use('/api/email', require('./routes/emailRoutes'));
 
     // 3. Rotas de API públicas

@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="cadastrar_funcionarios.html"><i class="fas fa-users"></i><span>Funcionários</span></a>
                 <a href="gerenciar_pontos.html"><i class="fa fa-hourglass" aria-hidden="true"></i><span>Registros de Ponto</span></a>
                 <a href="solicitacoes-alteracao-ponto.html"><i class="fas fa-calendar"></i><span>Alterações de Ponto</span></a>
+                <a href="gerenciar_funcionarios.html"><i class="bi bi-person-badge me-2"></i><span>Gerenciar Funcionários</span></a>
                 <a href="pagina_suporte_usuarios.html"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Central de Suporte</span></a>
             `;
             break;
@@ -37,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     menu.innerHTML = menuItems;
 
+
+
     // Adiciona handler para o botão de logout
     const logoutBtn = document.getElementById('logoutBtn');
     const logoutIcon = document.getElementById('logoutIcon');
@@ -46,21 +49,23 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
 
         // Exibe o ícone de carregamento
-        logoutIcon.style.display = 'none';
-        loadingSpinner.style.display = 'flex';
+        if (logoutIcon) logoutIcon.style.display = 'none';
+        if (loadingSpinner) loadingSpinner.style.display = 'flex';
 
         try {
             await AuthService.logout();
-            // Redirecionamento após logout bem-sucedido
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 1000); // Aguarda 1 segundo para o feedback do logout
+
+            // Redireciona após logout bem-sucedido
+            window.location.href = 'login.html';
+
         } catch (error) {
             console.error('Erro durante logout:', error);
-            // Força logout mesmo com erro
+            // Redireciona mesmo em caso de erro
+            window.location.href = 'login.html';
+        } finally {
+            // Garante que os dados locais sejam limpos
             localStorage.clear();
             sessionStorage.clear();
-            window.location.href = 'login.html';
         }
     });
 });
