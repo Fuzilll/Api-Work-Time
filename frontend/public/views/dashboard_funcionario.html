@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Funcionário</title>
-    <link rel="stylesheet" href="/css/dashboard_admin.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <link rel="stylesheet" href="/css/dashboard_admin.css">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         if (!document.querySelector('link[href*="fontawesome"]')) {
@@ -18,7 +20,7 @@
     <style>
         .chart-container {
             position: relative;
-            height:40vh;
+            height: 40vh;
             /* Altura maior para melhor visualização das barras */
             width: auto;
             margin-bottom: 20px;
@@ -90,11 +92,18 @@
                 </tbody>
             </table>
         </div>
+        <div id="loading-overlay" style="display:none;">
+            <div class="spinner"></div>
+        </div>
+        <div id="error-message" class="alert alert-danger" style="display:none;"></div>
+
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/menu.js"></script>
     <script src="/js/sidebarToggle.js"></script>
     <script src="/js/dashboard_funcionario.js"></script>
+    <script src="/js/alterar_modo.js"></script>
+    
     <script>
         // Inicializa o gráfico de barras como propriedade global
         document.addEventListener('DOMContentLoaded', function () {
