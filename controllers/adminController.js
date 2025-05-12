@@ -161,6 +161,7 @@ class AdminController {
       next(err);
     }
   }
+
 static async listarDepartamentos(req, res, next) {
   try {
     const departamentos = await AdminService.listarDepartamentos(req.usuario.id_empresa);

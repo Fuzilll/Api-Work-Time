@@ -999,15 +999,15 @@ class AdminService {
     });
   }
   static async listarDepartamentos(idEmpresa) {
-  const [departamentos] = await db.query(
-    `SELECT DISTINCT departamento 
+    const [departamentos] = await db.query(
+      `SELECT DISTINCT departamento 
      FROM FUNCIONARIO 
      WHERE id_empresa = ? AND departamento IS NOT NULL
      ORDER BY departamento`,
-    [idEmpresa]
-  );
-  return departamentos.map(d => d.departamento);
-}
+      [idEmpresa]
+    );
+    return departamentos.map(d => d.departamento);
+  }
   static async obterFuncionario(idFuncionario, idEmpresa) {
     const sql = `
         SELECT 

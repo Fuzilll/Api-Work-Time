@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="cadastrar_funcionarios.html"><i class="fas fa-users"></i><span>Funcionários</span></a>
                 <a href="gerenciar_pontos.html"><i class="fa fa-hourglass" aria-hidden="true"></i><span>Registros de Ponto</span></a>
                 <a href="solicitacoes-alteracao-ponto.html"><i class="fas fa-calendar"></i><span>Alterações de Ponto</span></a>
-                <a href="gerenciar_funcionarios.html"><i class="bi bi-person-badge me-2"></i><span>Gerenciar Funcionários</span></a>
+                <a href="gerenciar_funcionarios.html"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Gerenciar Funcionários</span></a>
                 <a href="pagina_suporte_usuarios.html"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Central de Suporte</span></a>
             `;
             break;
