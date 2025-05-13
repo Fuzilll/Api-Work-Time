@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pré-cadastro | Work Time</title>
+  <link rel="stylesheet" href="css/stylecadastro.css">
+</head>
+<body>
+  <div class="container">
+    <div class="left-side">
+      <h1>Solicite seu pré-cadastro</h1>
+      <p>Empresas não criam conta diretamente. Preencha o formulário e nós da <strong>Work Time</strong> entraremos em contato para ativar sua conta.</p>
+      <div class="mascote">
+        <img src="/img/mascote.png" alt="Logo Work Time">
+      </div>
+    </div>
+    <div class="right-side">
+      <form action="/enviar-pre-cadastro" method="POST">
+        <label for="email">Email da Empresa</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="cnpj">CNPJ*</label>
+        <input type="text" id="cnpj" name="cnpj" required>
+
+        <label for="nome_empresa">Nome da Empresa</label>
+        <input type="text" id="nome_empresa" name="nome_empresa" required>
+
+        <label for="responsavel">Nome do Responsável</label>
+        <input type="text" id="responsavel" name="responsavel" required>
+
+        <label for="pais">País/Região</label>
+        <select id="pais" name="pais" required>
+          <option value="">Selecione</option>
+          <option value="Brasil">Brasil</option>
+          <option value="Portugal">Portugal</option>
+          <option value="Outros">Outros</option>
+        </select>
+
+        <label>
+          <input type="checkbox" name="novidades">
+          Quero receber novidades e atualizações
+        </label>
+
+        <button type="submit">Enviar Pré-cadastro</button>
+        <p class="termos">
+          Ao solicitar o pré-cadastro, você concorda com nossos <a href="#">Termos de Uso</a> e nossa <a href="#">Política de Privacidade</a>.
+        </p>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

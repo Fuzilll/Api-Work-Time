@@ -1,0 +1,113 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background-color: #0d1117;
+    color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  
+  .container {
+    display: flex;
+    width: 90%;
+    max-width: 1200px;
+    background-color: #161b22;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .left-side {
+    flex: 1;
+    background: radial-gradient(circle at top, #6e40c9, #0d1117);
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
+  .left-side h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+  
+  .left-side p {
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: 400px;
+  }
+  
+  .left-side .mascote img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-top: 40px;
+  }
+  
+  .right-side {
+    flex: 1;
+    background-color: #0d1117;
+    padding: 40px;
+  }
+  
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  label {
+    margin: 12px 0 4px;
+    font-size: 0.95rem;
+  }
+  
+  input, select {
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    background-color: #21262d;
+    color: #fff;
+    font-size: 1rem;
+  }
+  
+  input:focus, select:focus {
+    outline: 2px solid #6e40c9;
+  }
+  
+  button {
+    margin-top: 20px;
+    padding: 12px;
+    border: none;
+    background-color: #6e40c9;
+    color: white;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  button:hover {
+    background-color: #8a63d2;
+  }
+  
+  .termos {
+    font-size: 0.8rem;
+    margin-top: 15px;
+    color: #8b949e;
+  }
+  
+  .termos a {
+    color: #58a6ff;
+    text-decoration: none;
+  }
+  
+  .termos a:hover {
+    text-decoration: underline;
+  }
+  
