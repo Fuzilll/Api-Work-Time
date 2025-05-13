@@ -1,44 +1,38 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Verifica o modo salvo no localStorage ou define como claro por padrão
+document.addEventListener('DOMContentLoaded', function () {
     const savedMode = localStorage.getItem('themeMode') || 'light';
     document.body.classList.add(savedMode + '-mode');
-    
-    // Configura o toggle switch
+
+    // Cria o toggle switch de tema
     const themeSwitch = document.createElement('label');
     themeSwitch.className = 'theme-switch';
     themeSwitch.innerHTML = `
         <input type="checkbox" id="themeToggle">
         <span class="slider round"></span>
     `;
-    
-    // Adiciona o switch à topbar (substitui o botão de ajuda)
-    const helpBtn = document.querySelector('.help-btn');
-    if (helpBtn) {
-        helpBtn.parentNode.replaceChild(themeSwitch, helpBtn);
-    } else {
-        // Se não encontrar o botão de ajuda, adiciona no final da topbar
-        const topbar = document.querySelector('.topbar');
-        if (topbar) {
+
+    const topbar = document.querySelector('.topbar');
+    if (topbar) {
+        // Remove qualquer botão de ajuda existente
+        const helpBtn = topbar.querySelector('.help-btn');
+        if (helpBtn) {
+            helpBtn.remove();
+        }
+
+        // Evita adicionar o botão mais de uma vez
+        if (!topbar.querySelector('.theme-switch')) {
             topbar.appendChild(themeSwitch);
         }
     }
-    
-    // Define o estado inicial do toggle
+
+    // Configura o estado inicial do toggle
     const toggle = document.getElementById('themeToggle');
     if (toggle) {
         toggle.checked = savedMode === 'dark';
-        
-        // Adiciona o evento de mudança
-        toggle.addEventListener('change', function() {
-            if (this.checked) {
-                document.body.classList.remove('light-mode');
-                document.body.classList.add('dark-mode');
-                localStorage.setItem('themeMode', 'dark');
-            } else {
-                document.body.classList.remove('dark-mode');
-                document.body.classList.add('light-mode');
-                localStorage.setItem('themeMode', 'light');
-            }
+
+        toggle.addEventListener('change', function () {
+            document.body.classList.toggle('dark-mode', this.checked);
+            document.body.classList.toggle('light-mode', !this.checked);
+            localStorage.setItem('themeMode', this.checked ? 'dark' : 'light');
         });
     }
 });
