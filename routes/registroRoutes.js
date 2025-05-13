@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const registroController = require('../controllers/registroController');
+const FuncionarioController = require('../controllers/funcionarioController')
 const authMiddleware = require('../middlewares/authMiddleware');
 const { validate } = require('../middlewares/validators');
 const registroSchema = require('../validators/registroSchema');
@@ -42,5 +43,7 @@ router.get(
   validate(registroSchema.filtros, 'query'),
   registroController.buscarTodosRegistros
 );
+
+router.get('/android/registros', FuncionarioController.listarPontosAndroid);
 
 module.exports = router;

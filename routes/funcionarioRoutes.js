@@ -46,5 +46,5 @@ router.get(
   FuncionarioController.listarSolicitacoesAlteracao
 );
 
-router.get('/historico-pontos', FuncionarioController.listarHistoricoPontos);
+
 module.exports = router;

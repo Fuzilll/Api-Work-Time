@@ -47,100 +47,100 @@ class FuncionarioService {
    * @returns {Promise<Object>} Dados da solicitação criada
    * @throws {AppError} Em caso de erro na solicitação
    */
- /**
-   * Solicita alteração em um registro de ponto
-   * @param {number} idUsuario - ID do usuário funcionário
-   * @param {number} idRegistroPonto - ID do registro de ponto
-   * @param {string} motivo - Motivo da alteração
-   * @param {string|null} novoTipo - Novo tipo de ponto (opcional)
-   * @param {string|null} novaDataHora - Nova data/hora (opcional)
-   * @returns {Promise<Object>} Dados da solicitação criada
-   */
- static async solicitarAlteracaoPonto(idUsuario, idRegistroPonto, motivo, novoTipo = null, novaDataHora = null) {
-  return await db.transaction(async (connection) => {
-    // 1. Obter funcionário
-    const funcionario = await this.obterFuncionarioPorUsuario(idUsuario);
-    if (!funcionario) {
-      throw new AppError('Funcionário não encontrado', 404);
-    }
+  /**
+    * Solicita alteração em um registro de ponto
+    * @param {number} idUsuario - ID do usuário funcionário
+    * @param {number} idRegistroPonto - ID do registro de ponto
+    * @param {string} motivo - Motivo da alteração
+    * @param {string|null} novoTipo - Novo tipo de ponto (opcional)
+    * @param {string|null} novaDataHora - Nova data/hora (opcional)
+    * @returns {Promise<Object>} Dados da solicitação criada
+    */
+  static async solicitarAlteracaoPonto(idUsuario, idRegistroPonto, motivo, novoTipo = null, novaDataHora = null) {
+    return await db.transaction(async (connection) => {
+      // 1. Obter funcionário
+      const funcionario = await this.obterFuncionarioPorUsuario(idUsuario);
+      if (!funcionario) {
+        throw new AppError('Funcionário não encontrado', 404);
+      }
 
-    // 2. Verificar se o ponto pertence ao funcionário
-    const ponto = await this.verificarPontoDoFuncionario(idRegistroPonto, funcionario.id);
-    
-    // 3. Verificar se já existe solicitação pendente
-    const [solicitacoes] = await connection.query(
-      `SELECT id FROM SOLICITACAO_ALTERACAO 
+      // 2. Verificar se o ponto pertence ao funcionário
+      const ponto = await this.verificarPontoDoFuncionario(idRegistroPonto, funcionario.id);
+
+      // 3. Verificar se já existe solicitação pendente
+      const [solicitacoes] = await connection.query(
+        `SELECT id FROM SOLICITACAO_ALTERACAO 
        WHERE id_registro = ? AND status = 'Pendente' LIMIT 1`,
-      [idRegistroPonto]
-    );
+        [idRegistroPonto]
+      );
 
-    if (solicitacoes.length > 0) {
-      throw new AppError('Já existe uma solicitação pendente para este ponto', 400);
-    }
+      if (solicitacoes.length > 0) {
+        throw new AppError('Já existe uma solicitação pendente para este ponto', 400);
+      }
 
-    // 4. Obter admin responsável
-    const [admins] = await connection.query(
-      `SELECT a.id 
+      // 4. Obter admin responsável
+      const [admins] = await connection.query(
+        `SELECT a.id 
        FROM ADMIN a
        JOIN FUNCIONARIO f ON a.id_empresa = f.id_empresa
        WHERE f.id = ? LIMIT 1`,
-      [funcionario.id]
-    );
+        [funcionario.id]
+      );
 
-    if (admins.length === 0) {
-      throw new AppError('Nenhum administrador encontrado para aprovar esta solicitação', 404);
-    }
+      if (admins.length === 0) {
+        throw new AppError('Nenhum administrador encontrado para aprovar esta solicitação', 404);
+      }
 
-    const idAdmin = admins[0].id;
-    const tipoSolicitacao = novoTipo || novaDataHora ? 'Correcao' : 'Justificativa';
+      const idAdmin = admins[0].id;
+      const tipoSolicitacao = novoTipo || novaDataHora ? 'Correcao' : 'Justificativa';
 
-    // 5. Criar solicitação
-    const [result] = await connection.execute(
-      `INSERT INTO SOLICITACAO_ALTERACAO 
+      // 5. Criar solicitação
+      const [result] = await connection.execute(
+        `INSERT INTO SOLICITACAO_ALTERACAO 
        (id_registro, id_funcionario, tipo_solicitacao, motivo, id_admin_responsavel)
        VALUES (?, ?, ?, ?, ?)`,
-      [idRegistroPonto, funcionario.id, tipoSolicitacao, motivo, idAdmin]
-    );
+        [idRegistroPonto, funcionario.id, tipoSolicitacao, motivo, idAdmin]
+      );
 
-    // 6. Atualizar status do ponto
-    await connection.execute(
-      `UPDATE REGISTRO_PONTO 
+      // 6. Atualizar status do ponto
+      await connection.execute(
+        `UPDATE REGISTRO_PONTO 
        SET status = 'Em Revisão'
        WHERE id = ?`,
-      [idRegistroPonto]
-    );
+        [idRegistroPonto]
+      );
 
-    // 7. Registrar log
-    await connection.execute(
-      `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
+      // 7. Registrar log
+      await connection.execute(
+        `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
        VALUES (?, ?, ?)`,
-      [idUsuario, 'Solicitação de Alteração', `Solicitação ID ${result.insertId} para o ponto ${idRegistroPonto}`]
-    );
+        [idUsuario, 'Solicitação de Alteração', `Solicitação ID ${result.insertId} para o ponto ${idRegistroPonto}`]
+      );
 
-    // Retorna os dados da solicitação
-    const [solicitacao] = await connection.query(
-      `SELECT * FROM SOLICITACAO_ALTERACAO WHERE id = ?`,
-      [result.insertId]
-    );
+      // Retorna os dados da solicitação
+      const [solicitacao] = await connection.query(
+        `SELECT * FROM SOLICITACAO_ALTERACAO WHERE id = ?`,
+        [result.insertId]
+      );
 
-    return solicitacao[0];
-  });
-}
+      return solicitacao[0];
+    });
+  }
 
-/**
- * Lista as solicitações de alteração de um funcionário
- * @param {number} idUsuario - ID do usuário funcionário
- * @returns {Promise<Array>} Lista de solicitações
- */
-static async listarSolicitacoesAlteracao(idUsuario) {
-  try {
-    const funcionario = await this.obterFuncionarioPorUsuario(idUsuario);
-    if (!funcionario) {
-      throw new AppError('Funcionário não encontrado', 404);
-    }
+  /**
+   * Lista as solicitações de alteração de um funcionário
+   * @param {number} idUsuario - ID do usuário funcionário
+   * @returns {Promise<Array>} Lista de solicitações
+   */
+  static async listarSolicitacoesAlteracao(idUsuario) {
+    try {
+      const funcionario = await this.obterFuncionarioPorUsuario(idUsuario);
+      if (!funcionario) {
+        throw new AppError('Funcionário não encontrado', 404);
+      }
 
-    const [solicitacoes] = await db.query(
-      `SELECT 
+      const [solicitacoes] = await db.query(
+        `SELECT 
          sa.id,
          sa.tipo_solicitacao,
          sa.motivo,
@@ -155,36 +155,36 @@ static async listarSolicitacoesAlteracao(idUsuario) {
        LEFT JOIN USUARIO a ON adm.id_usuario = a.id
        WHERE sa.id_funcionario = ?
        ORDER BY sa.data_solicitacao DESC`,
-      [funcionario.id]
-    );
+        [funcionario.id]
+      );
 
-    return solicitacoes;
-  } catch (error) {
-    console.error('Erro ao listar solicitações de alteração:', error);
-    throw new AppError('Erro ao listar solicitações de alteração', 500);
+      return solicitacoes;
+    } catch (error) {
+      console.error('Erro ao listar solicitações de alteração:', error);
+      throw new AppError('Erro ao listar solicitações de alteração', 500);
+    }
   }
-}
 
-/**
- * Verifica se um ponto pertence a um funcionário
- * @param {number} idRegistroPonto - ID do registro de ponto
- * @param {number} idFuncionario - ID do funcionário
- * @returns {Promise<Object>} Dados do registro de ponto
- */
-static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
-  const [pontos] = await db.query(
-    `SELECT id, tipo, data_hora, status
+  /**
+   * Verifica se um ponto pertence a um funcionário
+   * @param {number} idRegistroPonto - ID do registro de ponto
+   * @param {number} idFuncionario - ID do funcionário
+   * @returns {Promise<Object>} Dados do registro de ponto
+   */
+  static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
+    const [pontos] = await db.query(
+      `SELECT id, tipo, data_hora, status
      FROM REGISTRO_PONTO 
      WHERE id = ? AND id_funcionario = ? LIMIT 1`,
-    [idRegistroPonto, idFuncionario]
-  );
+      [idRegistroPonto, idFuncionario]
+    );
 
-  if (!pontos || pontos.length === 0) {
-    throw new AppError('Ponto não encontrado ou não pertence ao funcionário', 404);
+    if (!pontos || pontos.length === 0) {
+      throw new AppError('Ponto não encontrado ou não pertence ao funcionário', 404);
+    }
+
+    return pontos[0];
   }
-
-  return pontos[0];
-}
   /**
    * Obtém um funcionário pelo ID do usuário
    * @param {number} idUsuario - ID do usuário
@@ -193,10 +193,10 @@ static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
    */
   static async obterFuncionarioPorUsuario(idUsuario) {
     try {
-        console.log('[SERVICE] Buscando funcionário para usuário:', idUsuario);
-        
-        const [results] = await db.execute(
-            `SELECT 
+      console.log('[SERVICE] Buscando funcionário para usuário:', idUsuario);
+
+      const [results] = await db.execute(
+        `SELECT 
                 f.id, 
                 f.id_empresa, 
                 f.registro_emp, 
@@ -207,77 +207,77 @@ static async verificarPontoDoFuncionario(idRegistroPonto, idFuncionario) {
              FROM FUNCIONARIO f
              JOIN EMPRESA e ON f.id_empresa = e.id
              WHERE f.id_usuario = ? LIMIT 1`,
-            [idUsuario]
-        );
+        [idUsuario]
+      );
 
-        console.log('[SERVICE] Resultado bruto da query:', results);
+      console.log('[SERVICE] Resultado bruto da query:', results);
 
-        if (!results || results.length === 0) {
-            console.error('[SERVICE] Nenhum funcionário encontrado para usuário:', idUsuario);
-            throw new AppError('Funcionário não encontrado', 404);
-        }
+      if (!results || results.length === 0) {
+        console.error('[SERVICE] Nenhum funcionário encontrado para usuário:', idUsuario);
+        throw new AppError('Funcionário não encontrado', 404);
+      }
 
-        const funcionario = results[0];
-        console.log('[SERVICE] Funcionário formatado:', funcionario);
-        
-        return funcionario;
+      const funcionario = results[0];
+      console.log('[SERVICE] Funcionário formatado:', funcionario);
+
+      return funcionario;
     } catch (error) {
-        console.error('[SERVICE] Erro ao buscar funcionário:', {
-            error: error.message,
-            stack: error.stack
-        });
-        throw error;
+      console.error('[SERVICE] Erro ao buscar funcionário:', {
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
     }
-}
+  }
 
 
-static async registrarPonto(idUsuario, dados) {
-  return await db.transaction(async (connection) => {
-    // Obter funcionário
-    const [funcionario] = await connection.query(
-      `SELECT f.id, f.id_empresa 
+  static async registrarPonto(idUsuario, dados) {
+    return await db.transaction(async (connection) => {
+      // Obter funcionário
+      const [funcionario] = await connection.query(
+        `SELECT f.id, f.id_empresa 
        FROM FUNCIONARIO f 
        WHERE f.id_usuario = ?`,
-      [idUsuario]
-    );
+        [idUsuario]
+      );
 
-    if (!funcionario) {
-      throw new AppError('Funcionário não encontrado', 404);
-    }
+      if (!funcionario) {
+        throw new AppError('Funcionário não encontrado', 404);
+      }
 
-    // Validar geolocalização
-    const { latitude, longitude } = dados;
-    if (!this.validarGeolocalizacao(latitude, longitude, funcionario.id_empresa)) {
-      throw new AppError('Localização fora do raio permitido', 400);
-    }
+      // Validar geolocalização
+      const { latitude, longitude } = dados;
+      if (!this.validarGeolocalizacao(latitude, longitude, funcionario.id_empresa)) {
+        throw new AppError('Localização fora do raio permitido', 400);
+      }
 
-    // Fazer upload da foto se existir
-    let fotoUrl = '';
-    if (dados.foto) {
-      const uploadResult = await CloudinaryService.uploadImage(dados.foto, {
-        public_id: `ponto_${funcionario.id}_${Date.now()}`,
-        folder: 'pontos'
-      });
-      fotoUrl = uploadResult.secure_url;
-    }
+      // Fazer upload da foto se existir
+      let fotoUrl = '';
+      if (dados.foto) {
+        const uploadResult = await CloudinaryService.uploadImage(dados.foto, {
+          public_id: `ponto_${funcionario.id}_${Date.now()}`,
+          folder: 'pontos'
+        });
+        fotoUrl = uploadResult.secure_url;
+      }
 
-    // Inserir registro
-    const [result] = await connection.query(
-      `INSERT INTO REGISTRO_PONTO 
+      // Inserir registro
+      const [result] = await connection.query(
+        `INSERT INTO REGISTRO_PONTO 
        (id_funcionario, tipo, foto_url, data_hora, latitude, longitude, status) 
        VALUES (?, ?, ?, NOW(), ?, ?, 'Pendente')`,
-      [funcionario.id, dados.tipo, fotoUrl, latitude, longitude]
-    );
+        [funcionario.id, dados.tipo, fotoUrl, latitude, longitude]
+      );
 
-    // Retornar o registro criado
-    const [ponto] = await connection.query(
-      `SELECT * FROM REGISTRO_PONTO WHERE id = ?`,
-      [result.insertId]
-    );
+      // Retornar o registro criado
+      const [ponto] = await connection.query(
+        `SELECT * FROM REGISTRO_PONTO WHERE id = ?`,
+        [result.insertId]
+      );
 
-    return ponto[0];
-  });
-}
+      return ponto[0];
+    });
+  }
 
   static async listarPontos(idFuncionario, filtros = {}) {
     const { dataInicio, dataFim, limit } = filtros;
@@ -514,6 +514,36 @@ static async registrarPonto(idUsuario, dados) {
       console.error('Erro ao carregar perfil:', error);
       throw error;
     }
+  }
+  static async buscarPontosParaAndroid(idUsuario, dataInicio, dataFim) {
+    const idFuncionario = await this.buscarFuncionarioPorUsuario(idUsuario);
+
+    const [registros] = await db.query(
+      `SELECT 
+        rp.id, rp.tipo, rp.foto_url, rp.latitude, rp.longitude,
+        rp.endereco_registro, rp.data_hora, rp.status,
+        rp.precisao_geolocalizacao, rp.dispositivo
+      FROM REGISTRO_PONTO rp
+      WHERE rp.id_funcionario = ? AND rp.data_hora BETWEEN ? AND ?
+      ORDER BY rp.data_hora DESC`,
+      [idFuncionario, dataInicio, dataFim]
+    );
+
+    return registros;
+  }
+
+  // Busca o funcionário com base no ID do usuário
+  static async buscarFuncionarioPorUsuario(idUsuario) {
+    const [funcionario] = await db.query(
+      'SELECT id FROM FUNCIONARIO WHERE id_usuario = ?',
+      [idUsuario]
+    );
+
+    if (!funcionario || funcionario.length === 0) {
+      throw new AppError('Funcionário não encontrado para este usuário.', 404);
+    }
+
+    return funcionario[0].id;
   }
 }
 
