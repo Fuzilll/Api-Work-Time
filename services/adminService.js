@@ -417,9 +417,6 @@ class AdminService {
   }
 
 
-
-
-
   /**
  * Registra uma ocorrência para um funcionário
  * @param {Object} conn - Conexão de banco de dados
@@ -542,21 +539,39 @@ class AdminService {
     });
   }
 
-  static async desativarFuncionario(idFuncionario, idEmpresa) {
-    const [result] = await db.query(`
-      UPDATE USUARIO u
-      JOIN FUNCIONARIO f ON u.id = f.id_usuario
-      SET u.status = 'Inativo'
-      WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Ativo'
-    `, [idFuncionario, idEmpresa]);
+static async desativarFuncionario(idFuncionario, idEmpresa) {
+  const [updateResult] = await db.query(`
+    UPDATE USUARIO u
+    JOIN FUNCIONARIO f ON u.id = f.id_usuario
+    SET u.status = 'Inativo'
+    WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Ativo'
+  `, [idFuncionario, idEmpresa]);
 
-    if (result.affectedRows === 0) {
-      throw new AppError('Funcionário ativo não encontrado nesta empresa', 404);
-    }
-
-    return { message: 'Funcionário desativado com sucesso' };
+  if (updateResult.affectedRows === 0) {
+    throw new AppError('Funcionário ativo não encontrado nesta empresa', 404);
   }
 
+  return { message: 'Funcionário desativado com sucesso' };
+}
+
+static async reativarFuncionario(idFuncionario, idEmpresa) {
+  const [updateResult] = await db.query(`
+    UPDATE USUARIO u
+    JOIN FUNCIONARIO f ON u.id = f.id_usuario
+    SET u.status = 'Ativo'
+    WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Inativo'
+  `, [idFuncionario, idEmpresa]);
+
+  if (updateResult.affectedRows === 0) {
+    throw new AppError('Funcionário inativo não encontrado nesta empresa', 404);
+  }
+
+  return { message: 'Funcionário reativado com sucesso' };
+}
+
+
+
+  
   static async excluirFuncionario(idFuncionario, idEmpresa) {
     return await db.transaction(async (connection) => {
       const [funcionario] = await connection.query(`
@@ -999,15 +1014,23 @@ class AdminService {
     });
   }
   static async listarDepartamentos(idEmpresa) {
-    const [departamentos] = await db.query(
+    const resultado = await db.query(
       `SELECT DISTINCT departamento 
      FROM FUNCIONARIO 
      WHERE id_empresa = ? AND departamento IS NOT NULL
      ORDER BY departamento`,
       [idEmpresa]
     );
-    return departamentos.map(d => d.departamento);
+
+    // Verifica se é um array
+    if (!Array.isArray(resultado)) {
+      throw new Error('Resultado inesperado da query: não é um array');
+    }
+
+    // Se for array de objetos, mapeia corretamente
+    return resultado.map(d => d.departamento);
   }
+
   static async obterFuncionario(idFuncionario, idEmpresa) {
     const sql = `
         SELECT 

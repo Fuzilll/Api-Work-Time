@@ -179,6 +179,8 @@ class FuncionariosManager {
 
     async fazerRequisicao(url, method = 'GET', body = null) {
         try {
+            console.log('Requisição para:', `${this.API_BASE_URL}${url}`);
+
             const response = await fetch(`${this.API_BASE_URL}${url}`, {
                 method,
                 headers: {
@@ -536,7 +538,11 @@ class FuncionariosManager {
     }
 
     preencherTabelaHorarios(horarios) {
-        if (!this.elements.horariosBody) return;
+        if (!Array.isArray(horarios)) {
+            console.error('Horários recebidos não são um array:', horarios);
+            this.showError('Dados de horários inválidos recebidos do servidor.');
+            return;
+        }
 
         this.elements.horariosBody.innerHTML = '';
         const diasSemana = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo'];
@@ -546,20 +552,21 @@ class FuncionariosManager {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${dia}</td>
-                <td><input type="time" class="form-control time-input" name="hora_entrada_${dia}" 
-                    value="${horarioExistente?.hora_entrada || '08:00'}"></td>
-                <td><input type="time" class="form-control time-input" name="hora_saida_${dia}" 
-                    value="${horarioExistente?.hora_saida || '17:00'}"></td>
-                <td><input type="time" class="form-control time-input" name="intervalo_inicio_${dia}" 
-                    value="${horarioExistente?.intervalo_inicio || '12:00'}"></td>
-                <td><input type="time" class="form-control time-input" name="intervalo_fim_${dia}" 
-                    value="${horarioExistente?.intervalo_fim || '13:00'}"></td>
-            `;
+            <td>${dia}</td>
+            <td><input type="time" class="form-control time-input" name="hora_entrada_${dia}" 
+                value="${horarioExistente?.hora_entrada || '08:00'}"></td>
+            <td><input type="time" class="form-control time-input" name="hora_saida_${dia}" 
+                value="${horarioExistente?.hora_saida || '17:00'}"></td>
+            <td><input type="time" class="form-control time-input" name="intervalo_inicio_${dia}" 
+                value="${horarioExistente?.intervalo_inicio || '12:00'}"></td>
+            <td><input type="time" class="form-control time-input" name="intervalo_fim_${dia}" 
+                value="${horarioExistente?.intervalo_fim || '13:00'}"></td>
+        `;
 
             this.elements.horariosBody.appendChild(tr);
         });
     }
+
 
     async salvarHorarios() {
         if (this.isSavingHorarios) return;
@@ -669,6 +676,7 @@ class FuncionariosManager {
             const data = await this.fazerRequisicao(endpoint, method);
 
             if (data.success) {
+
                 this.showSuccess(message);
                 if (this.elements.modalConfirmacao) {
                     this.elements.modalConfirmacao.hide();

@@ -35,19 +35,23 @@ router.put('/funcionarios/:id/horarios',
   validate(adminSchema.horariosFuncionario),
   adminController.atualizarHorariosFuncionario
 );
+router.get('/funcionarios/:id/horarios',
+  adminController.obterHorariosFuncionario
+);
 
 router.put('/funcionarios/:id/desativar',
   adminController.desativarFuncionario
+);
+router.put('/funcionarios/:id/reativar',
+  adminController.reativarFuncionario
 );
 
 router.delete('/funcionarios/:id',
   adminController.excluirFuncionario
 );
 
-router.get('/admin/departamentos', 
-  authMiddleware, 
-  adminController.listarDepartamentos
-);
+router.get('/departamentos', adminController.listarDepartamentos);
+
 
 // =============================================
 // ROTAS DE PONTOS

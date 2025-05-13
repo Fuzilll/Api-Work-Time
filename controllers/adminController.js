@@ -170,9 +170,11 @@ static async listarDepartamentos(req, res, next) {
       data: departamentos
     });
   } catch (err) {
+    console.error('Erro ao listar departamentos:', err);
     next(err);
   }
 }
+
   /**
   * @api {get} /api/admin/pontos/analise Listar Pontos para Análise
   * @apiName CarregarPontosParaAnalise
@@ -278,6 +280,25 @@ static async listarDepartamentos(req, res, next) {
     }
   }
 
+    /**
+   * Desativa um funcionário (sem excluir do banco)
+   * - Ideal quando o funcionário sai da empresa mas precisa manter o histórico
+   */
+  static async reativarFuncionario(req, res, next) {
+    try {
+      const resultado = await AdminService.reativarFuncionario(
+        req.params.id,
+        req.usuario.id_empresa
+      );
+
+      res.json({
+        success: true,
+        data: resultado
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
   /**
    * @api {get} /api/admin/pontos/:id/detalhes Obter Detalhes do Ponto
    * @apiName ObterDetalhesPonto
@@ -514,18 +535,16 @@ static async listarFuncionarios(req, res, next) {
 }
 static async obterHorariosFuncionario(req, res, next) {
   try {
-      const horarios = await AdminService.obterHorariosFuncionario(
-          req.params.id
-      );
-      
-      res.json({
-          success: true,
-          data: horarios
-      });
-  } catch (err) {
-      next(err);
+    const { id } = req.params;
+
+    const horarios = await AdminService.obterHorariosFuncionario(id);
+
+    res.json({ success: true, data: horarios });
+  } catch (error) {
+    next(error);
   }
 }
+
 static async atualizarHorariosFuncionario(req, res, next) {
   try {
       const horariosAtualizados = await AdminService.atualizarHorariosFuncionario(
