@@ -9,6 +9,11 @@
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
    <!-- Adicione o SweetAlert2 se for usar -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <!-- passo 1 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!--fim-->
+    
     <!-- Fallback local para Font Awesome -->
     <script>
         if (!document.querySelector('link[href*="fontawesome"]')) {
@@ -79,6 +84,12 @@
                 </div>
             </div>
         </div>
+        <!-- passo 3 -->
+        <div id="loading-overlay" style="display:none;">
+            <div class="spinner"></div>
+        </div>
+        <div id="error-message" class="alert alert-danger" style="display:none;"></div>
+        <!--fim-->
     </div>
 
     <!-- Modal de Solicitação de Alteração -->
@@ -134,5 +145,8 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <!-- Nosso Script -->
     <script src="/js/historico_pontos.js" type="module"></script>
+    <!-- passo 4 -->
+    <script src="/js/alterar_modo.js"></script>
+    <!--fim-->
 </body>
 </html>
