@@ -44,6 +44,7 @@ router.get(
   registroController.buscarTodosRegistros
 );
 
-router.get('/android/registros', FuncionarioController.listarPontosAndroid);
+router.get('/historico-pontos-android', FuncionarioController.listarPontosAndroid);
+
 
 module.exports = router;

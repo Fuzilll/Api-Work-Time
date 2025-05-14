@@ -40,6 +40,8 @@ router.post(
   FuncionarioController.solicitarAlteracaoPonto
 );
 
+router.get('/historico-pontos', FuncionarioController.listarHistoricoPontos);
+
 // Listar solicitações de alteração
 router.get(
   '/solicitacoes-alteracao',

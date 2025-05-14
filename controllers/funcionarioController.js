@@ -223,45 +223,30 @@ class FuncionarioController {
       next(err);
     }
   }
-  /**
- * @api {get} /android/pontos Listar Pontos Android
- * @apiName ListarPontosAndroid
- * @apiGroup Funcionario
- *
- * @apiHeader {String} Authorization Token JWT.
- * @apiQuery {String} [dataInicio] Data inicial no formato YYYY-MM-DD.
- * @apiQuery {String} [dataFim] Data final no formato YYYY-MM-DD.
- */
+
+  
   static async listarPontosAndroid(req, res, next) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-
-      if (!token) {
-        throw new AppError('Token não fornecido', 401);
+      // Obtém os parâmetros de data e idUsuario da query
+      const { dataInicio, dataFim, idUsuario } = req.query;
+  
+      if (!idUsuario) {
+        throw new AppError('Parâmetro idUsuario é obrigatório.', 400);
       }
-
-      // Verifica e decodifica o token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const idUsuario = decoded.id;
-
-      // Obtém os parâmetros de data
-      const { dataInicio, dataFim } = req.query;
-
+  
       if (!dataInicio || !dataFim) {
         throw new AppError('Parâmetros dataInicio e dataFim são obrigatórios.', 400);
       }
-
-      const registros = await RegistroService.listarRegistrosPorUsuario(idUsuario, dataInicio, dataFim);
-
-      res.json({
-        success: true,
-        data: registros
-      });
-
+  
+      const registros = await FuncionarioService.buscarPontosParaAndroid(idUsuario, dataInicio, dataFim);
+  
+      return res.json(registros);
+  
     } catch (err) {
       next(err);
     }
   }
+  
 
 }
 

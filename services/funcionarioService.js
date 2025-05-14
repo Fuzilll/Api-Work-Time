@@ -515,36 +515,50 @@ class FuncionarioService {
       throw error;
     }
   }
+
+
   static async buscarPontosParaAndroid(idUsuario, dataInicio, dataFim) {
     const idFuncionario = await this.buscarFuncionarioPorUsuario(idUsuario);
+    console.log('id do idFuncionario', idFuncionario); // <-- aqui estava errado o log, você mostrava o idUsuario
 
-    const [registros] = await db.query(
-      `SELECT 
-        rp.id, rp.tipo, rp.foto_url, rp.latitude, rp.longitude,
-        rp.endereco_registro, rp.data_hora, rp.status,
-        rp.precisao_geolocalizacao, rp.dispositivo
-      FROM REGISTRO_PONTO rp
-      WHERE rp.id_funcionario = ? AND rp.data_hora BETWEEN ? AND ?
-      ORDER BY rp.data_hora DESC`,
-      [idFuncionario, dataInicio, dataFim]
+    const rows = await db.query(
+        `SELECT 
+            rp.id, rp.tipo, rp.foto_url, rp.latitude, rp.longitude,
+            rp.endereco_registro, rp.data_hora, rp.status,
+            rp.precisao_geolocalizacao, rp.dispositivo
+        FROM REGISTRO_PONTO rp
+        WHERE rp.id_funcionario = ? AND rp.data_hora BETWEEN ? AND ?
+        ORDER BY rp.data_hora DESC`,
+        [idFuncionario, dataInicio, dataFim]
     );
 
-    return registros;
-  }
+    console.log('registros', rows);
+    return rows;
+}
 
-  // Busca o funcionário com base no ID do usuário
+
+  // Busca o ID do funcionário com base no ID do usuário
   static async buscarFuncionarioPorUsuario(idUsuario) {
-    const [funcionario] = await db.query(
-      'SELECT id FROM FUNCIONARIO WHERE id_usuario = ?',
-      [idUsuario]
-    );
+    try {
+      console.log('id do usuario', idUsuario);
 
-    if (!funcionario || funcionario.length === 0) {
-      throw new AppError('Funcionário não encontrado para este usuário.', 404);
+      const [rows] = await db.query(
+        'SELECT id FROM FUNCIONARIO WHERE id_usuario = ?',
+        [idUsuario]
+      );
+
+      console.log('resultado da query:', rows);
+
+      if (!rows || rows.length === 0) {
+        throw new AppError('Funcionário não encontrado para este usuário.', 404);
+      }
+      return rows[0];
+    } catch (error) {
+      console.error('Erro ao buscar funcionário por usuário:', error);
+      throw new AppError('Erro interno ao buscar funcionário.', 500);
     }
-
-    return funcionario[0].id;
   }
+
 }
 
 module.exports = FuncionarioService;
