@@ -516,25 +516,36 @@ class FuncionarioService {
     }
   }
 
+  static async buscarPontosParaAndroid(idUsuario) {
+    // Obtendo o id do funcionário
+    const funcionario = await this.buscarFuncionarioPorUsuario(idUsuario);
+    console.log('id do idFuncionario', funcionario); // Verificação correta do id
 
-  static async buscarPontosParaAndroid(idUsuario, dataInicio, dataFim) {
-    const idFuncionario = await this.buscarFuncionarioPorUsuario(idUsuario);
-    console.log('id do idFuncionario', idFuncionario); // <-- aqui estava errado o log, você mostrava o idUsuario
+    // Verificando se o idFuncionario existe
+    if (!funcionario) {
+        throw new Error('Funcionário não encontrado para o usuário fornecido');
+    }
 
+    // Consultando todos os registros de ponto para o idFuncionario
     const rows = await db.query(
         `SELECT 
             rp.id, rp.tipo, rp.foto_url, rp.latitude, rp.longitude,
             rp.endereco_registro, rp.data_hora, rp.status,
             rp.precisao_geolocalizacao, rp.dispositivo
         FROM REGISTRO_PONTO rp
-        WHERE rp.id_funcionario = ? AND rp.data_hora BETWEEN ? AND ?
+        WHERE rp.id_funcionario = ?
         ORDER BY rp.data_hora DESC`,
-        [idFuncionario, dataInicio, dataFim]
+        [funcionario.id]
     );
 
-    console.log('registros', rows);
+    console.log('Número de registros encontrados:', rows.length); // Verifica quantos registros foram encontrados
+
+    // Verificando todos os registros retornados
+    console.log('Registros de ponto:', rows); 
+
     return rows;
 }
+
 
 
   // Busca o ID do funcionário com base no ID do usuário
@@ -552,7 +563,7 @@ class FuncionarioService {
       if (!rows || rows.length === 0) {
         throw new AppError('Funcionário não encontrado para este usuário.', 404);
       }
-      return rows[0];
+      return rows;
     } catch (error) {
       console.error('Erro ao buscar funcionário por usuário:', error);
       throw new AppError('Erro interno ao buscar funcionário.', 500);

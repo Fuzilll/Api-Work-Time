@@ -227,25 +227,22 @@ class FuncionarioController {
   
   static async listarPontosAndroid(req, res, next) {
     try {
-      // Obtém os parâmetros de data e idUsuario da query
-      const { dataInicio, dataFim, idUsuario } = req.query;
+        // Obtém apenas o idUsuario da query
+        const { idUsuario } = req.query;
   
-      if (!idUsuario) {
-        throw new AppError('Parâmetro idUsuario é obrigatório.', 400);
-      }
+        if (!idUsuario) {
+            throw new AppError('Parâmetro idUsuario é obrigatório.', 400);
+        }
   
-      if (!dataInicio || !dataFim) {
-        throw new AppError('Parâmetros dataInicio e dataFim são obrigatórios.', 400);
-      }
+        // Chama o serviço sem as datas
+        const registros = await FuncionarioService.buscarPontosParaAndroid(idUsuario);
   
-      const registros = await FuncionarioService.buscarPontosParaAndroid(idUsuario, dataInicio, dataFim);
-  
-      return res.json(registros);
+        return res.json(registros);
   
     } catch (err) {
-      next(err);
+        next(err);
     }
-  }
+}
   
 
 }
