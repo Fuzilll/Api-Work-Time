@@ -1,232 +1,238 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+  <!DOCTYPE html>
+  <html lang="pt-br">
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Solicitar Ajuda - Central de Suporte</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/css/pagina_suporte_usuarios.css">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-  <!-- passo 1 -->  
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!--fim-->
-  <script>
-    if (!document.querySelector('link[href*="fontawesome"]')) {
-      document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
-    }
-  </script>
-</head>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitar Ajuda - Central de Suporte</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/pagina_suporte_usuarios.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <!-- passo 1 -->  
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!--fim-->
+    <script>
+      if (!document.querySelector('link[href*="fontawesome"]')) {
+        document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
+      }
+    </script>
+  </head>
 
-<body>
+  <body>
 
-  <div class="sidebar closed" id="sidebar">
-    <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
-    <div class="logo-container text-center">
-      <img src="/images/logo.png" alt="Logo" class="img-fluid">
+    <div class="sidebar closed" id="sidebar">
+      <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+      <div class="logo-container text-center">
+        <img src="/images/logo.png" alt="Logo" class="img-fluid">
+      </div>
+      <div id="menu"></div>
+      <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
     </div>
-    <div id="menu"></div>
-    <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
-  </div>
 
-  <div class="content">
-    <div class="topbar">
-      <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
-    </div>
-    <div class="container-fluid py-4">
-      <div class="row justify-content-center">
-        <div class="col-lg-8">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h2 class="card-title h5 mb-4">Criar Novo Chamado</h2>
+    <div class="content">
+      <div class="topbar">
+        <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
+      </div>
+      <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h2 class="card-title h5 mb-4">Criar Novo Chamado</h2>
 
-              <form id="form-chamado">
-                <div class="mb-3">
-                  <label for="assunto" class="form-label">Assunto *</label>
-                  <input type="text" class="form-control" id="assunto" name="assunto" required>
-                </div>
-
-                <div class="mb-3">
-                  <label for="descricao" class="form-label">Descrição do Problema *</label>
-                  <textarea class="form-control" id="descricao" name="descricao" rows="4" required></textarea>
-                </div>
-
-                <div class="row mb-3">
-                  <div class="col-md-6">
-                    <label for="prioridade" class="form-label">Prioridade</label>
-                    <select class="form-select" id="prioridade" name="prioridade">
-                      <option value="baixa">Baixa</option>
-                      <option value="media" selected>Média</option>
-                      <option value="alta">Alta</option>
-                      <option value="critica">Crítica</option>
-                    </select>
+                <form id="form-chamado">
+                  <div class="mb-3">
+                    <label for="assunto" class="form-label">Assunto *</label>
+                    <input type="text" class="form-control" id="assunto" name="assunto" required>
                   </div>
 
-                  <div class="col-md-6">
-                    <label for="categoria" class="form-label">Categoria</label>
-                    <select class="form-select" id="categoria" name="categoria">
-                      <option value="tecnico">Problema Técnico</option>
-                      <option value="duvida">Dúvida sobre Funcionalidade</option>
-                      <option value="erro">Relatar Erro</option>
-                      <option value="outros">Outros</option>
-                    </select>
+                  <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição do Problema *</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="4" required></textarea>
+                  </div>
+
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="prioridade" class="form-label">Prioridade</label>
+                      <select class="form-select" id="prioridade" name="prioridade">
+                        <option value="baixa">Baixa</option>
+                        <option value="media" selected>Média</option>
+                        <option value="alta">Alta</option>
+                        <option value="critica">Crítica</option>
+                      </select>
+                    </div>
+
+                    <div class="col-md-6">
+                      <label for="categoria" class="form-label">Categoria</label>
+                      <select class="form-select" id="categoria" name="categoria">
+                        <option value="tecnico">Problema Técnico</option>
+                        <option value="duvida">Dúvida sobre Funcionalidade</option>
+                        <option value="erro">Relatar Erro</option>
+                        <option value="outros">Outros</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Por apenas o campo de upload dentro do formulário principal -->
+                  <div class="mb-4">
+                    <label for="anexo" class="form-label">Anexar Arquivos</label>
+                    <input type="file" id="anexo" class="form-control" accept="image/*,.pdf,.doc,.docx">
+                    <div class="form-text">Formatos aceitos: JPG, PNG, PDF, DOC (até 5MB)</div>
+                  </div>
+
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fas fa-paper-plane me-2"></i>Enviar Solicitação
+                    </button>
+                  </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal de Detalhes -->
+      <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title">Detalhes do Chamado</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <p><strong>Assunto:</strong> <span id="modalAssunto"></span></p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Categoria:</strong> <span id="modalCategoria"></span></p>
+                </div>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <p><strong>Prioridade:</strong> <span id="modalPrioridade"></span></p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+                </div>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <p><strong>Empresa:</strong> <span id="modalEmpresa"></span></p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Usuário:</strong> <span id="modalUsuario"></span></p>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <p><strong>Data:</strong> <span id="modalData"></span></p>
+              </div>
+
+              <div class="mb-4">
+                <p><strong>Descrição:</strong></p>
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <p id="modalDescricao" class="mb-0"></p>
                   </div>
                 </div>
+              </div>
 
-                <!-- Por apenas o campo de upload dentro do formulário principal -->
-                <div class="mb-4">
-                  <label for="anexo" class="form-label">Anexar Arquivos</label>
-                  <input type="file" id="anexo" class="form-control" accept="image/*,.pdf,.doc,.docx">
-                  <div class="form-text">Formatos aceitos: JPG, PNG, PDF, DOC (até 5MB)</div>
+              <div class="mb-3">
+                <label class="form-label">Foto do Chamado</label>
+                <div id="modalFotoContainer" class="mb-2">
+                  <!-- Foto será exibida aqui -->
                 </div>
 
-                <div class="d-grid">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-paper-plane me-2"></i>Enviar Solicitação
+                <div class="d-flex align-items-center">
+                  <input type="file" id="fotoUpload" accept="image/*" class="form-control d-none">
+                  <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('fotoUpload').click()">
+                    <i class="fas fa-camera me-1"></i> Alterar Foto
+                  </button>
+                  <small class="text-muted ms-2">Formatos: JPG, PNG (Máx. 5MB)</small>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Anexo</label>
+                <div id="modalAnexoContainer" class="mb-2">
+                  <!-- Anexo será exibido aqui -->
+                </div>
+
+                <div class="d-flex align-items-center">
+                  <input type="file" id="anexoUpload" class="form-control d-none">
+                  <button class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('anexoUpload').click()">
+                    <i class="fas fa-paperclip me-1"></i> Alterar Anexo
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="fas fa-times me-2"></i>Fechar
+              </button>
+              <button type="button" id="btnAtualizarStatus" class="btn btn-primary">
+                <i class="fas fa-sync-alt me-2"></i>Atualizar Status
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Modal de Detalhes -->
-    <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">Detalhes do Chamado</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <div class="modal-body">
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <p><strong>Assunto:</strong> <span id="modalAssunto"></span></p>
-              </div>
-              <div class="col-md-6">
-                <p><strong>Categoria:</strong> <span id="modalCategoria"></span></p>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <p><strong>Prioridade:</strong> <span id="modalPrioridade"></span></p>
-              </div>
-              <div class="col-md-6">
-                <p><strong>Status:</strong> <span id="modalStatus"></span></p>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <p><strong>Empresa:</strong> <span id="modalEmpresa"></span></p>
-              </div>
-              <div class="col-md-6">
-                <p><strong>Usuário:</strong> <span id="modalUsuario"></span></p>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <p><strong>Data:</strong> <span id="modalData"></span></p>
-            </div>
-
-            <div class="mb-4">
-              <p><strong>Descrição:</strong></p>
-              <div class="card bg-light">
-                <div class="card-body">
-                  <p id="modalDescricao" class="mb-0"></p>
-                </div>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Foto do Chamado</label>
-              <div id="modalFotoContainer" class="mb-2">
-                <!-- Foto será exibida aqui -->
-              </div>
-
-              <div class="d-flex align-items-center">
-                <input type="file" id="fotoUpload" accept="image/*" class="form-control d-none">
-                <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('fotoUpload').click()">
-                  <i class="fas fa-camera me-1"></i> Alterar Foto
-                </button>
-                <small class="text-muted ms-2">Formatos: JPG, PNG (Máx. 5MB)</small>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Anexo</label>
-              <div id="modalAnexoContainer" class="mb-2">
-                <!-- Anexo será exibido aqui -->
-              </div>
-
-              <div class="d-flex align-items-center">
-                <input type="file" id="anexoUpload" class="form-control d-none">
-                <button class="btn btn-sm btn-outline-secondary"
-                  onclick="document.getElementById('anexoUpload').click()">
-                  <i class="fas fa-paperclip me-1"></i> Alterar Anexo
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              <i class="fas fa-times me-2"></i>Fechar
-            </button>
-            <button type="button" id="btnAtualizarStatus" class="btn btn-primary">
-              <i class="fas fa-sync-alt me-2"></i>Atualizar Status
-            </button>
-          </div>
+      <!-- Loading Overlay -->
+      <div id="loading-overlay"
+        class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-none justify-content-center align-items-center"
+        style="z-index: 1100;">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Carregando...</span>
         </div>
+        <span class="ms-3 text-white">Processando...</span>
       </div>
+          <!-- passo 3 -->
+          <div id="loading-overlay" style="display:none;">
+            <div class="spinner"></div>
+        </div>
+        <div id="error-message" class="alert alert-danger" style="display:none;"></div>
+        <!--fim-->
     </div>
+      <!-- Scripts -->
+      <!-- Bootstrap Bundle com Popper -->
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay"
-      class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-none justify-content-center align-items-center"
-      style="z-index: 1100;">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Carregando...</span>
-      </div>
-      <span class="ms-3 text-white">Processando...</span>
-    </div>
-  </div>
-    <!-- Scripts -->
-    <!-- Bootstrap Bundle com Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+      <!-- SweetAlert2 -->
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+      <!-- jQuery (se necessário para outros scripts) -->
+      <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
-    <!-- jQuery (se necessário para outros scripts) -->
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+      <!-- Scripts Customizados -->
+      <script src="/js/menu.js"></script>
+      <script src="/js/sidebarToggle.js" defer></script>
+      <script src="/js/alterar_modo.js" defer></script>
+      <script src="/js/pagina_suporte_usuarios.js" defer></script>
 
-    <!-- Scripts Customizados -->
-    <script src="/js/menu.js"></script>
-    <script src="/js/sidebarToggle.js" defer></script>
-    <script src="/js/alterar_modo.js" defer></script>
-    <script src="/js/pagina_suporte_usuarios.js" defer></script>
+      <script>
+        document.getElementById('fotoUpload').addEventListener('change', function (e) {
+          if (e.target.files.length > 0) {
+            chamadoManager.handleFotoUpload(chamadoManager.currentChamado.id, e.target);
+          }
+        });
 
-    <script>
-      document.getElementById('fotoUpload').addEventListener('change', function (e) {
-        if (e.target.files.length > 0) {
-          chamadoManager.handleFotoUpload(chamadoManager.currentChamado.id, e.target);
-        }
-      });
+        // Similar para anexoUpload
+        document.getElementById('anexoUpload').addEventListener('change', function (e) {
+          if (e.target.files.length > 0) {
+            chamadoManager.handleAnexoUpload(chamadoManager.currentChamado.id, e.target);
+          }
+        });
+      </script>
 
-      // Similar para anexoUpload
-      document.getElementById('anexoUpload').addEventListener('change', function (e) {
-        if (e.target.files.length > 0) {
-          chamadoManager.handleAnexoUpload(chamadoManager.currentChamado.id, e.target);
-        }
-      });
-    </script>
+  </body>
 
-</body>
-
-</html>
+  </html>
