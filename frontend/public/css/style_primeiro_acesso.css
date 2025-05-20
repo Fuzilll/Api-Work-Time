@@ -1,0 +1,543 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #0d1117;
+  color: #ffffff;
+  margin: 0;
+  padding: 0;
+  transition: background-color 1.2s ease, color 1.2s ease; /* Transição mais suave */
+}
+
+.top-bar {
+  background-color: #0d1117;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 1.2s ease;
+  /* Transição mais suave */
+}
+
+.top-bar img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin-left: 95vh;
+}
+
+.main-content {
+  margin-top: 64px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(70vh - 160px);
+  transition: background-color 1.5s ease, color 1.5s ease; 
+}
+.container,
+.left-side,
+.right-side {
+  transition: background-color 1.5s ease, color 1.5s ease;
+}
+  .container {
+    display: flex;
+    width: 90%;
+    max-width: 1200px;
+    background-color: #161b22;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .left-side {
+    flex: 1;
+    background: radial-gradient(circle at top, #6e40c9, #0d1117);
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
+  .left-side h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+  
+  .left-side p {
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: 400px;
+  }
+  
+  .left-side .mascote img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-top: 40px;
+  }
+  
+  .right-side {
+    flex: 1;
+    background-color: #0d1117;
+    padding: 40px;
+  }
+  
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  label {
+    margin: 12px 0 4px;
+    font-size: 0.95rem;
+  }
+  
+  input, select {
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    background-color: #21262d;
+    color: #fff;
+    font-size: 1rem;
+  }
+  
+  input:focus, select:focus {
+    outline: 2px solid #6e40c9;
+  }
+  
+  button {
+    margin-top: 20px;
+    padding: 12px;
+    border: none;
+    background-color: #6e40c9;
+    color: white;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  button:hover {
+    background-color: #8a63d2;
+  }
+  
+  .termos {
+    font-size: 0.8rem;
+    margin-top: 15px;
+    color: #8b949e;
+  }
+  
+  .termos a {
+    color: #58a6ff;
+    text-decoration: none;
+  }
+  
+  .termos a:hover {
+    text-decoration: underline;
+  }
+  
+/* Estilo do switch */
+.top-bar label {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+  cursor: pointer;
+}
+
+.top-bar label input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.top-bar label .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 34px;
+  transition: 1.2s; /* Transição mais suave */
+}
+
+.top-bar label .slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  border-radius: 50%;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 1.2s; /* Transição mais suave */
+}
+
+/* Transição de cores e background no modo claro */
+body.light-mode {
+  background-color: #f2f7f5;
+  color: #00473e;
+}
+
+body.light-mode .top-bar {
+  background-color: #f2f7f5;
+}
+
+body.light-mode .login-container {
+  background-color: #f2f7f5;
+  color: #00473e;
+}
+
+body.light-mode .login-container h1,
+body.light-mode label {
+  color: #00473e;
+}
+
+body.light-mode input[type="text"],
+body.light-mode input[type="password"] {
+  background-color: #f2f7f5;
+  color: #00473e;
+  border: 1px solid #00332c;
+}
+
+body.light-mode input:focus {
+  outline: 2px solid #faae2b;
+}
+
+body.light-mode .btn-login {
+  background-color: #faae2b;
+  color: #00473e;
+}
+
+body.light-mode .btn-login:hover {
+  background-color: #ffa8ba;
+}
+
+body.light-mode .footer p,
+body.light-mode .footer a {
+  color: #00473e;
+}
+
+body.light-mode .site-footer {
+  background-color: #f2f7f5;
+  color: #00473e;
+}
+
+body.light-mode .site-footer a {
+  color: #00473e;
+}
+
+
+
+/* Ajustes do formulário para o modo claro */
+body.light-mode .container {
+  background-color: #ffffff;
+}
+
+body.light-mode .right-side {
+  background-color: #f2f7f5;
+}
+
+body.light-mode input,
+body.light-mode select {
+  background-color: #ffffff;
+  color: #00473e;
+  border: 1px solid #00332c;
+}
+
+body.light-mode input:focus,
+body.light-mode select:focus {
+  outline: 2px solid #faae2b;
+}
+
+body.light-mode button {
+  background-color: #faae2b;
+  color: #00473e;
+}
+
+body.light-mode button:hover {
+  background-color: #ffa8ba;
+}
+
+body.light-mode .termos {
+  color: #00473e;
+}
+
+body.light-mode .termos a {
+  color: #00473e;
+}
+body.light-mode .left-side {
+  background: radial-gradient(circle at top, #faae2b, #f2f7f5);
+  color: #00473e;
+}
+
+body.light-mode .left-side h1 {
+  color: #00473e;
+}
+
+body.light-mode .left-side p {
+  color: #00473e;
+}
+
+body.light-mode .left-side .mascote img {
+  border: 2px solid #00473e;
+}
+
+
+/* Transição de cores e background no modo escuro */
+body.dark-mode {
+  background-color: #0d1117;
+  color: #ffffff;
+}
+
+body.dark-mode .top-bar {
+  background-color: #0d1117;
+}
+
+body.dark-mode .login-container {
+  background-color: #161b22;
+  border: 1px solid #21262d;
+  color: #ffffff;
+}
+
+body.dark-mode .login-container h1,
+body.dark-mode label {
+  color: #ffffff;
+}
+
+body.dark-mode input[type="text"],
+body.dark-mode input[type="password"] {
+  background-color: #161b22;
+  color: #ffffff;
+  border: 1px solid #21262d;
+}
+
+body.dark-mode input:focus {
+  outline: 2px solid #6e40c9;
+}
+
+body.dark-mode .btn-login {
+  background-color: #6e40c9;
+  color: white;
+}
+
+body.dark-mode .btn-login:hover {
+  background-color: #8a63d2;
+}
+
+body.dark-mode .footer p,
+body.dark-mode .footer a {
+  color: #c9d1d9;
+}
+
+body.dark-mode .site-footer {
+  background-color: #0d1117;
+  color: #ffffff;
+}
+
+body.dark-mode .site-footer a {
+  color: #58a6ff;
+}
+/* Estilo do switch no modo escuro */
+body.dark-mode .top-bar label input[type="checkbox"]:checked + .slider {
+  background-color: #6e40c9; /* Roxo quando o switch está ativado */
+}
+
+body.dark-mode .top-bar label input[type="checkbox"]:checked + .slider:before {
+  transform: translateX(26px); /* Move o círculo para a direita */
+  background-color: #0d1117; /* Preto para o círculo do switch quando ativado */
+}
+
+/* Estilo do switch no modo escuro (inativo) */
+body.dark-mode .top-bar label input[type="checkbox"]:not(:checked) + .slider {
+  background-color: #30363d; /* Cor do fundo do switch quando desativado */
+}
+
+body.dark-mode .top-bar label input[type="checkbox"]:not(:checked) + .slider:before {
+  background-color: #6e40c9; /* Cor do círculo quando o switch está desativado */
+}
+
+/* Estilo do switch no modo claro */
+body.light-mode .top-bar label input[type="checkbox"]:checked + .slider {
+  background-color: #faae2b;
+}
+
+body.light-mode .top-bar label input[type="checkbox"]:checked + .slider:before {
+  transform: translateX(26px);
+  background-color: #00473e;
+}
+
+/* Estilo do switch no modo escuro */
+body.dark-mode .top-bar label input[type="checkbox"]:checked + .slider {
+  background-color: #faae2b;
+}
+
+body.dark-mode .top-bar label input[type="checkbox"]:checked + .slider:before {
+  transform: translateX(26px);
+  background-color: #0d1117;
+}
+
+
+
+/* Efeito de transição suave ao alternar o switch */
+.top-bar label input[type="checkbox"]:checked + .slider {
+  background: linear-gradient(135deg, #faae2b, #ffa8ba);
+}
+/* Até 1024px - tablets */
+@media (max-width: 1024px) {
+  .container {
+    flex-direction: column;
+    padding: 30px 20px;
+    gap: 0;
+    max-width: 500px; /* limitar largura do formulário */
+    margin: 20px auto 40px; /* centralizar horizontalmente e dar espaçamento vertical */
+  }
+
+  .left-side {
+    display: none; /* esconde texto e mascote */
+  }
+  .top-bar {
+    flex-direction:column-reverse;
+    gap: 8px;
+    align-items: center;
+  }
+  .top-bar img {
+    width: 64px;
+    height: 64px;
+    margin-left: 50vw; /* centralização aproximada */
+  }
+
+  .right-side {
+    padding: 30px 20px;
+    width: 100%;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    border-radius: 12px;
+  }
+}
+
+/* Até 600px - smartphones maiores */
+@media (max-width: 600px) {
+  .right-side {
+    padding: 25px 15px;
+  }
+
+  .right-side label {
+    font-size: 0.9rem;
+  }
+  .top-bar {
+    flex-direction:column-reverse;
+    gap: 8px;
+    align-items: center;
+  }
+  .right-side input[type="email"],
+  .right-side input[type="text"],
+  .right-side select {
+    font-size: 0.95rem;
+    padding: 8px 10px;
+  }
+
+  .right-side button {
+    font-size: 1rem;
+    padding: 12px;
+  }
+}
+/* Para telas até 932px (tablets e celulares grandes) */
+@media (max-width: 932px) {
+  .container {
+    flex-direction: column;
+    max-width: 480px; /* largura máxima para o formulário */
+    margin: 30px auto 50px;
+    padding: 20px 15px;
+    gap: 0;
+  }
+  
+  .top-bar {
+    flex-direction:column-reverse;
+    gap: 8px;
+    align-items: center;
+  }
+  .top-bar img {
+    width: 64px;
+    height: 64px;
+    margin-left: 50vw; /* centralização aproximada */
+  }
+
+  .left-side {
+    display: none; /* esconde texto e mascote para focar no form */
+  }
+
+}
+
+/* Para telas até 430px (smartphones menores) */
+@media (max-width: 430px) {
+  .container {
+    max-width: 95%;
+    margin: 20px auto 40px;
+    padding: 15px 10px;
+  }
+  .top-bar {
+    flex-direction:column-reverse;
+    gap: 8px;
+    align-items: center;
+  }
+  .top-bar img {
+    width: 64px;
+    height: 64px;
+    margin-left: 50vw; /* centralização aproximada */
+  }
+
+  .right-side {
+    padding: 25px 15px;
+    box-shadow: none; /* menos sombra pra telas pequenas */
+    border-radius: 8px;
+  }
+
+  .right-side label {
+    font-size: 0.9rem;
+  }
+
+  .right-side input[type="email"],
+  .right-side input[type="text"],
+  .right-side select {
+    font-size: 1rem;
+    padding: 10px 12px;
+  }
+
+  .right-side button {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.1rem;
+    margin-top: 15px;
+  }
+}
+
+/* Até 400px - smartphones pequenos */
+@media (max-width: 400px) {
+  .container {
+    padding: 10px 10px;
+    max-width: 100%;
+    margin: 15px auto;
+  }
+  .top-bar {
+    flex-direction:column-reverse;
+    gap: 8px;
+    align-items: center;
+  }
+  .top-bar img {
+    width: 64px;
+    height: 64px;
+    margin-left: 50vw; /* centralização aproximada */
+  }
+
+  .right-side button {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.1rem;
+  }
+}

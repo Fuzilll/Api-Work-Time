@@ -1,7 +1,7 @@
 class ITSupportChamados {
   constructor() {
     console.log('[DEBUG] ITSupportChamados - Iniciando construtor');
-    this.API_BASE_URL = 'http://localhost:3000/api';
+    this.API_BASE_URL = 'http://localhost:3001/api';
     this.API_TIMEOUT = 1000000;
     this.authTokenKey = 'authToken';
     this.userDataKey = 'userData';

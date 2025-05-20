@@ -1,6 +1,6 @@
 class EmpresaCadastro {
   constructor() {
-    this.API_BASE_URL = 'http://localhost:3000/api';
+    this.API_BASE_URL = 'http://localhost:3001/api';
     this.estadoSelect = document.getElementById("estado");
     this.form = document.getElementById("formCadastroEmpresa");
     this.init();

@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "http://localhost:3001/api";
 
 // Função auxiliar para verificar se um token JWT expirou
 function isTokenExpired(token) {

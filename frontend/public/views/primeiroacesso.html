@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Primeiro Acesso | Work Time</title>
+  <link rel="stylesheet" href="css/style_primeiro_acesso.css">
+</head>
+<body class="dark-mode"> <!-- Inicia com o modo escuro -->
+  <!-- Top Bar com imagem central e switch -->
+  <div class="top-bar">
+      <img src="/images/mascote_modo_escuro.png" alt="Logo Work Time" />
+      <label class="switch">
+          <input type="checkbox" id="colorModeSwitch" checked>
+          <span class="slider round"></span>
+      </label>
+  </div>
+  <div class="main-content">
+
+  <div class="container">
+    <div class="left-side">
+      <h1>Primeiro Acesso</h1>
+      <p>Seja bem-vindo ao sistema de registro de ponto <strong>Work Time</strong>. Complete o formulário para configurar sua conta de acesso.</p>
+      <div class="mascote">
+        <img src="/images/mascote_modo_escuro.png" alt="Logo Work Time">
+      </div>
+    </div>
+    <div class="right-side">
+      <form action="/ativar-conta" method="POST">
+        <label for="email">Email Corporativo</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="codigo_acesso">Código de Acesso*</label>
+        <input type="text" id="codigo_acesso" name="codigo_acesso" required>
+
+        <label for="nome">Nome Completo</label>
+        <input type="text" id="nome" name="nome" required>
+
+        <label for="senha">Crie uma Senha</label>
+        <input type="password" id="senha" name="senha" required>
+
+        <label for="confirmar_senha">Confirme a Senha</label>
+        <input type="password" id="confirmar_senha" name="confirmar_senha" required>
+
+
+        <button type="submit">Ativar Conta</button>
+        <p class="termos">
+          Ao ativar sua conta, você concorda com nossos <a href="#">Termos de Uso</a> e nossa <a href="#">Política de Privacidade</a>.
+        </p>
+      </form>
+    </div>
+  </div>
+  </div>
+</body>
+<script src="/js/script_modo.js"></script>
+
+</html>

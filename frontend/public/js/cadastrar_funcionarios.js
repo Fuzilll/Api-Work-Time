@@ -1,6 +1,6 @@
 class FuncionarioCadastro {
     constructor() {
-        this.API_BASE_URL = 'http://localhost:3000/api';
+        this.API_BASE_URL = 'http://localhost:3001/api';
         this.form = document.getElementById("form-cadastrar-funcionario");
         this.errorMessage = document.getElementById("error-message");
         this.loadingOverlay = document.getElementById("loading-overlay");
