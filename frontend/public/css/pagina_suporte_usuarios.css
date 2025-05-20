@@ -190,12 +190,8 @@ body {
   /* ========== COMPONENTES - CONTAINER ========== */
   .container {
     max-height: 100vh;
-    background: var(--claro-card-bg);
     padding: 30px;
-    border-radius: 10px;
-    box-shadow: var(--sombra-forte) var(--claro-card-sombra);
     margin: auto;
-    border: 1px solid var(--claro-borda);
   }
 h2 {
     text-align: center;
@@ -331,7 +327,141 @@ input:checked+.slider {
 input:checked+.slider:before {
     transform: translateX(26px);
 }
+/* ========== FORMULÁRIO DE CHAMADO - MODO CLARO/ESCURO ========== */
+.card {
+    background-color: var(--claro-card-bg);
+    border: 1px solid var(--claro-borda);
+    transition: background-color var(--transition-time) ease, 
+                border-color var(--transition-time) ease;
+}
 
+.card-title {
+    color: var(--claro-primaria);
+    border-bottom: 1px solid var(--claro-borda);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.form-label {
+    color: var(--claro-texto);
+}
+
+.form-control, .form-select {
+    background-color: var(--claro-card-bg);
+    border: 1px solid var(--claro-borda);
+    color: var(--claro-texto);
+    transition: all var(--transition-time) ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--claro-secundaria);
+    box-shadow: 0 0 0 0.25rem rgba(250, 174, 43, 0.25);
+}
+
+.form-text {
+    color: var(--claro-texto);
+    opacity: 0.7;
+}
+
+.btn-primary {
+    background-color: var(--claro-secundaria);
+    border-color: var(--claro-secundaria);
+    color: var(--claro-primaria);
+    transition: all var(--transition-time) ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--claro-primaria);
+    border-color: var(--claro-primaria);
+    color: var(--claro-bg);
+}
+
+/* ========== MODO ESCURO ========== */
+body.dark-mode .card {
+    background-color: var(--escuro-card-bg);
+    border-color: var(--escuro-borda);
+}
+
+body.dark-mode .card-title {
+    color: var(--escuro-primaria);
+    border-bottom-color: var(--escuro-borda);
+}
+
+body.dark-mode .form-label {
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .form-control, 
+body.dark-mode .form-select {
+    background-color: var(--escuro-card-bg);
+    border-color: var(--escuro-borda);
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .form-control:focus, 
+body.dark-mode .form-select:focus {
+    border-color: var(--escuro-secundaria);
+    box-shadow: 0 0 0 0.25rem rgba(44, 182, 125, 0.25);
+}
+
+body.dark-mode .form-text {
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .btn-primary {
+    background-color: var(--escuro-secundaria);
+    border-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .btn-primary:hover {
+    background-color: var(--escuro-primaria);
+    border-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
+
+/* Estilos específicos para o card de formulário */
+.card.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+body.dark-mode .card.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+}
+
+/* Ajustes para o textarea */
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+    background-color: var(--claro-card-bg);
+    color: var(--claro-texto);
+}
+
+body.dark-mode textarea.form-control {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+}
+
+/* Ajustes para o campo de arquivo */
+.form-control[type="file"] {
+    padding: 8px;
+}
+
+body.dark-mode .form-control[type="file"]::file-selector-button {
+    background-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+    border: none;
+    padding: 3px 2px;
+    border-radius: 4px;
+    margin-left: 1px;
+    margin-bottom: 1px;
+    cursor: pointer;
+}
+
+body.dark-mode .form-control[type="file"]::file-selector-button:hover {
+    background-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
 /* ========== MODO ESCURO ========== */
 body.dark-mode {
     background-color: var(--escuro-bg);
@@ -358,12 +488,6 @@ body.dark-mode .sidebar a:hover {
     background: var(--escuro-secundaria);
     border-left: 4px solid var(--escuro-primaria);
     color: var(--escuro-primaria);
-}
-
-body.dark-mode .container {
-    background: var(--escuro-card-bg);
-    border: 1px solid var(--escuro-borda);
-    box-shadow: 0 4px 15px var(--escuro-card-sombra);
 }
 
 body.dark-mode h2 {

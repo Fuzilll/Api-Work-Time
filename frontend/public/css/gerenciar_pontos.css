@@ -216,12 +216,7 @@ body {
 /* ========== COMPONENTES - CONTAINER ========== */
 .container {
     max-height: 100vh;
-    background: var(--claro-card-bg);
     padding: 30px;
-    border-radius: 10px;
-    box-shadow: var(--sombra-forte) var(--claro-card-sombra);
-    margin: auto;
-    border: 1px solid var(--claro-borda);
 }
 
 h2 {

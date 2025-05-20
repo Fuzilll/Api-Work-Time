@@ -189,12 +189,8 @@
   
   .container {
       max-height: 100vh;
-      background: var(--claro-card-bg);
       padding: 30px;
-      border-radius: 10px;
-      box-shadow: var(--sombra);
       margin: auto;
-      border: 1px solid var(--claro-borda);
   }
   
   h2 {
@@ -520,12 +516,6 @@
   
   body.dark-mode .content {
       background-color: var(--escuro-bg);
-  }
-  
-  body.dark-mode .container {
-      background: var(--escuro-card-bg);
-      border: 1px solid var(--escuro-borda);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   }
   
   body.dark-mode h2,

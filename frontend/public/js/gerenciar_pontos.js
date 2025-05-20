@@ -2,6 +2,7 @@ class PointManager {
   constructor() {
     this.currentPage = 1;
     this.itemsPerPage = 10;
+    this.totalItems = 0;
     this.initElements();
     this.setupEventListeners();
     this.loadPendingPoints();
@@ -14,10 +15,11 @@ class PointManager {
       dateFilterStart: document.querySelector("#filtro-data-inicio"),
       dateFilterEnd: document.querySelector("#filtro-data-fim"),
       departmentFilter: document.querySelector("#filtro-departamento"),
-      statusFilter : document.querySelector("#filtro-status"),
+      statusFilter: document.querySelector("#filtro-status"),
       pagination: document.querySelector("#pagination"),
       loadingOverlay: document.querySelector("#loading-overlay"),
-      errorMessage: document.querySelector("#error-message")
+      errorMessage: document.querySelector("#error-message"),
+      itemsPerPageSelect: document.querySelector("#items-per-page")
     };
   }
 
@@ -28,6 +30,11 @@ class PointManager {
     this.elements.dateFilterEnd.addEventListener('change', () => this.loadPendingPoints());
     this.elements.statusFilter.addEventListener('change', () => this.loadPendingPoints());
     this.elements.departmentFilter.addEventListener('change', () => this.loadPendingPoints());
+    this.elements.itemsPerPageSelect.addEventListener('change', () => {
+      this.itemsPerPage = parseInt(this.elements.itemsPerPageSelect.value);
+      this.currentPage = 1; // Reset para a primeira página ao mudar o limite
+      this.loadPendingPoints();
+    });
     this.setupTableEvents();
   }
 
@@ -53,16 +60,16 @@ class PointManager {
       if (!response.ok) throw new Error('Erro ao carregar pontos');
   
       const { data: pontos, total } = await response.json();
+      this.totalItems = total;
   
       this.renderPointsTable(pontos);
-      this.renderPagination(total);
+      this.renderPagination();
     } catch (error) {
       this.showError(error.message);
     } finally {
       this.hideLoading();
     }
   }
-  
 
   renderPointsTable(pontos) {
     this.elements.pointsTable.innerHTML = pontos.length ?
@@ -95,7 +102,6 @@ class PointManager {
       `;
   }
 
-
   getStatusBadge(status) {
     const classes = {
       'Aprovado': 'bg-success',
@@ -105,8 +111,8 @@ class PointManager {
     return `<span class="badge ${classes[status]}">${status}</span>`;
   }
 
-  renderPagination(totalItems) {
-    const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+  renderPagination() {
+    const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
 
     if (totalPages <= 1) {
       this.elements.pagination.innerHTML = '';
@@ -118,19 +124,61 @@ class PointManager {
     // Botão Anterior
     paginationHTML += `
         <li class="page-item ${this.currentPage === 1 ? 'disabled' : ''}">
-          <a class="page-link" href="#" onclick="pointManager.loadPendingPoints(${this.currentPage - 1})">
+          <a class="page-link" href="#" data-page="${this.currentPage - 1}">
             &laquo;
           </a>
         </li>
       `;
 
+    // Limitar o número de páginas mostradas
+    const maxVisiblePages = 5;
+    let startPage, endPage;
+
+    if (totalPages <= maxVisiblePages) {
+      startPage = 1;
+      endPage = totalPages;
+    } else {
+      const halfVisible = Math.floor(maxVisiblePages / 2);
+
+      if (this.currentPage <= halfVisible + 1) {
+        startPage = 1;
+        endPage = maxVisiblePages;
+      } else if (this.currentPage >= totalPages - halfVisible) {
+        startPage = totalPages - maxVisiblePages + 1;
+        endPage = totalPages;
+      } else {
+        startPage = this.currentPage - halfVisible;
+        endPage = this.currentPage + halfVisible;
+      }
+    }
+
+    // Primeira página (se necessário)
+    if (startPage > 1) {
+      paginationHTML += `
+          <li class="page-item">
+            <a class="page-link" href="#" data-page="1">1</a>
+          </li>
+          ${startPage > 2 ? '<li class="page-item disabled"><span class="page-link">...</span></li>' : ''}
+        `;
+    }
+
     // Páginas
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = startPage; i <= endPage; i++) {
       paginationHTML += `
           <li class="page-item ${i === this.currentPage ? 'active' : ''}">
-            <a class="page-link" href="#" onclick="pointManager.loadPendingPoints(${i})">
+            <a class="page-link" href="#" data-page="${i}">
               ${i}
             </a>
+          </li>
+        `;
+    }
+
+    // Última página (se necessário)
+    if (endPage < totalPages) {
+      paginationHTML += `
+          ${endPage < totalPages - 1 ? '<li class="page-item disabled"><span class="page-link">...</span></li>' : ''}
+          <li class="page-item">
+            <a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a>
           </li>
         `;
     }
@@ -138,7 +186,7 @@ class PointManager {
     // Botão Próximo
     paginationHTML += `
         <li class="page-item ${this.currentPage === totalPages ? 'disabled' : ''}">
-          <a class="page-link" href="#" onclick="pointManager.loadPendingPoints(${this.currentPage + 1})">
+          <a class="page-link" href="#" data-page="${this.currentPage + 1}">
             &raquo;
           </a>
         </li>
@@ -146,7 +194,19 @@ class PointManager {
 
     paginationHTML += '</ul>';
     this.elements.pagination.innerHTML = paginationHTML;
+
+    // Adiciona event listeners para os links de paginação
+    this.elements.pagination.querySelectorAll('a.page-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = parseInt(link.getAttribute('data-page'));
+        if (!isNaN(page)) {
+          this.loadPendingPoints(page);
+        }
+      });
+    });
   }
+  
   setupTableEvents() {
     this.elements.pointsTable.addEventListener('click', (event) => {
       const target = event.target.closest('button');
