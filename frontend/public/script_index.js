@@ -387,10 +387,28 @@ function init() {
 			formData += '&referrer=' + document.referrer;
 		}
 
-		request.open('POST', 'https://app.pontosimples.com/api/landing-page', true);
+		request.open('POST', 'https://app.w.com/api/landing-page', true);
 		request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
 		request.send(formData);
 	}
+
+	document.addEventListener("DOMContentLoaded", function () {
+		const closeBtn = document.getElementById("modal-close");
+
+		if (closeBtn) {
+			closeBtn.addEventListener("click", closeModal);
+		}
+
+		function closeModal() {
+			// Lógica para fechar o modal
+			const modal = document.querySelector(".modal");
+			if (modal) {
+				modal.style.display = "none"; // ou qualquer lógica que você use
+			}
+		}
+	});
+
+
 
 	function resetForm() {
 		var formElement = getElement('#form-contact');
