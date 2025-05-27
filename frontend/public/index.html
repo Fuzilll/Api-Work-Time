@@ -2,125 +2,790 @@
 <html lang="pt-br">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta http-equiv="content-language" content="pt-br" />
-    <meta name="robots" content="index, follow" />
-    <link rel="stylesheet" href="/css/boot.css">
-    <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/fonts-icones.css">
-    <link rel="shortcut icon" href="/images/logo.png" type="image/ico" />
-    
-    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkTime - Controle de Ponto Online</title>
+    <link rel="stylesheet" href="/css/styleindex.css" />
+
 </head>
 
-<body>
-    <header class="main_header container">
-        <div class="content">
-            <div class="main_header_logo">
-                <a href="/" title="Página Inicial">
-                    <img src="/images/logo.png" alt="Logo">
+<body class=""> <!-- class="deal-active" -->
+    <noscript><iframe src="https://stape.WorkTime.com/ns.html?id=GTM-NZ9DBRXK" height="0" width="0"
+            style="display:none;visibility:hidden"></iframe></noscript> <!-- Google Tag Manager (noscript) -->
+
+    <header class="header">
+        <nav class="header-nav">
+            <div class="inner">
+                <div class="mobile-menu-overlay"></div>
+                <a class="mobile-menu">
+                    <div class="mobile-menu-bar"></div>
+                    <div class="mobile-menu-bar"></div>
+                    <div class="mobile-menu-bar"></div>
                 </a>
+                <a title="WorkTime" href="/" class="nav-logo-wrapper">
+                    <svg viewBox="0 0 24 24" class="nav-logo-icon">
+                        <use xlink:href="/assets/svg/hand-tap-hold.svg#Outline_Icons"></use>
+                    </svg>
+                    <strong class="nav-logo">WorkTime</strong>
+                </a>
+                <div class="nav-links">
+                    <a title="Sistema WorkTime" href="login.html" class="nav-link nav-link-bordered">Entrar</a>
+                    <div onclick="openModal()" class="nav-link nav-link-bordered">Experimente Grátis</div>
+                    <a title="Blog WorkTime" href="https://WorkTime.com/blog" class="nav-link">Blog</a>
+                    <div class="nav-link" id="link-pricing">Planos e Preços</div>
+                    <div class="nav-link" id="link-features">Funcionalidades</div>
+                </div>
             </div>
-            <nav>
-                <ul class="main_header_nav">
-                    <li class="main_header_nav_item"><a href="#inicio">Início</a></li>
-                    <li class="main_header_nav_item"><a href="#contato">Contato</a></li>
-                    <li class="main_header_nav_item">
-                        <a href="/login.html" id="loginLink" onclick="event.preventDefault(); window.location.href='/login.html';">Login</a>
-                    </li>
-                </ul>
-            </nav>
+        </nav>
+        <div class="inner">
+            <div class="header-info">
+                <h1 class="header-title">Controle de Ponto Online</h1>
+                <h2 class="header-sub-title">Solução completa com reconhecimento facial e geolocalização</h2>
+                <h3 class="header-sub-title">Modernize a gestão de jornada da sua empresa com nosso sistema seguro e
+                    eficiente.</h3>
+                <div onclick="openModal()" class="header-button">Saiba Mais</div>
+            </div>
+            <div class="header-picture">
+                <div class="header-picture-step1">
+                    <img src="/assets/svg/mobile-check.svg" class="header-picture-step-icon" alt="Ícone celular" />
+
+                    Colaborador marca ponto pelo app com reconhecimento facial
+                </div>
+                <div class="clearfix"></div>
+                <div class="header-picture-step2">
+                    <img src="/assets/svg/pc-check.svg" class="header-picture-step-icon" alt="Ícone pc" />
+                    Gestor acompanha tudo em tempo real pelo computador
+                </div>
+            </div>
         </div>
     </header>
+    <section class="features">
+        <div class="inner">
+            <div class="main-features">
+                <div class="main-feature-card">
+                    <img src="/assets/svg/security-safe-svgrepo-com.svg" class="header-picture-step-icon"
+                        alt="Ícone segurança" />
+                    <h2 class="main-feature-card-title">Tecnologia Anti-fraude</h2>
+                    <h3 class="main-feature-card-description">Reconhecimento facial e geolocalização garantem registros
+                        autênticos e dentro das áreas permitidas.</h3>
+                </div>
+                <div class="main-feature-card">
+                    <img src="/assets/svg/grafico.svg" class="header-picture-step-icon" alt="Ícone Produtividade" />
 
-    <main class="main_content container">
-        <section id="inicio" class="section-chamada container">
-            <div class="content">
-                <article class="topoPag">
-                    <div class="mascara">
-                        <div class="centraliza"></div>
-                        <img src="uploads/capa/banner-home.jpg" alt="" title="" />
-                    </div>
-                </article>
+                    <h2 class="main-feature-card-title">Produtividade</h2>
+                    <h3 class="main-feature-card-description">Automatizamos processos manuais que custam tempo e
+                        dinheiro no tratamento e fechamento do ponto.</h3>
+                </div>
+                <div class="main-feature-card">
+                    <img src="/assets/svg/balance.svg" class="header-picture-step-icon" alt="Ícone Leis" />
+                    <h2 class="main-feature-card-title">Conformidade Legal</h2>
+                    <h3 class="main-feature-card-description">Atendemos todas as exigências da Portaria 671/2021 do
+                        Ministério do Trabalho para controle de jornada eletrônica.</h3>
+                </div>
             </div>
-        </section>
-
-        <section id="cardapio" class="section-cardapio container">
-            <div class="content">
-                <h1 class="title center laranja">Registros de Ponto</h1>
-                <article class="card">
-                    <div class="fundo-card"><img src="/frontend/uploads/RelogiodePontos/camarao.jpg" alt="Camarão"></div>
-                    <div class="title-content">
-                        <h3><a href="#">Cartão de Ponto</a></h3>
-                        <div class="intro"><a href="#">Funções Inteligentes</a></div>
-                    </div>
-                    <div class="info">
-                        Digite aqui a descrição do produto acima.
-                    </div>
-                </article>
-                <article class="card">
-                    <div class="fundo-card"><img src="/frontend/uploads/RelogiodePontos/sobremesas.jpg" alt="Sobremesa"></div>
-                    <div class="title-content">
-                        <h3><a href="#">Ponto Facial</a></h3>
-                        <div class="intro"><a href="#">Marcadores com facial</a></div>
-                    </div>
-                    <div class="info">
-                        Digite aqui a descrição do produto acima.
-                    </div>
-                </article>
-                <article class="card">
-                    <div class="fundo-card"><img src="/frontend/uploads/RelogiodePontos/bebidas.jpg" alt="Bebidas"></div>
-                    <div class="title-content">
-                        <h3><a href="#">Marcador de Ponto</a></h3>
-                        <div class="intro"><a href="#">Através do Smartphone</a></div>
-                    </div>
-                    <div class="info">
-                        Digite aqui a descrição do produto acima.
-                    </div>
-                </article>
-            </div>
-        </section>
-
-        <section id="faq" class="section-faq container">
-            <div class="content">
-                <!-- FAQ content aqui -->
-            </div>
-        </section>
-    </main>
-
-    
-    <footer class="footer" id="contato">
-        <div class="left">
-            <h4 class="title-footer"><span></span></h4>
-            <p class="links">
-                <a href="index.html" title="Inicio">Início</a>
-                <a href="/login">Login</a>
-                <a href="#faq" title="Perguntas Frequentes">Perguntas Frequentes</a>
-            </p>
-            <p class="Copyright">Copyright &copy; 2023 - Todos os Direitos Reservados.</p>
+            <h2 class="feature-title">A solução mais moderna e segura para gestão de jornada de trabalho.</h2>
         </div>
-        <div class="right">
-            <h4 class="title-footer">Contato</h4>
-            <form class="formulario" action="#" method="post">
-                <input type="text" class="campo" name="nome" placeholder="Nome" required="" />
-                <input type="email" class="campo" name="email" placeholder="E-mail" required="" />
-                <input type="text" class="campo" name="assunto" placeholder="Assunto" required="" />
-                <textarea name="mensagem" class="campo-textarea" placeholder="Mensagem" rows="5" required=""></textarea>
-                <button class="btn">Enviar</button>
+    </section>
+    <section class="customers">
+        <div class="inner">
+            <h2 class="customers-title">O WorkTime é ideal para diversos tipos de empresas e equipes</h2>
+            <div class="customers-kind">
+                <div class="customer-kind one">
+                    <div class="customer-kind-thumb">
+                        <img src="/assets/svg/users-svgrepo-com (1).svg" class="customer-kind-thumb-icon"
+                            alt="Ícone Leis" />
+                    </div>
+                    <div class="customer-kind-title">Terceirizações</div>
+                    <div class="customer-kind-description">Controle centenas de funcionários com trocas de turno
+                        organizadas e sem fraudes.</div>
+                </div>
+                <div class="customer-kind two">
+                    <div class="customer-kind-thumb">
+                        <img src="/assets/svg/chip-computer-svgrepo-com.svg" class="customer-kind-thumb-icon"
+                            alt="Ícone Leis" />
+                    </div>
+                    <div class="customer-kind-title">Startups e TI</div>
+                    <div class="customer-kind-description">Flexibilidade e praticidade para equipes de tecnologia e
+                        inovação.</div>
+                </div>
+                <div class="customer-kind three">
+                    <div class="customer-kind-thumb">
+                        <img src="/assets/svg/home-wifi-svgrepo-com.svg" class="customer-kind-thumb-icon"
+                            alt="Ícone Leis" />
+                    </div>
+                    <div class="customer-kind-title">Home Office</div>
+                    <div class="customer-kind-description">Controle remoto com geolocalização para equipes distribuídas.
+                    </div>
+                </div>
+                <div class="customer-kind four active">
+                    <div class="customer-kind-thumb">
+                        <img src="/assets/svg/medical-cross-svgrepo-com.svg" class="customer-kind-thumb-icon"
+                            alt="Ícone Leis" />
+                    </div>
+                    <div class="customer-kind-title">Saúde</div>
+                    <div class="customer-kind-description">Solução eficiente para plantões e escalas em hospitais e
+                        clínicas.</div>
+                </div>
+                <div class="customer-kind five">
+                    <div class="customer-kind-thumb">
+                        <img src="/assets/svg/gear-player-multimedia-svgrepo-com.svg" class="customer-kind-thumb-icon"
+                            alt="Ícone Saúde" />
+                    </div>
+                    <div class="customer-kind-title">Todos os tipos</div>
+                    <div class="customer-kind-description">Ideal para comércio, serviços e indústria, de 1 a milhares de
+                        funcionários.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="features">
+        <div class="inner">
+            <div class="feature-box">
+                <div class="feature-box-item t1">
+                    <div class="feature-box-item-info">
+                        <img src="/assets/svg/relogio.svg" class="feature-box-item-icon" alt="Ícone users" />
+                        <h3 class="feature-box-item-title">Controle em tempo real</h3>
+                        <div class="feature-box-item-text">
+                            <p>Acompanhe a jornada completa da equipe, com horas extras, atrasos e faltas em tempo real
+                                via computador, tablet ou celular.</p>
+                            <p>Receba notificações sobre a jornada de trabalho e tenha visibilidade total da equipe.</p>
+                        </div>
+                    </div>
+                    <div class="feature-box-image-wrapper">
+                        <div class="feature-box-image-frame">
+                            <div class="feature-box-image-frame-ball ball1"></div>
+                            <div class="feature-box-image-frame-ball ball2"></div>
+                            <div class="feature-box-image-frame-ball ball3"></div>
+                        </div>
+                        <img class="feature-box-image" title="Gestão de equipes no WorkTime"
+                            alt="Gestão de equipes no WorkTime" src="/assets/images/tela1.webp">
+                    </div>
+                </div>
+                <div class="feature-box-item t2">
+                    <div class="feature-box-item-info">
+                        <img src="/assets/svg/autorship-svgrepo-com.svg" class="feature-box-item-icon"
+                            alt="Ícone users" />
+                        <h3 class="feature-box-item-title">Solicitações sem burocracia</h3>
+                        <div class="feature-box-item-text">
+                            <p>Colaboradores enviam pedidos de abono, ausências e ajustes diretamente pelo sistema, sem
+                                papelada.</p>
+                            <p>Processo transparente com notificações em tempo real para gestores e colaboradores.</p>
+                        </div>
+                    </div>
+                    <div class="feature-box-image-wrapper">
+                        <div class="feature-box-image-frame">
+                            <div class="feature-box-image-frame-ball ball1"></div>
+                            <div class="feature-box-image-frame-ball ball2"></div>
+                            <div class="feature-box-image-frame-ball ball3"></div>
+                        </div>
+                        <img class="feature-box-image" title="Solicitação de ajustes no WorkTime"
+                            alt="Solicitação de ajustes no WorkTime" src="/assets/images/tela2.webp">
+                    </div>
+                </div>
+                <div class="feature-box-item t3">
+                    <div class="feature-box-item-info">
+                        <img src="/assets/svg/grafico.svg" class="feature-box-item-icon" alt="Ícone users" />
+                        <h3 class="feature-box-item-title">Relatórios personalizados</h3>
+                        <div class="feature-box-item-text">
+                            <p>Gere dashboards, estatísticas e vários <strong>relatórios em PDF ou EXCEL</strong> para
+                                planejar e gerir um grande número de colaboradores.</p>
+                            <p>A qualquer momento é possível acessar as informações, tanto os colaboradores,
+                                supervisores e gerentes tem acesso online ao espelho e folha de ponto.</p>
+                        </div>
+                    </div>
+                    <div class="feature-box-image-wrapper">
+                        <div class="feature-box-image-frame">
+                            <div class="feature-box-image-frame-ball ball1"></div>
+                            <div class="feature-box-image-frame-ball ball2"></div>
+                            <div class="feature-box-image-frame-ball ball3"></div>
+                        </div>
+                        <img class="feature-box-image" title="Relatórios no WorkTime" alt="Relatórios no WorkTime"
+                            src="/assets/images/tela3.webp">
+                    </div>
+                </div>
+                <div class="feature-box-item t4">
+                    <div class="feature-box-item-info">
+                        <img src="/assets/svg/calendar-clock-svgrepo-com.svg" class="feature-box-item-icon"
+                            alt="Ícone users" />
+                        <h3 class="feature-box-item-title">Banco de Horas</h3>
+                        <div class="feature-box-item-text">
+                            <p>Acompanhe a evolução do banco de horas em tempo real.</p>
+                            <p>Alertas automáticos quando colaboradores atingirem limites de horas extras ou faltantes.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="feature-box-image-wrapper">
+                        <div class="feature-box-image-frame">
+                            <div class="feature-box-image-frame-ball ball1"></div>
+                            <div class="feature-box-image-frame-ball ball2"></div>
+                            <div class="feature-box-image-frame-ball ball3"></div>
+                        </div>
+                        <img class="feature-box-image" title="Gerenciamento de Banco de Horas no WorkTime"
+                            alt="Gerenciamento de Banco de Horas no WorkTime" src="/assets/images/tela4.webp">
+                    </div>
+                </div>
+                <div class="feature-box-item t5">
+                    <div class="feature-box-item-info">
+                        <img src="/assets/svg/clock-realtime-information-svgrepo-com.svg" class="feature-box-item-icon"
+                            alt="Ícone users" />
+                        <h3 class="feature-box-item-title">Jornadas Flexíveis</h3>
+                        <div class="feature-box-item-text">
+                            <p>Crie jornadas semanais com horários pré-definidos e regras personalizadas.</p>
+                            <p>Defina tolerâncias para atrasos, saídas antecipadas e horas extras com notificações
+                                automáticas.</p>
+                        </div>
+                    </div>
+                    <div class="feature-box-image-wrapper">
+                        <div class="feature-box-image-frame">
+                            <div class="feature-box-image-frame-ball ball1"></div>
+                            <div class="feature-box-image-frame-ball ball2"></div>
+                            <div class="feature-box-image-frame-ball ball3"></div>
+                        </div>
+                        <img class="feature-box-image" title="Jornadas Semanais no WorkTime"
+                            alt="Jornadas Semanais no WorkTime" src="/assets/images/tela5.webp">
+                        >
+                    </div>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+    </section>
+    <section class="app">
+        <div class="inner">
+            <div class="app-image mobile1" title="App WorkTime com reconhecimento facial"
+                alt="App WorkTime com reconhecimento facial"></div>
+            <div class="app-image mobile2" title="Solicitação de Ajuste de Ponto" alt="Solicitação de Ajuste de Ponto">
+            </div>
+            <div class="app-image mobile3" title="Banco de Horas no App" alt="Banco de Horas no App"></div>
+            <div class="app-info">
+                <h2 class="app-title">WorkTime Mobile</h2>
+                <h3 class="app-description">Baixe nosso aplicativo e registre ponto com reconhecimento facial.<br>Todos
+                    seus funcionários podem utilizar.</h3>
+                <a title="WorkTime na App Store" target="_blank" rel="nofollow"
+                    href="https://apps.apple.com/br/app/WorkTime/id1512203070?ls=1" class="app-ios"></a>
+                <a title="WorkTime no Google Play" target="_blank" rel="nofollow"
+                    href="https://play.google.com/store/apps/details?id=br.com.digitalbits.WorkTime"
+                    class="app-android"></a>
+            </div>
+        </div>
+    </section>
+    <section class="pricing">
+        <div class="inner">
+            <h2 class="pricing-title">Planos acessíveis para todos os portes</h2>
+            <h3 class="pricing-description">Teste gratuitamente por 30 dias. Descontos para pagamentos trimestrais e
+                anuais</h3>
+            <table class="pricing-tables" cellspacing="0">
+                <tbody>
+                    <tr class="pricing-table-header" data-gtm-vis-recent-on-screen177423765_46="4775"
+                        data-gtm-vis-first-on-screen177423765_46="4775"
+                        data-gtm-vis-total-visible-time177423765_46="100" data-gtm-vis-has-fired177423765_46="1">
+                        <td class="large text-bold">Planos</td>
+                        <td><span class="plan-name">Lite</span><br><span class="pricing-table-users">até 5</span><br>
+                            <span class="text-light">usuários</span>
+                        </td>
+                        <td><span class="plan-name">Start</span><br><span class="pricing-table-users">6 até
+                                10</span><br> <span class="text-light">usuários</span></td>
+                        <td><span class="plan-name">Team</span><br><span class="pricing-table-users">11 até 25</span>
+                            <span class="text-light">usuários</span>
+                        </td>
+                        <td><span class="plan-name">Business</span><br><span class="pricing-table-users">26 até
+                                50</span> <span class="text-light">usuários</span></td>
+                        <td><span class="plan-name">Enterprise</span><br><span class="pricing-table-users">51 até
+                                100</span> <span class="text-light">usuários</span></td>
+                        <td><span class="plan-name">Personalizado</span><br><span
+                                class="pricing-table-users">100+</span><br> <span class="text-light">usuários</span>
+                        </td>
+                        <td><span class="plan-name">Personalizado</span><br><span
+                                class="pricing-table-users">500+</span><br> <span class="text-light">usuários</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-bold">Mensalidade</td>
+                        <td class="text-bold">R$ 49,90</td>
+                        <td class="text-bold">R$ 79,90</td>
+                        <td class="text-bold">R$ 129,90</td>
+                        <td class="text-bold">R$ 229,90</td>
+                        <td class="text-bold">R$ 349,90</td>
+                        <td class="text-bold">R$ 3,50<br> <span class="text-light">por usuário</span></td>
+                        <td class="text-bold">R$ 3,00<br> <span class="text-light">por usuário</span></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Suporte</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Relatórios</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Hora extra</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Fechamento de Ponto</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Aplicativo mobile</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Reconhecimento Facial</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Geolocalização</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <h4>Gestão Completa</h4>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                        <td>
+                            <div class="pricing-icon"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="mobile-princing-table">
+                <div class="mobile-plans">
+                    <div class="mobile-plan">
+                        <div class="mobile-plan-name">Lite</div>
+                        <div class="mobile-plan-users">até 5</div>
+                        <div class="mobile-plan-label">usuários</div>
+                        <div class="mobile-plan-price">R$ 49,90</div>
+                    </div>
+                    <div class="mobile-plan">
+                        <div class="mobile-plan-name">Start</div>
+                        <div class="mobile-plan-users">6 até 10</div>
+                        <div class="mobile-plan-label">usuários</div>
+                        <div class="mobile-plan-price">R$ 79,90</div>
+                    </div>
+                    <div class="mobile-plan">
+                        <div class="mobile-plan-name">Team</div>
+                        <div class="mobile-plan-users">11 até 25</div>
+                        <div class="mobile-plan-label">usuários</div>
+                        <div class="mobile-plan-price">R$ 129,90</div>
+                    </div>
+                    <div class="mobile-plan">
+                        <div class="mobile-plan-name">Business</div>
+                        <div class="mobile-plan-users">26 até 50</div>
+                        <div class="mobile-plan-label">usuários</div>
+                        <div class="mobile-plan-price">R$ 229,90</div>
+                    </div>
+                    <div class="mobile-plan">
+                        <div class="mobile-plan-name">Enterprise</div>
+                        <div class="mobile-plan-users">51 até 100</div>
+                        <div class="mobile-plan-label">usuários</div>
+                        <div class="mobile-plan-price">R$ 349,90</div>
+                    </div>
+                    <div class="mobile-plan">
+                        <div class="mobile-plan-name">Personalizado</div>
+                        <div class="mobile-plan-users">100+</div>
+                        <div class="mobile-plan-label">usuários</div>
+                        <div class="mobile-plan-price">R$ 3,50 por usuário</div>
+                    </div>
+                    <div class="mobile-plan">
+                        <div class="mobile-plan-name">Personalizado</div>
+                        <div class="mobile-plan-users">500+</div>
+                        <div class="mobile-plan-label">usuários</div>
+                        <div class="mobile-plan-price">R$ 3,00 por usuário</div>
+                    </div>
+                </div>
+                <div class="mobile-plan-feature-title">Todos os planos incluem:</div>
+                <div class="mobile-plan-features">
+                    <div class="mobile-plan-feature">
+                        <div class="pricing-icon"></div> Suporte Online
+                    </div>
+                    <div class="mobile-plan-feature">
+                        <div class="pricing-icon"></div> Relatórios
+                    </div>
+                    <div class="mobile-plan-feature">
+                        <div class="pricing-icon"></div> Fechamento de Ponto
+                    </div>
+                    <div class="mobile-plan-feature">
+                        <div class="pricing-icon"></div> Aplicativo mobile
+                    </div>
+                    <div class="mobile-plan-feature">
+                        <div class="pricing-icon"></div> Reconhecimento Facial
+                    </div>
+                    <div class="mobile-plan-feature">
+                        <div class="pricing-icon"></div> Geolocalização
+                    </div>
+                    <div class="mobile-plan-feature">
+                        <div class="pricing-icon"></div> Gestão Completa
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="faq">
+        <div class="inner">
+            <h3 class="faq-title">Perguntas Frequentes (FAQ) sobre o WorkTime</h3>
+            <h2 class="faq-subtitle">Tire todas as suas dúvidas sobre nosso Ponto Eletrônico Online</h2>
+            <div class="faq-question">
+                <div class="faq-question-arrow"></div>
+                <h4 class="faq-question-title">O WorkTime é legalizado pelo Ministério do Trabalho?</h4>
+                <div class="faq-question-text">
+                    <p>Sim, o WorkTime é totalmente regulamentado pela Portaria 671/2021 do <strong>Ministério do
+                            Trabalho</strong>, que estabelece as normas para sistemas de controle de jornada eletrônica.
+                    </p>
+                    <p>Nossa solução atende a todos os requisitos legais, incluindo segurança dos dados, autenticidade
+                        dos registros e disponibilidade de relatórios.</p>
+                </div>
+            </div>
+            <div class="faq-question">
+                <div class="faq-question-arrow"></div>
+                <h4 class="faq-question-title">Como funciona o reconhecimento facial?</h4>
+                <div class="faq-question-text">
+                    <p>O reconhecimento facial no WorkTime é rápido e seguro:</p>
+                    <ol>
+                        <li>O colaborador abre o aplicativo e posiciona o rosto na câmera</li>
+                        <li>O sistema compara com a foto cadastrada</li>
+                        <li>Após validação, o ponto é registrado com carimbo de tempo e geolocalização</li>
+                    </ol>
+                    <p>Todos os dados biométricos são armazenados de forma criptografada, garantindo a privacidade.</p>
+                </div>
+            </div>
+            <div class="faq-question">
+                <div class="faq-question-arrow"></div>
+                <h4 class="faq-question-title">Posso migrar meu banco de horas atual para o WorkTime?</h4>
+                <div class="faq-question-text">
+                    <p>Sim! No módulo de Banco de Horas é possível configurar os <strong>saldos iniciais e suas
+                            respectivas vigências</strong>. É bem rápido e simples.</p>
+                    <p>Se precisar de ajuda para <strong>migrar de sistema de ponto</strong>, nossa equipe fará tudo
+                        gratuitamente para ajudá-lo na transferência.</p>
+                </div>
+            </div>
+            <div class="faq-question">
+                <div class="faq-question-arrow"></div>
+                <h4 class="faq-question-title">Que tipo de suporte vou receber?</h4>
+                <div class="faq-question-text">
+                    <p>Oferecemos múltiplos canais de suporte:</p>
+                    <ul>
+                        <li><strong>Chat online:</strong> Atendimento rápido diretamente no sistema</li>
+                        <li><strong>E-mail:</strong> suporte@WorkTime.com com resposta em até 2 horas úteis</li>
+                        <li><strong>WhatsApp:</strong> (11) 9 00000-0000 para atendimento imediato</li>
+                    </ul>
+                    <p>Também fornecemos treinamento via videochamada para gestores e material de apoio para
+                        colaboradores.</p>
+                </div>
+            </div>
+            <div class="faq-question">
+                <div class="faq-question-arrow"></div>
+                <h4 class="faq-question-title">Como funciona a contratação?</h4>
+                <div class="faq-question-text">
+                    <p><strong>Rápida e Desburocratizada!</strong></p>
+                    <p>Basta se cadastrar e realizar a assinatura no módulo de Configurações.</p>
+                    <p>Não há carência, nem fidelidade e <strong>você pode cancelar a qualquer momento</strong>!</p>
+                    <p>Para utilizar o WorkTime você deve concordar com os <a title="Termos de Serviço"
+                            href="/termos-de-servico" target="_blank">Termos de Serviço</a> e a <a
+                            title="Politica de Privacidade" href="/politica-de-privacidade" target="_blank">Politica de
+                            Privacidade</a>.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <div class="modal-overlay">
+        <div class="modal-shadow"></div>
+        <div class="modal">
+            <div onclick="closeModal()" class="modal-close" title="Fechar" alt="Fechar">×</div>
+            <div id="chose" class="modal-choose">
+                <div class="modal-form-title mb-1">Experimente Grátis</div>
+                <div class="modal-demo-text text-center text-bold mb-1">Traga sua empresa para o WorkTime e comece a
+                    usar hoje mesmo!<br>Planos a partir de R$ 49,90 mensais</div>
+                <div class="modal-demo-text text-center">Você pode <strong class="cpointer link-to-join">se
+                        cadastrar</strong> e testar gratuitamente o WorkTime por até 30 dias ou <strong
+                        class="cpointer link-to-demo">solicitar uma demonstração</strong>!<br><br>O que você prefere?
+                </div>
+                <div class="clearfix"></div>
+                <div class="modal-choose-row link-to-join">Começar<br>agora</div>
+                <div class="modal-choose-row link-to-demo">Quero uma demonstração</div>
+            </div>
+            <form id="form-demo" class="modal-form dnone">
+                <div class="modal-form-title">Solicite uma demonstração</div>
+                <div class="modal-demo-title">Preencha o formulário ou ligue diretamente no <strong class="nowrap">(11)
+                        9 9605-4570</strong></div>
+                <div>
+                    <label>Nome *</label>
+                    <input id="gtm-form-demo-name" type="text" name="name" class="input-text" required="">
+                </div>
+                <div>
+                    <label>E-mail *</label>
+                    <input id="gtm-form-demo-email" type="email" name="email" class="input-text" required="">
+                </div>
+                <div>
+                    <label>Telefone *</label>
+                    <input id="gtm-form-demo-phone" type="text" name="phone" class="input-text phone" required="">
+                </div>
+                <div>
+                    <div class="modal-demo-text text-center">Entraremos em contato em até 1 dia útil</div>
+                    <input type="submit" class="button" value="Falar com especialista">
+                </div>
             </form>
+            <form id="form-join" class="modal-form dnone">
+                <div class="modal-form-title">Cadastre sua empresa</div>
+                <div>
+                    <label>Nome completo</label>
+                    <input id="gtm-form-join-name" type="text" name="name" class="input-text" required="">
+                </div>
+                <div>
+                    <label>E-mail</label>
+                    <input id="gtm-form-join-email" type="email" name="email" class="input-text" required="">
+                </div>
+                <div>
+                    <label>Crie sua senha de acesso</label>
+                    <input type="password" name="password" class="input-text" required="">
+                </div>
+                <div>
+                    <label>Celular (opcional)</label>
+                    <input id="gtm-form-join-phone" type="text" name="phone" class="input-text phone">
+                </div>
+                <div>
+                    <p>Ao cadastrar você concorda com os nossos <strong><a title="Termos de Serviço"
+                                href="/termos-de-servico">Termos de Serviço</a></strong> e <strong><a
+                                title="Politica de Privacidade" href="/politica-de-privacidade">Politica de
+                                Privacidade</a></strong>.</p>
+                    <input type="submit" class="button" value="Cadastrar empresa">
+                </div>
+            </form>
+            <div class="modal-loading">
+                <div class="cssload-wrapper">
+                    <div class="cssload-container">
+                        <span class="cssload-loading cssload-one"></span>
+                        <span class="cssload-loading cssload-two"></span>
+                        <span class="cssload-loading-center"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-banner"></div>
+        </div>
+    </div>
+    <footer>
+        <div class="inner">
+            <div class="footer-column">
+                <div class="footer-logo-wrapper">
+                    <svg viewBox="0 0 24 24" class="footer-logo-icon">
+                        <use xlink:href="/assets/svg/hand-tap-hold.svg#Outline_Icons"></use>
+                    </svg>
+                    <strong class="footer-logo">WorkTime</strong>
+                </div>
+                <br><br>
+                <strong class="footer-description">A solução mais moderna e segura para gestão de jornada de
+                    trabalho!</strong>
+                <div class="footer-description">WorkTime TECNOLOGIA LTDA<br>CNPJ: 00.000.000/0000-00</div>
+                <!-- <div class="footer-description">© 2025 Direitos Reservados</div> -->
+            </div>
+            <div class="footer-column">
+                <div class="footer-title">Produto</div>
+                <strong class="footer-item" onclick="goTo('features')">Relatórios</strong>
+                <strong class="footer-item" onclick="goTo('features')">Banco de Horas</strong>
+                <strong class="footer-item" onclick="goTo('features')">Fechamento de Ponto</strong>
+                <strong class="footer-item" onclick="goTo('features')">Ponto em tempo real</strong>
+                <strong class="footer-item" onclick="goTo('features')">Portaria 671</strong>
+            </div>
+            <div class="footer-column">
+                <div class="footer-title">Empresa</div>
+                <a title="Termos de Serviço" href="/termos-de-servico" class="footer-item">Termos de Serviço</a>
+                <a title="Politica de Privacidade" href="/politica-de-privacidade" class="footer-item">Politica de
+                    Privacidade</a>
+                <a title="Contato" href="/contato" class="footer-item">Contato</a>
+                <div class="footer-social-icons">
+                    <a title="YouTube do WorkTime" target="_blank" rel="nofollow"
+                        href="https://www.youtube.com/channel/UC6inUpZN1svFXHQmqcZVIMA"
+                        class="footer-social-icon youtube"></a>
+                    <a title="Twitter do WorkTime" target="_blank" rel="nofollow" href="https://twitter.com/WorkTime"
+                        class="footer-social-icon twitter"></a>
+                    <a title="Instagram do WorkTime" target="_blank" rel="nofollow"
+                        href="https://www.instagram.com/WorkTimetech" class="footer-social-icon instagram"></a>
+                    <a title="Facebook do WorkTime" target="_blank" rel="nofollow"
+                        href="https://www.facebook.com/WorkTimeApp" class="footer-social-icon facebook"></a>
+                </div>
+            </div>
+            <div class="footer-column">
+                <h4 class="footer-title">Baixe nosso Aplicativo</h4>
+                <div class="footer-apps-wrapper">
+
+                    <a title="Aplicativo do WorkTime no Google Play" target="_blank" rel="nofollow"
+                        href="https://play.google.com/store/apps/details?id=br.com.digitalbits.WorkTime"
+                        class="footer-google-play"></a>
+                </div>
+            </div>
         </div>
     </footer>
-
-    <script src="/frontend/js/index_jquery.js"></script>
-    <script src="/frontend/js/index_scripts.js"></script>
-    <script>
-        // Garante que o link de login funciona mesmo com JavaScript
-        document.getElementById('loginLink').addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/login.html';
-        });
-    </script>
+    <script src="script_index.js"></script>
 </body>
 
 </html>
