@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="solicitacoes-alteracao-ponto.html"><i class="fas fa-calendar"></i><span>Alterações de Ponto</span></a>
                 <a href="gerenciar_funcionarios.html"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Gerenciar Funcionários</span></a>
                 <a href="pagina_suporte_usuarios.html"><i class="fas fa-question-circle fa-lg mr-2"></i><span>Central de Suporte</span></a>
+                <a href="teste.html"><i class="fas fa-question-circle fa-lg mr-2"></i><span>teste</span></a>
+
             `;
             break;
         case 'FUNCIONARIO':

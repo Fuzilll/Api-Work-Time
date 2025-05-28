@@ -4,6 +4,7 @@ const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { validate } = require('../middlewares/validators');
 const adminSchema = require('../validators/adminSchema');
+const AdminController = require('../controllers/adminController');
 
 // Middlewares globais
 router.use(authMiddleware.autenticacao);
@@ -100,5 +101,10 @@ router.get('/solicitacoes/:id',
 router.post('/solicitacoes/:id/processar', 
   adminController.processarSolicitacao
 );
+
+
+
+
+router.get('/dashboard', AdminController.dashboardCompleto);
 
 module.exports = router;

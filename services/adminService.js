@@ -539,39 +539,39 @@ class AdminService {
     });
   }
 
-static async desativarFuncionario(idFuncionario, idEmpresa) {
-  const [updateResult] = await db.query(`
+  static async desativarFuncionario(idFuncionario, idEmpresa) {
+    const [updateResult] = await db.query(`
     UPDATE USUARIO u
     JOIN FUNCIONARIO f ON u.id = f.id_usuario
     SET u.status = 'Inativo'
     WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Ativo'
   `, [idFuncionario, idEmpresa]);
 
-  if (updateResult.affectedRows === 0) {
-    throw new AppError('Funcionário ativo não encontrado nesta empresa', 404);
+    if (updateResult.affectedRows === 0) {
+      throw new AppError('Funcionário ativo não encontrado nesta empresa', 404);
+    }
+
+    return { message: 'Funcionário desativado com sucesso' };
   }
 
-  return { message: 'Funcionário desativado com sucesso' };
-}
-
-static async reativarFuncionario(idFuncionario, idEmpresa) {
-  const [updateResult] = await db.query(`
+  static async reativarFuncionario(idFuncionario, idEmpresa) {
+    const [updateResult] = await db.query(`
     UPDATE USUARIO u
     JOIN FUNCIONARIO f ON u.id = f.id_usuario
     SET u.status = 'Ativo'
     WHERE f.id = ? AND f.id_empresa = ? AND u.status = 'Inativo'
   `, [idFuncionario, idEmpresa]);
 
-  if (updateResult.affectedRows === 0) {
-    throw new AppError('Funcionário inativo não encontrado nesta empresa', 404);
+    if (updateResult.affectedRows === 0) {
+      throw new AppError('Funcionário inativo não encontrado nesta empresa', 404);
+    }
+
+    return { message: 'Funcionário reativado com sucesso' };
   }
 
-  return { message: 'Funcionário reativado com sucesso' };
-}
 
 
 
-  
   static async excluirFuncionario(idFuncionario, idEmpresa) {
     return await db.transaction(async (connection) => {
       const [funcionario] = await connection.query(`
@@ -1128,6 +1128,123 @@ static async reativarFuncionario(idFuncionario, idEmpresa) {
       return funcionarioAtualizado[0];
     });
   }
+
+  static async ultimosRegistrosPonto(idEmpresa, limite = 5) {
+    const [registros] = await db.query(`
+      SELECT 
+        u.foto_perfil_url AS foto,
+        u.nome AS nome_completo,
+        TIME(rp.data_hora) AS horario_registro,
+        DATE(rp.data_hora) AS data,
+        rp.tipo AS tipo_registro
+      FROM 
+        REGISTRO_PONTO rp
+      JOIN 
+        FUNCIONARIO f ON rp.id_funcionario = f.id
+      JOIN 
+        USUARIO u ON f.id_usuario = u.id
+      WHERE 
+        f.id_empresa = ?
+      ORDER BY 
+        rp.data_hora DESC
+      LIMIT ?
+    `, [idEmpresa, limite]);
+    return registros;
+  }
+  static async funcionariosEmJornada(idEmpresa) {
+    const [funcionarios] = await db.query(`
+      SELECT 
+        u.foto_perfil_url AS foto,
+        u.nome AS nome_completo,
+        TIME(MAX(rp.data_hora)) AS ultima_acao,
+        TIMESTAMPDIFF(MINUTE, 
+          MAX(CASE WHEN rp.tipo IN ('Entrada', 'Retorno') THEN rp.data_hora END), 
+          NOW()) AS tempo_jornada,
+        CASE 
+          WHEN TIMESTAMPDIFF(MINUTE, MAX(rp.data_hora), NOW()) > 120 THEN 'vermelho'
+          ELSE 'verde'
+        END AS cor_status
+      FROM 
+        FUNCIONARIO f
+      JOIN 
+        USUARIO u ON f.id_usuario = u.id
+      JOIN 
+        REGISTRO_PONTO rp ON f.id = rp.id_funcionario
+      WHERE 
+        f.id_empresa = ?
+        AND DATE(rp.data_hora) = CURDATE()
+        AND rp.tipo IN ('Entrada', 'Retorno')
+        AND NOT EXISTS (
+          SELECT 1 FROM REGISTRO_PONTO 
+          WHERE id_funcionario = f.id 
+          AND DATE(data_hora) = CURDATE() 
+          AND tipo = 'Saida'
+        )
+      GROUP BY 
+        f.id, u.foto_perfil_url, u.nome
+    `, [idEmpresa]);
+    return funcionarios;
+  }
+
+  static async funcionariosEmIntervalo(idEmpresa) {
+    const [funcionarios] = await db.query(`
+    SELECT 
+      u.foto_perfil_url AS foto,
+      u.nome AS nome_completo,
+      TIME(MAX(rp.data_hora)) AS horario_intervalo,
+      TIMESTAMPDIFF(MINUTE, MAX(rp.data_hora), NOW()) AS duracao_intervalo,
+      'verde' AS cor_status
+    FROM 
+      FUNCIONARIO f
+    JOIN 
+      USUARIO u ON f.id_usuario = u.id
+    JOIN 
+      REGISTRO_PONTO rp ON f.id = rp.id_funcionario
+    WHERE 
+      f.id_empresa = ?
+      AND DATE(rp.data_hora) = CURDATE()
+      AND rp.tipo = 'Intervalo'
+      AND NOT EXISTS (
+        SELECT 1 FROM REGISTRO_PONTO 
+        WHERE id_funcionario = f.id 
+        AND DATE(data_hora) = CURDATE() 
+        AND tipo = 'Retorno'
+      )
+    GROUP BY 
+      f.id, u.foto_perfil_url, u.nome
+  `, [idEmpresa]);
+    return funcionarios;
+  }
+  static async notificacoesPendentes(idEmpresa) {
+    const [notificacoes] = await db.query(`
+      SELECT 
+        CASE 
+          WHEN n.tipo = 'FALTA_REGISTRO_SAIDA' THEN CONCAT('Funcionário ', u.nome, ' não registrou ponto de saída')
+          WHEN n.tipo = 'INTERVALO_LONGO' THEN CONCAT('Funcionário ', u.nome, ' está há mais de ', 
+            TIMESTAMPDIFF(MINUTE, n.data_hora, NOW()), ' minutos em intervalo')
+          ELSE n.mensagem
+        END AS mensagem,
+        n.data_hora,
+        n.prioridade
+      FROM 
+        NOTIFICACAO n
+      JOIN 
+        FUNCIONARIO f ON n.id_funcionario = f.id
+      JOIN 
+        USUARIO u ON f.id_usuario = u.id
+      WHERE 
+        n.resolvida = FALSE
+        AND f.id_empresa = ?
+      ORDER BY 
+        CASE n.prioridade
+          WHEN 'Alta' THEN 1
+          WHEN 'Média' THEN 2
+          WHEN 'Baixa' THEN 3
+        END,
+        n.data_hora DESC
+    `, [idEmpresa]);
+    return notificacoes;
+}
 }
 
 module.exports = AdminService;

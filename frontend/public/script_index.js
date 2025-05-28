@@ -1,540 +1,560 @@
-function init() {
-	var timeoutId;
-	var isTop = false;
-	var lastCheck;
-	var alreadyOpenFromLeave = false;
-	var timeoutOpenModal;
-
-	function getElement(selector) {
-		return document.querySelector(selector);
+/**
+ * Módulo principal da aplicação frontend
+ * Responsável por gerenciar eventos, modais, formulários e navegação
+ */
+class LandingPage {
+	constructor() {
+	  this.timeoutId = null;
+	  this.isTop = false;
+	  this.lastCheck = null;
+	  this.alreadyOpenFromLeave = false;
+	  this.timeoutOpenModal = null;
+	  this.zendeskIntervalId = null;
+	  this.API_BASE_URL = 'http://localhost:3001'; // Base URL da sua API local
+  
+	  // Inicializa os listeners quando o DOM estiver pronto
+	  if (document.readyState !== 'loading') {
+		this.init();
+	  } else {
+		document.addEventListener('DOMContentLoaded', () => this.init());
+	  }
 	}
-
-	function closeMenu() {
-		getElement('.header').classList.remove('mobile-menu-opened');
+  
+	/**
+	 * Inicializa a aplicação
+	 */
+	init() {
+	  this.pingFromEmail();
+	  this.logLandingPageUrl();
+	  
+	  // Configura listeners de eventos
+	  this.setupEventListeners();
+	  
+	  // Inicializa integrações de terceiros
+	  setTimeout(() => this.chatInit(), 1000);
+	  
+	  // Configura intervalos para verificações contínuas
+	  setInterval(() => this.scrollCheck(), 200);
+	  setInterval(() => this.checkIsChatActive(), 2000);
+	  
+	  // Verificação inicial
+	  this.scrollCheck();
+	  
+	  // Configura intervalos para animações
+	  if (this.getElement('.subscribe-steps')) {
+		setInterval(() => this.changeSteps(), 1000);
+	  }
+	  
+	  if (this.getElement('.customers-kind')) {
+		setInterval(() => this.changeCustomerKind(), 1000);
+	  }
 	}
-
-	function openMenu() {
-		getElement('.header').classList.add('mobile-menu-opened');
+  
+	/**
+	 * Configura todos os listeners de eventos
+	 */
+	setupEventListeners() {
+	  // Navegação
+	  document.getElementById('link-pricing')?.addEventListener('click', () => this.goTo('pricing'));
+	  document.getElementById('link-features')?.addEventListener('click', () => this.goTo('features'));
+	  
+	  // Modal
+	  document.getElementById('modal-close')?.addEventListener('click', () => this.closeModal());
+	  document.querySelector('.modal-overlay')?.addEventListener('click', (e) => this.handleClick(e));
+	  
+	  // Menu mobile
+	  document.querySelector('.mobile-menu')?.addEventListener('click', () => this.openMenu());
+	  document.querySelector('.mobile-menu-overlay')?.addEventListener('click', () => this.closeMenu());
+	  
+	  // Formulários
+	  document.getElementById('form-join')?.addEventListener('submit', (e) => this.handleSubmit(e));
+	  document.getElementById('form-demo')?.addEventListener('submit', (e) => this.handleDemoSubmit(e));
+	  document.getElementById('form-landing')?.addEventListener('submit', (e) => this.handleSubscribeSubmit(e));
+	  document.getElementById('form-contact')?.addEventListener('submit', (e) => this.handleContactSubmit(e));
+	  
+	  // Links para modais
+	  document.querySelector('strong.link-to-join')?.addEventListener('click', () => this.changeToJoin());
+	  document.querySelector('strong.link-to-demo')?.addEventListener('click', () => this.changeToCall());
+	  document.querySelector('.modal-choose-row.link-to-join')?.addEventListener('click', () => this.changeToJoin());
+	  document.querySelector('.modal-choose-row.link-to-demo')?.addEventListener('click', () => this.changeToCall());
+	  
+	  // Máscara de telefone
+	  document.querySelectorAll('.input-text.phone').forEach(node => {
+		node.addEventListener('input', (e) => this.handlePhoneMask(e));
+	  });
+	  
+	  // Eventos globais
+	  document.addEventListener('keyup', (e) => this.handleKeyPress(e));
+	  document.querySelector('body')?.addEventListener('mouseleave', () => this.openModalFromLeave());
+	  
+	  // Abre modal após timeout
+	  if (this.getElement('.modal-overlay')) {
+		this.timeoutOpenModal = setTimeout(() => this.openModal(), 20000);
+	  }
 	}
-
-	function gtag_report_conversion_join(url) {
-		// var callback = function () {
-		if (typeof (url) != 'undefined') {
-			window.location = url;
-		}
-		// };
-		// gtag('event', 'conversion', {
-		// 	'send_to': 'AW-11318521581/0zhFCJr9u-4YEO3di5Uq',
-		// 	'event_callback': callback
-		// });
-		return false;
+  
+	// ========== FUNÇÕES AUXILIARES ==========
+	
+	/**
+	 * Retorna um elemento do DOM
+	 * @param {string} selector - Seletor CSS
+	 * @returns {HTMLElement|null} Elemento encontrado ou null
+	 */
+	getElement(selector) {
+	  return document.querySelector(selector);
 	}
-
-	function gtag_report_conversion_demo(url) {
-		// var callback = function () {
-		if (typeof (url) != 'undefined') {
-			window.location = url;
-		}
-		// };
-		// gtag('event', 'conversion', {
-		// 	'send_to': 'AW-11318521581/y2XXCJf9u-4YEO3di5Uq',
-		// 	'event_callback': callback
-		// });
-		return false;
+  
+	/**
+	 * Verifica se um elemento está oculto
+	 * @param {HTMLElement} element - Elemento a ser verificado
+	 * @returns {boolean} True se o elemento estiver oculto
+	 */
+	isHiddenElement(element) {
+	  return element.style.opacity === '0';
 	}
-
-	function changeSteps() {
-		var active = getElement('.subscribe-steps.active');
-
-		if (active.classList.contains('one')) {
-			getElement('.subscribe-steps.two').classList.add('active');
-		}
-
-		if (active.classList.contains('two')) {
-			getElement('.subscribe-steps.three').classList.add('active');
-		}
-
-		if (active.classList.contains('three')) {
-			getElement('.subscribe-steps.four').classList.add('active');
-		}
-
-		if (active.classList.contains('four')) {
-			getElement('.subscribe-steps.one').classList.add('active');
-		}
-
-		active.classList.remove('active');
+  
+	// ========== MANIPULAÇÃO DO MENU MOBILE ==========
+	
+	closeMenu() {
+	  this.getElement('.header')?.classList.remove('mobile-menu-opened');
 	}
-
-	function changeCustomerKind() {
-		var active = getElement('.customer-kind.active');
-
-		if (active.classList.contains('one')) {
-			getElement('.customer-kind.two').classList.add('active');
-		}
-
-		if (active.classList.contains('two')) {
-			getElement('.customer-kind.three').classList.add('active');
-		}
-
-		if (active.classList.contains('three')) {
-			getElement('.customer-kind.four').classList.add('active');
-		}
-
-		if (active.classList.contains('four')) {
-			getElement('.customer-kind.five').classList.add('active');
-		}
-
-		if (active.classList.contains('five')) {
-			getElement('.customer-kind.one').classList.add('active');
-		}
-
-		active.classList.remove('active');
+  
+	openMenu() {
+	  this.getElement('.header')?.classList.add('mobile-menu-opened');
 	}
-
-	function handleClick(e) {
-		if (e.target.className && e.target.className.includes('modal-overlay show')) {
-			closeModal();
-		}
-	}
-
-	function handleSubmit(e) {
-		var formElement = getElement('#form-join');
-		var parentElement = getElement('.modal-overlay');
-
-		e.preventDefault();
-		continueSubmit(formElement, parentElement, 'NAV');
-	}
-
-	function handleSubscribeSubmit(e) {
-		var formElement = getElement('#form-landing');
-		var parentElement = getElement('.subscribe-form');
-
-		e.preventDefault();
-		continueSubmit(formElement, parentElement, 'BODY');
-	}
-	document.getElementById('link-pricing').addEventListener('click', function () {
-		goTo('pricing');
-	});
-
-	document.getElementById('link-features').addEventListener('click', function () {
-		goTo('features');
-	});
-
-	function goTo(section) {
-		// lógica de navegação aqui
-		console.log('Indo para:', section);
-	}
-
-	function getJoinedFrom(from) {
-		var url = window.location.href;
-		var joinedFrom = 'LANDING';
-
-		url = url.split('?');
-		url = url[1];
-
-		if (url) {
-			if (url.indexOf('utm_medium=cpc') !== -1) {
-				joinedFrom = 'GOOGLE-ADS';
-			} else if (url.indexOf('utm_campaign=mobile-app-login-ios') !== -1) {
-				joinedFrom = 'APP-IOS';
-			} else if (url.indexOf('utm_campaign=mobile-app-login-android') !== -1) {
-				joinedFrom = 'APP-ANDROID';
-			}
-		}
-
-		return joinedFrom + '-' + from;
-	}
-
-	function getTrackingId() {
-		var url = window.location.href;
-
-		url = url.split('?t=');
-		url = url[1];
-
-		if (!url && window.localStorage.campaignId && window.localStorage.emailId) {
-			url = `${window.localStorage.campaignId}_${window.localStorage.emailId}`;
-		}
-
-		if (!url) {
-			return '';
-		}
-
-		return url;
-	}
-
-	function chatInit() {
-		if (window.zChat) {
-			window.zChat.init({
-				suppress_console_error: true,
-				account_key: window.atob('U2llcHY2MmVFZDkxR0UxcWpxOFZ1Q2VJT0NLNnFtY1U='),
-			});
-
-			window.zChat.on('connection_update', function (status) {
-				console.log('connection_update', status);
-				if (status === 'connected') {
-					window.zChat.addTag('Landing Page');
-				}
-			});
-		}
-	}
-
-	function isHiddenElement(element) {
-		return (element.style.opacity === '0');
-	}
-
-	function checkIsChatActive() {
-		var chatElement = document.querySelector('iframe#launcher');
-		var whatsappElement = document.querySelector('.whatsapp-fixed');
-
-		if (whatsappElement && chatElement && !isHiddenElement(chatElement)) {
-			whatsappElement.classList.add('is-chat-active');
-		} else if (whatsappElement) {
-			whatsappElement.classList.remove('is-chat-active');
-		} else {
-			window.clearInterval(this.zendeskIntervalId);
-		}
-	}
-
-	function scollCheck() {
-		if (window.pageYOffset === lastCheck) {
-			return;
-		}
-
-		lastCheck = window.pageYOffset;
-
-		if (!window.pageYOffset && isTop) {
-			return;
-		}
-
-		if (window.pageYOffset > 3500) {
-			openModalFromLeave();
-		}
-
-		if (window.pageYOffset && !isTop) {
-			getElement('.header-nav').classList.add('fixed');
-			return;
-		}
-
-		if (!window.pageYOffset && !isTop) {
-			isTop = true;
-			getElement('.header-nav').classList.remove('fixed');
-			return;
-		}
-
-		if (window.pageYOffset && isTop) {
-			isTop = false;
-			getElement('.header-nav').classList.add('fixed');
-			return;
-		}
-	}
-
-	function continueSubmit(formElement, parentElement, from) {
-		var formData = '';
-		var hash = `${btoa(formElement.elements.email.value)}@@@${btoa(formElement.elements.password.value)}`;
-
-		formData += 'name=' + formElement.elements.name.value;
-		formData += '&email=' + formElement.elements.email.value;
-		formData += '&password=' + formElement.elements.password.value;
-		formData += '&phone=' + formElement.elements.phone.value;
-		formData += '&joined_from=' + getJoinedFrom(from);
-		formData += '&href=' + window.location.href;
-
-		if (getTrackingId()) {
-			formData += '&tracking_id=' + getTrackingId();
-		}
-
-		sendEmail(formData, parentElement, hash);
-	}
-
-	function sendEmail(formData, parentElement, hash) {
-		var submitRequest = new XMLHttpRequest();
-
-		parentElement.classList.add('loading');
-		submitRequest.open('POST', 'https://app.pontosimples.com/api/register', true);
-		submitRequest.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-		submitRequest.onload = function () {
-			if (this.responseText === '{"status":"success"}') {
-				alert('Registrado com successo!');
-				setTimeout(() => redirectLogin(hash), 1);
-				return;
-			}
-
-			if (this.responseText === '{"status":"error","code":"EXIST_EMAIL"}') {
-				alert('Você já se cadastrou com esse email! Faça seu login ou recupere sua senha!');
-				parentElement.classList.remove('loading');
-				return;
-			}
-
-			alert('Houve um erro, por favor tente novamente.');
-			parentElement.classList.remove('loading');
-		};
-
-		submitRequest.send(formData);
-	}
-
-	function redirectLogin(hash) {
-		gtag_report_conversion_join(`https://app.pontosimples.com/login#signup=${hash}`);
-	}
-
-	function handleDemoSubmit(e) {
-		e.preventDefault();
-		continueDemoSubmit();
-	}
-
-	function continueDemoSubmit() {
-		var formData = '';
-		var formElement = getElement('#form-demo');
-
-		formData += 'product=PONTOSIMPLES';
-		formData += '&type=PRESENTATION';
-		formData += '&name=' + formElement.elements.name.value;
-		formData += '&email=' + formElement.elements.email.value;
-		formData += '&phone=' + formElement.elements.phone.value;
-
-		sendDemoEmail(formData);
-	}
-
-	function sendDemoEmail(formData) {
-		var submitRequest = new XMLHttpRequest();
-
-		submitRequest.open('POST', 'https://admin.digitalbits.com.br/api/lead-contact', true);
-		submitRequest.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-		submitRequest.onload = function () {
-			if (this.responseText === '{"status":"success"}') {
-				gtag_report_conversion_demo();
-				alert('Recebemos com sucesso! Em breve entraremos em contato!');
-				closeModal();
-			} else {
-				alert('Houve um erro, por favor tente novamente.');
-			}
-		};
-
-		submitRequest.send(formData);
-	}
-
-	function handleContactSubmit(e) {
-		e.preventDefault();
-		continueContactSubmit();
-	}
-
-	function continueContactSubmit() {
-		var formData = '';
-		var formElement = getElement('#form-contact');
-
-		formData += 'product=PONTOSIMPLES';
-		formData += '&type=CONTACT';
-		formData += '&name=' + formElement.elements.name.value;
-		formData += '&email=' + formElement.elements.email.value;
-		formData += '&subject=' + formElement.elements.subject.value;
-		formData += '&text=' + formElement.elements.message.value;
-
-		sendContactEmail(formData);
-	}
-
-	function sendContactEmail(formData) {
-		var submitRequest = new XMLHttpRequest();
-
-		submitRequest.open('POST', 'https://admin.digitalbits.com.br/api/lead-contact', true);
-		submitRequest.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-		submitRequest.onload = function () {
-			if (this.responseText === '{"status":"success"}') {
-				alert('Enviado com successo!');
-				resetForm();
-			} else {
-				alert('Houve um erro, por favor tente novamente.');
-			}
-		};
-
-		submitRequest.send(formData);
-	}
-
-	function pingFromEmail() {
-		var submitRequest = new XMLHttpRequest();
-		var url = window.location.href;
-
-		url = url.split('?t=');
-		url = url[1];
-
-		if (!url) {
-			console.log('nada a fazer');
-			return;
-		}
-
-		url = url.split('_');
-
-		if (!url[0] || !url[1]) {
-			console.log('2 - nada a fazer', url);
-			return;
-		}
-
-		window.localStorage.setItem('campaignId', url[0]);
-		window.localStorage.setItem('emailId', url[1]);
-
-		submitRequest.open('GET', `https://admin.digitalbits.com.br/api/campaign-feedback/click?campaign_id=${url[0]}&email_id=${url[1]}`, true);
-		submitRequest.onload = function () {
-			if (this.responseText === '{"status":"success"}') {
-				console.log('ping com successo!');
-			}
-		};
-		submitRequest.send();
-	}
-
-	function logLandingPageUrl() {
-		const request = new XMLHttpRequest();
-		let formData = 'data=' + btoa(window.location.href);
-
-		if (document.referrer) {
-			formData += '&referrer=' + document.referrer;
-		}
-
-		request.open('POST', 'https://app.w.com/api/landing-page', true);
-		request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-		request.send(formData);
-	}
-
-	document.addEventListener("DOMContentLoaded", function () {
-		const closeBtn = document.getElementById("modal-close");
-
-		if (closeBtn) {
-			closeBtn.addEventListener("click", closeModal);
-		}
-
-		function closeModal() {
-			// Lógica para fechar o modal
-			const modal = document.querySelector(".modal");
-			if (modal) {
-				modal.style.display = "none"; // ou qualquer lógica que você use
-			}
-		}
-	});
-
-
-
-	function resetForm() {
-		var formElement = getElement('#form-contact');
-
-		formElement.elements.name.value = '';
-		formElement.elements.email.value = '';
-		formElement.elements.message.value = '';
-	}
-
-	function handlePhoneMask(e) {
-		var x;
-
-		if (e.target.value.length >= 15) {
-			x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
-		} else {
-			x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,4})(\d{0,4})/);
-		}
-
-		e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
-	}
-
-	function goTo(id) {
-		var offset = 50;
-
-		if (id === 'features') {
-			offset = 80;
-		}
-
-		closeMenu();
-		window.scrollTo(0, getElement('section.' + id).offsetTop - offset);
-	}
-
-	function changeToCall() {
-		getElement('.modal-choose').classList.add('dnone');
-		getElement('#form-demo').classList.remove('dnone');
-	}
-
-	function changeToJoin() {
-		getElement('.modal-choose').classList.add('dnone');
-		getElement('#form-join').classList.remove('dnone');
-	}
-
-	function handleKeyPress(e) {
-		if (e.keyCode === 27) {
-			closeModal();
-		}
-	}
-
-	function openModalFromLeave() {
-		if (alreadyOpenFromLeave) {
-			return;
-		}
-
-		alreadyOpenFromLeave = true;
-		openModal();
-	}
-
-	function openModal() {
-		clearTimeout(timeoutId);
-		clearTimeout(timeoutOpenModal);
-		// getElement('.modal-overlay').classList.add('loading');
-		getElement('.modal-overlay').classList.add('show');
-		getElement('body').classList.add('overflow');
-		// timeoutId = setTimeout(function() {
-		// 	getElement('.modal-overlay').classList.remove('loading');
-		// }, 500);
-	}
-
-	function closeModal() {
-		getElement('.modal-overlay').classList.remove('show');
-		getElement('body').classList.remove('overflow');
-		getElement('.modal-choose').classList.remove('dnone');
-		getElement('#form-demo').classList.add('dnone');
-		getElement('#form-join').classList.add('dnone');
-	}
-
-	window.goTo = goTo;
-	window.openModal = openModal;
-	window.closeModal = closeModal;
-
-	pingFromEmail();
-	logLandingPageUrl();
-	document.addEventListener('keyup', handleKeyPress);
-	getElement('#form-join').addEventListener('submit', handleSubmit);
-	getElement('#form-demo').addEventListener('submit', handleDemoSubmit);
-	getElement('strong.link-to-join').addEventListener('click', changeToJoin);
-	getElement('strong.link-to-demo').addEventListener('click', changeToCall);
-	getElement('.modal-choose-row.link-to-join').addEventListener('click', changeToJoin);
-	getElement('.modal-choose-row.link-to-demo').addEventListener('click', changeToCall);
-	getElement('.mobile-menu').addEventListener('click', openMenu);
-	getElement('.mobile-menu-overlay').addEventListener('click', closeMenu);
-	setTimeout(chatInit, 1000);
-	setInterval(scollCheck, 200);
-	setInterval(checkIsChatActive, 2000);
-	scollCheck();
-
-	if (getElement('.modal-overlay')) {
-		getElement('.modal-overlay').addEventListener('click', handleClick);
-	}
-
-	if (getElement('#form-landing')) {
-		getElement('#form-landing').addEventListener('submit', handleSubscribeSubmit);
-	}
-
-	if (getElement('#form-contact')) {
-		getElement('#form-contact').addEventListener('submit', handleContactSubmit);
-	}
-
-	if (getElement('.input-text.phone')) {
-		document.querySelectorAll('.input-text.phone').forEach(node => {
-			node.addEventListener('input', handlePhoneMask);
+  
+	// ========== NAVEGAÇÃO ==========
+	
+	/**
+	 * Rola a página até uma seção específica
+	 * @param {string} id - ID da seção para navegar
+	 */
+	goTo(id) {
+	  const offset = id === 'features' ? 80 : 50;
+	  const section = this.getElement(`section.${id}`);
+	  
+	  if (section) {
+		this.closeMenu();
+		window.scrollTo({
+		  top: section.offsetTop - offset,
+		  behavior: 'smooth'
 		});
+	  }
 	}
-
-	if (getElement('.modal-overlay')) {
-		timeoutOpenModal = setTimeout(openModal, 20000);
-		getElement('body').addEventListener('mouseleave', openModalFromLeave);
+  
+	// ========== MANIPULAÇÃO DE MODAIS ==========
+	
+	handleClick(e) {
+	  if (e.target.className?.includes('modal-overlay show')) {
+		this.closeModal();
+	  }
 	}
-
-	if (getElement('.subscribe-steps')) {
-		setInterval(changeSteps, 1000);
+  
+	openModalFromLeave() {
+	  if (this.alreadyOpenFromLeave) return;
+	  this.alreadyOpenFromLeave = true;
+	  this.openModal();
 	}
-
-	if (getElement('.customers-kind')) {
-		setInterval(changeCustomerKind, 1000);
+  
+	openModal() {
+	  clearTimeout(this.timeoutId);
+	  clearTimeout(this.timeoutOpenModal);
+	  this.getElement('.modal-overlay')?.classList.add('show');
+	  this.getElement('body')?.classList.add('overflow');
 	}
-}
-
-init();
+  
+	closeModal() {
+	  const modalOverlay = this.getElement('.modal-overlay');
+	  if (!modalOverlay) return;
+	  
+	  modalOverlay.classList.remove('show');
+	  this.getElement('body')?.classList.remove('overflow');
+	  this.getElement('.modal-choose')?.classList.remove('dnone');
+	  this.getElement('#form-demo')?.classList.add('dnone');
+	  this.getElement('#form-join')?.classList.add('dnone');
+	}
+  
+	changeToCall() {
+	  this.getElement('.modal-choose')?.classList.add('dnone');
+	  this.getElement('#form-demo')?.classList.remove('dnone');
+	}
+  
+	changeToJoin() {
+	  this.getElement('.modal-choose')?.classList.add('dnone');
+	  this.getElement('#form-join')?.classList.remove('dnone');
+	}
+  
+	handleKeyPress(e) {
+	  if (e.key === 'Escape') {
+		this.closeModal();
+	  }
+	}
+  
+	// ========== ANIMAÇÕES ==========
+	
+	changeSteps() {
+	  const active = this.getElement('.subscribe-steps.active');
+	  if (!active) return;
+  
+	  const steps = {
+		'one': 'two',
+		'two': 'three',
+		'three': 'four',
+		'four': 'one'
+	  };
+  
+	  const currentStep = Object.keys(steps).find(step => active.classList.contains(step));
+	  if (currentStep) {
+		this.getElement(`.subscribe-steps.${steps[currentStep]}`)?.classList.add('active');
+		active.classList.remove('active');
+	  }
+	}
+  
+	changeCustomerKind() {
+	  const active = this.getElement('.customer-kind.active');
+	  if (!active) return;
+  
+	  const kinds = {
+		'one': 'two',
+		'two': 'three',
+		'three': 'four',
+		'four': 'five',
+		'five': 'one'
+	  };
+  
+	  const currentKind = Object.keys(kinds).find(kind => active.classList.contains(kind));
+	  if (currentKind) {
+		this.getElement(`.customer-kind.${kinds[currentKind]}`)?.classList.add('active');
+		active.classList.remove('active');
+	  }
+	}
+  
+	// ========== FORMULÁRIOS ==========
+	
+	handleSubmit(e) {
+	  e.preventDefault();
+	  const formElement = this.getElement('#form-join');
+	  const parentElement = this.getElement('.modal-overlay');
+	  this.continueSubmit(formElement, parentElement, 'NAV');
+	}
+  
+	handleSubscribeSubmit(e) {
+	  e.preventDefault();
+	  const formElement = this.getElement('#form-landing');
+	  const parentElement = this.getElement('.subscribe-form');
+	  this.continueSubmit(formElement, parentElement, 'BODY');
+	}
+  
+	handleDemoSubmit(e) {
+	  e.preventDefault();
+	  this.continueDemoSubmit();
+	}
+  
+	handleContactSubmit(e) {
+	  e.preventDefault();
+	  this.continueContactSubmit();
+	}
+  
+	resetForm() {
+	  const formElement = this.getElement('#form-contact');
+	  if (!formElement) return;
+	  
+	  formElement.reset();
+	}
+  
+	handlePhoneMask(e) {
+	  let x;
+	  const value = e.target.value.replace(/\D/g, '');
+  
+	  if (value.length >= 15) {
+		x = value.match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+	  } else {
+		x = value.match(/(\d{0,2})(\d{0,4})(\d{0,4})/);
+	  }
+  
+	  e.target.value = !x[2] ? x[1] : `(${x[1]}) ${x[2]}${x[3] ? `-${x[3]}` : ''}`;
+	}
+  
+	// ========== LÓGICA DE FORMULÁRIOS ==========
+	
+	continueSubmit(formElement, parentElement, from) {
+	  if (!formElement || !parentElement) return;
+  
+	  const formData = new URLSearchParams();
+	  const hash = `${btoa(formElement.elements.email.value)}@@@${btoa(formElement.elements.password.value)}`;
+  
+	  formData.append('name', formElement.elements.name.value);
+	  formData.append('email', formElement.elements.email.value);
+	  formData.append('password', formElement.elements.password.value);
+	  formData.append('phone', formElement.elements.phone.value);
+	  formData.append('joined_from', this.getJoinedFrom(from));
+	  formData.append('href', window.location.href);
+  
+	  const trackingId = this.getTrackingId();
+	  if (trackingId) {
+		formData.append('tracking_id', trackingId);
+	  }
+  
+	  this.sendRegisterRequest(formData, parentElement, hash);
+	}
+  
+	continueDemoSubmit() {
+	  const formElement = this.getElement('#form-demo');
+	  if (!formElement) return;
+  
+	  const formData = new URLSearchParams();
+	  formData.append('product', 'PONTOSIMPLES');
+	  formData.append('type', 'PRESENTATION');
+	  formData.append('name', formElement.elements.name.value);
+	  formData.append('email', formElement.elements.email.value);
+	  formData.append('phone', formElement.elements.phone.value);
+  
+	  this.sendDemoRequest(formData);
+	}
+  
+	continueContactSubmit() {
+	  const formElement = this.getElement('#form-contact');
+	  if (!formElement) return;
+  
+	  const formData = new URLSearchParams();
+	  formData.append('product', 'PONTOSIMPLES');
+	  formData.append('type', 'CONTACT');
+	  formData.append('name', formElement.elements.name.value);
+	  formData.append('email', formElement.elements.email.value);
+	  formData.append('subject', formElement.elements.subject.value);
+	  formData.append('text', formElement.elements.message.value);
+  
+	  this.sendContactRequest(formData);
+	}
+  
+	// ========== REQUISIÇÕES HTTP ==========
+	
+	sendRegisterRequest(formData, parentElement, hash) {
+	  parentElement.classList.add('loading');
+	  
+	  fetch(`${this.API_BASE_URL}/api/auth/register`, {
+		method: 'POST',
+		headers: {
+		  'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: formData
+	  })
+	  .then(response => response.json())
+	  .then(data => {
+		if (data.status === 'success') {
+		  alert('Registrado com sucesso!');
+		  this.redirectToLogin(hash);
+		} else if (data.code === 'EXIST_EMAIL') {
+		  alert('Você já se cadastrou com esse email! Faça seu login ou recupere sua senha!');
+		} else {
+		  alert('Houve um erro, por favor tente novamente.');
+		}
+	  })
+	  .catch(error => {
+		console.error('Error:', error);
+		alert('Houve um erro, por favor tente novamente.');
+	  })
+	  .finally(() => {
+		parentElement.classList.remove('loading');
+	  });
+	}
+  
+	sendDemoRequest(formData) {
+	  fetch(`${this.API_BASE_URL}/api/email/demo`, {
+		method: 'POST',
+		headers: {
+		  'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: formData
+	  })
+	  .then(response => response.json())
+	  .then(data => {
+		if (data.status === 'success') {
+		  alert('Recebemos com sucesso! Em breve entraremos em contato!');
+		  this.closeModal();
+		} else {
+		  alert('Houve um erro, por favor tente novamente.');
+		}
+	  })
+	  .catch(error => {
+		console.error('Error:', error);
+		alert('Houve um erro, por favor tente novamente.');
+	  });
+	}
+  
+	sendContactRequest(formData) {
+	  fetch(`${this.API_BASE_URL}/api/email/contact`, {
+		method: 'POST',
+		headers: {
+		  'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: formData
+	  })
+	  .then(response => response.json())
+	  .then(data => {
+		if (data.status === 'success') {
+		  alert('Enviado com sucesso!');
+		  this.resetForm();
+		} else {
+		  alert('Houve um erro, por favor tente novamente.');
+		}
+	  })
+	  .catch(error => {
+		console.error('Error:', error);
+		alert('Houve um erro, por favor tente novamente.');
+	  });
+	}
+  
+	// ========== REDIRECIONAMENTOS ==========
+	
+	redirectToLogin(hash) {
+	  window.location.href = `${this.API_BASE_URL}/login.html#signup=${hash}`;
+	}
+  
+	// ========== INTEGRAÇÕES ==========
+	
+	chatInit() {
+	  if (!window.zChat) return;
+  
+	  window.zChat.init({
+		suppress_console_error: true,
+		account_key: window.atob('U2llcHY2MmVFZDkxR0UxcWpxOFZ1Q2VJT0NLNnFtY1U='),
+	  });
+  
+	  window.zChat.on('connection_update', (status) => {
+		console.log('connection_update', status);
+		if (status === 'connected') {
+		  window.zChat.addTag('Landing Page');
+		}
+	  });
+	}
+  
+	checkIsChatActive() {
+	  const chatElement = document.querySelector('iframe#launcher');
+	  const whatsappElement = document.querySelector('.whatsapp-fixed');
+  
+	  if (!whatsappElement) {
+		window.clearInterval(this.zendeskIntervalId);
+		return;
+	  }
+  
+	  if (chatElement && !this.isHiddenElement(chatElement)) {
+		whatsappElement.classList.add('is-chat-active');
+	  } else {
+		whatsappElement.classList.remove('is-chat-active');
+	  }
+	}
+  
+	// ========== TRACKING E ANALYTICS ==========
+	
+	getJoinedFrom(from) {
+	  const urlParams = new URLSearchParams(window.location.search);
+	  let joinedFrom = 'LANDING';
+  
+	  if (urlParams.has('utm_medium') && urlParams.get('utm_medium') === 'cpc') {
+		joinedFrom = 'GOOGLE-ADS';
+	  } else if (urlParams.has('utm_campaign')) {
+		const campaign = urlParams.get('utm_campaign');
+		if (campaign === 'mobile-app-login-ios') {
+		  joinedFrom = 'APP-IOS';
+		} else if (campaign === 'mobile-app-login-android') {
+		  joinedFrom = 'APP-ANDROID';
+		}
+	  }
+  
+	  return `${joinedFrom}-${from}`;
+	}
+  
+	getTrackingId() {
+	  const urlParams = new URLSearchParams(window.location.search);
+	  let trackingId = urlParams.get('t');
+  
+	  if (!trackingId && window.localStorage.campaignId && window.localStorage.emailId) {
+		trackingId = `${window.localStorage.campaignId}_${window.localStorage.emailId}`;
+	  }
+  
+	  return trackingId || '';
+	}
+  
+	pingFromEmail() {
+	  const urlParams = new URLSearchParams(window.location.search);
+	  const trackingParam = urlParams.get('t');
+  
+	  if (!trackingParam) {
+		console.log('Nada a fazer - sem parâmetro de tracking');
+		return;
+	  }
+  
+	  const [campaignId, emailId] = trackingParam.split('_');
+	  if (!campaignId || !emailId) {
+		console.log('Nada a fazer - parâmetro de tracking inválido');
+		return;
+	  }
+  
+	  window.localStorage.setItem('campaignId', campaignId);
+	  window.localStorage.setItem('emailId', emailId);
+  
+	  fetch(`${this.API_BASE_URL}/api/campaign-feedback/click?campaign_id=${campaignId}&email_id=${emailId}`)
+		.then(response => response.json())
+		.then(data => {
+		  if (data.status === 'success') {
+			console.log('Ping com sucesso!');
+		  }
+		})
+		.catch(error => console.error('Erro no ping:', error));
+	}
+  
+	logLandingPageUrl() {
+	  const formData = new URLSearchParams();
+	  formData.append('data', btoa(window.location.href));
+  
+	  if (document.referrer) {
+		formData.append('referrer', document.referrer);
+	  }
+  
+	  fetch(`${this.API_BASE_URL}/api/landing-page`, {
+		method: 'POST',
+		headers: {
+		  'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: formData
+	  }).catch(error => console.error('Erro ao logar URL:', error));
+	}
+  
+	// ========== SCROLL HANDLING ==========
+	
+	scrollCheck() {
+	  const currentOffset = window.pageYOffset;
+	  
+	  if (currentOffset === this.lastCheck) return;
+	  this.lastCheck = currentOffset;
+  
+	  if (!currentOffset && this.isTop) return;
+  
+	  if (currentOffset > 3500) {
+		this.openModalFromLeave();
+	  }
+  
+	  const headerNav = this.getElement('.header-nav');
+	  if (!headerNav) return;
+  
+	  if (currentOffset && !this.isTop) {
+		headerNav.classList.add('fixed');
+		return;
+	  }
+  
+	  if (!currentOffset && !this.isTop) {
+		this.isTop = true;
+		headerNav.classList.remove('fixed');
+		return;
+	  }
+  
+	  if (currentOffset && this.isTop) {
+		this.isTop = false;
+		headerNav.classList.add('fixed');
+	  }
+	}
+  }
+  
+  // Inicializa a aplicação quando o script for carregado
+  new LandingPage();

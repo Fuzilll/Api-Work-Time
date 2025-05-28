@@ -600,6 +600,111 @@ static async atualizarFuncionario(req, res, next) {
       next(err);
   }
 }
+    static async ultimosRegistros(req, res, next) {
+        try {
+            const idEmpresa = req.usuario.id_empresa;
+            const registros = await DashboardService.ultimosRegistrosPonto(idEmpresa);
+
+            res.json({
+                success: true,
+                data: registros
+            });
+        } catch (err) {
+            console.error('Erro no DashboardController.ultimosRegistros:', {
+                error: err.stack,
+                user: req.usuario?.id,
+                timestamp: new Date().toISOString()
+            });
+            next(err);
+        }
+    }
+
+    static async statusEquipe(req, res, next) {
+        try {
+            const idEmpresa = req.usuario.id_empresa;
+            const status = await DashboardService.statusEquipe(idEmpresa);
+
+            res.json({
+                success: true,
+                data: status
+            });
+        } catch (err) {
+            console.error('Erro no DashboardController.statusEquipe:', {
+                error: err.stack,
+                user: req.usuario?.id,
+                timestamp: new Date().toISOString()
+            });
+            next(err);
+        }
+    }
+
+    static async notificacoes(req, res, next) {
+        try {
+            const idEmpresa = req.usuario.id_empresa;
+            const notificacoes = await DashboardService.notificacoesPendentes(idEmpresa);
+
+            res.json({
+                success: true,
+                data: notificacoes
+            });
+        } catch (err) {
+            console.error('Erro no DashboardController.notificacoes:', {
+                error: err.stack,
+                user: req.usuario?.id,
+                timestamp: new Date().toISOString()
+            });
+            next(err);
+        }
+    }
+
+    static async dashboardCompleto(req, res, next) {
+        try {
+            const idEmpresa = req.usuario.id_empresa;
+            const dashboardData = await DashboardService.dashboard(idEmpresa);
+
+            res.json({
+                success: true,
+                data: dashboardData
+            });
+        } catch (err) {
+            console.error('Erro no DashboardController.dashboardCompleto:', {
+                error: err.stack,
+                user: req.usuario?.id,
+                timestamp: new Date().toISOString()
+            });
+            next(err);
+        }
+    }
+
+
+    static async dashboardCompleto(req, res, next) {
+      try {
+          const idEmpresa = req.usuario.id_empresa;
+          
+          const [ultimosRegistros, statusEquipe, notificacoes] = await Promise.all([
+              AdminService.ultimosRegistrosPonto(idEmpresa),
+              AdminService.statusEquipe(idEmpresa),
+              AdminService.notificacoesPendentes(idEmpresa)
+          ]);
+
+          res.json({
+              success: true,
+              data: {
+                  ultimosRegistros,
+                  statusEquipe,
+                  notificacoes
+              }
+          });
+      } catch (err) {
+          console.error('Erro no DashboardController.dashboardCompleto:', {
+              error: err.stack,
+              user: req.usuario?.id,
+              timestamp: new Date().toISOString()
+          });
+          next(err);
+      }
+  }
+    
 }
 
 // Exporta a classe para uso nas rotas (ex: admin.routes.js)
