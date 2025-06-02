@@ -1151,70 +1151,64 @@ class AdminService {
     `, [idEmpresa, limite]);
     return registros;
   }
-  static async funcionariosEmJornada(idEmpresa) {
-    const [funcionarios] = await db.query(`
+  static async funcionariosStatusJornada(idEmpresa) {
+    const [result] = await db.query(`
       SELECT 
-        u.foto_perfil_url AS foto,
+        f.id AS id_funcionario,
         u.nome AS nome_completo,
+        u.foto_perfil_url AS foto,
+        f.carga_horaria_diaria,
         TIME(MAX(rp.data_hora)) AS ultima_acao,
-        TIMESTAMPDIFF(MINUTE, 
-          MAX(CASE WHEN rp.tipo IN ('Entrada', 'Retorno') THEN rp.data_hora END), 
-          NOW()) AS tempo_jornada,
+        MAX(rp.tipo) AS ultima_acao_tipo,
         CASE 
-          WHEN TIMESTAMPDIFF(MINUTE, MAX(rp.data_hora), NOW()) > 120 THEN 'vermelho'
-          ELSE 'verde'
-        END AS cor_status
+          WHEN MAX(rp.tipo) IN ('Entrada', 'Retorno', 'Intervalo') THEN 'Em Jornada'
+          ELSE 'Fora da Jornada'
+        END AS status_jornada,
+        SEC_TO_TIME(SUM(CASE 
+          WHEN rp.tipo = 'Entrada' THEN 
+            TIMESTAMPDIFF(SECOND, rp.data_hora, (
+              SELECT MIN(data_hora) FROM REGISTRO_PONTO 
+              WHERE id_funcionario = f.id 
+              AND tipo IN ('Saida', 'Intervalo') 
+              AND DATE(data_hora) = CURDATE()
+              AND data_hora > rp.data_hora
+              LIMIT 1
+            ))
+          ELSE 0
+        END)) AS horas_trabalhadas,
+        SEC_TO_TIME(
+          TIME_TO_SEC(f.carga_horaria_diaria) - 
+          SUM(CASE 
+            WHEN rp.tipo = 'Entrada' THEN 
+              TIMESTAMPDIFF(SECOND, rp.data_hora, (
+                SELECT MIN(data_hora) FROM REGISTRO_PONTO 
+                WHERE id_funcionario = f.id 
+                AND tipo IN ('Saida', 'Intervalo') 
+                AND DATE(data_hora) = CURDATE()
+                AND data_hora > rp.data_hora
+                LIMIT 1
+              ))
+            ELSE 0
+          END)
+        ) AS horas_restantes
       FROM 
         FUNCIONARIO f
       JOIN 
         USUARIO u ON f.id_usuario = u.id
-      JOIN 
-        REGISTRO_PONTO rp ON f.id = rp.id_funcionario
+      LEFT JOIN 
+        REGISTRO_PONTO rp ON f.id = rp.id_funcionario AND DATE(rp.data_hora) = CURDATE()
       WHERE 
         f.id_empresa = ?
-        AND DATE(rp.data_hora) = CURDATE()
-        AND rp.tipo IN ('Entrada', 'Retorno')
-        AND NOT EXISTS (
-          SELECT 1 FROM REGISTRO_PONTO 
-          WHERE id_funcionario = f.id 
-          AND DATE(data_hora) = CURDATE() 
-          AND tipo = 'Saida'
-        )
       GROUP BY 
-        f.id, u.foto_perfil_url, u.nome
+        f.id
+      ORDER BY 
+        u.nome
+      LIMIT 10;
     `, [idEmpresa]);
-    return funcionarios;
-  }
 
-  static async funcionariosEmIntervalo(idEmpresa) {
-    const [funcionarios] = await db.query(`
-    SELECT 
-      u.foto_perfil_url AS foto,
-      u.nome AS nome_completo,
-      TIME(MAX(rp.data_hora)) AS horario_intervalo,
-      TIMESTAMPDIFF(MINUTE, MAX(rp.data_hora), NOW()) AS duracao_intervalo,
-      'verde' AS cor_status
-    FROM 
-      FUNCIONARIO f
-    JOIN 
-      USUARIO u ON f.id_usuario = u.id
-    JOIN 
-      REGISTRO_PONTO rp ON f.id = rp.id_funcionario
-    WHERE 
-      f.id_empresa = ?
-      AND DATE(rp.data_hora) = CURDATE()
-      AND rp.tipo = 'Intervalo'
-      AND NOT EXISTS (
-        SELECT 1 FROM REGISTRO_PONTO 
-        WHERE id_funcionario = f.id 
-        AND DATE(data_hora) = CURDATE() 
-        AND tipo = 'Retorno'
-      )
-    GROUP BY 
-      f.id, u.foto_perfil_url, u.nome
-  `, [idEmpresa]);
-    return funcionarios;
+    return result;
   }
+  
   static async notificacoesPendentes(idEmpresa) {
     const [notificacoes] = await db.query(`
       SELECT 

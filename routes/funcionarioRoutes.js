@@ -9,7 +9,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Middleware de autenticação para todas as rotas
 router.use(authMiddleware.autenticacao);
-router.use(authMiddleware.verificarNivel(['FUNCIONARIO']));
+router.use(authMiddleware.verificarNivel(['FUNCIONARIO', 'ADMIN', 'IT_SUPPORT']));
 
 // Rotas do dashboard
 router.get('/dashboard', FuncionarioController.carregarDashboard);
@@ -46,6 +46,14 @@ router.get('/historico-pontos', FuncionarioController.listarHistoricoPontos);
 router.get(
   '/solicitacoes-alteracao',
   FuncionarioController.listarSolicitacoesAlteracao
+);
+
+
+
+
+router.post('/upload-foto-perfil', 
+    upload.single('foto'), 
+    FuncionarioController.uploadFotoPerfil
 );
 
 

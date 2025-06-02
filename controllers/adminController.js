@@ -677,33 +677,34 @@ static async atualizarFuncionario(req, res, next) {
     }
 
 
-    static async dashboardCompleto(req, res, next) {
+    static async dashboardCompletoAdmin(req, res, next) {
       try {
-          const idEmpresa = req.usuario.id_empresa;
-          
-          const [ultimosRegistros, statusEquipe, notificacoes] = await Promise.all([
-              AdminService.ultimosRegistrosPonto(idEmpresa),
-              AdminService.statusEquipe(idEmpresa),
-              AdminService.notificacoesPendentes(idEmpresa)
-          ]);
-
-          res.json({
-              success: true,
-              data: {
-                  ultimosRegistros,
-                  statusEquipe,
-                  notificacoes
-              }
-          });
+        const idEmpresa = req.usuario?.id_empresa || 1; // valor fixo por enquanto, se necessário
+        const [ultimosRegistros, statusEquipeCompleto, notificacoes] = await Promise.all([
+          AdminService.ultimosRegistrosPonto(idEmpresa),
+          AdminService.statusEquipeCompleto(idEmpresa),
+          AdminService.notificacoesPendentes(idEmpresa)
+        ]);
+    
+        res.json({
+          success: true,
+          data: {
+            ultimosRegistros,
+            statusEquipe: statusEquipeCompleto, // Renomeado para compatibilidade com frontend
+            notificacoes
+          }
+        });
       } catch (err) {
-          console.error('Erro no DashboardController.dashboardCompleto:', {
-              error: err.stack,
-              user: req.usuario?.id,
-              timestamp: new Date().toISOString()
-          });
-          next(err);
+        console.error('Erro no DashboardController.dashboardCompletoAdmin:', {
+          error: err.stack,
+          user: req.usuario?.id,
+          timestamp: new Date().toISOString()
+        });
+        next(err);
       }
-  }
+    }
+    
+    
     
 }
 

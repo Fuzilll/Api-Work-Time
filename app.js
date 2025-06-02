@@ -98,7 +98,7 @@ class App {
 
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 10000 
+      max: 10000
     });
     this.app.use(limiter);
 
@@ -151,14 +151,14 @@ class App {
       res.sendFile(path.join(__dirname, 'frontend/public/views/login.html'));
     });
     this.app.post('/api/auth/logout', require('./controllers/authController').logout);
-    
+
     this.app.use('/api/email', require('./routes/emailRoutes'));
 
     // 3. Rotas de API públicas
     this.app.use('/api/auth', require('./routes/authRoutes'));
     this.app.use('/api/usuarios', require('./routes/usuarioRoutes'));
     this.app.use('/api/estados', require('./routes/estadosRoutes'));
-
+       
     // Health check
     this.app.get('/api/health', (req, res) => {
       res.json({ status: 'healthy', timestamp: new Date() });
@@ -171,7 +171,8 @@ class App {
 
     this.app.get('/dashboard-admin', authMiddleware.autenticacao, (req, res) => {
       res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard_admin.html'));
-    });
+    });    
+
 
     this.app.get('/suporte-ti', authMiddleware.autenticacao, (req, res) => {
       res.sendFile(path.join(__dirname, 'frontend/public/views/it_suport.html'));
@@ -183,6 +184,7 @@ class App {
     this.app.use('/api/registros', authMiddleware.autenticacao, require('./routes/registroRoutes'));
     this.app.use('/api/admin', authMiddleware.autenticacao, require('./routes/adminRoutes'));
     this.app.use('/api/dashboard', authMiddleware.autenticacao, require('./routes/dashboardRoutes'));
+    this.app.use('/api/espelho-ponto',authMiddleware.autenticacao, require('./routes/espelhoPontoRoutes'));
 
     //testando
     this.app.use('/api/chamados', authMiddleware.autenticacao, require('./routes/chamadoRoutes'));

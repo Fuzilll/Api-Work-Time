@@ -570,6 +570,37 @@ class FuncionarioService {
     }
   }
 
+
+
+  static async atualizarFotoPerfil(idUsuario, fileBuffer) {
+    return await db.transaction(async (connection) => {
+        try {
+            // 1. Fazer upload para o Cloudinary
+            const uploadResult = await CloudinaryService.uploadImage(fileBuffer, {
+                folder: 'perfis',
+                public_id: `perfil_${idUsuario}`,
+                overwrite: true,
+                transformation: [
+                    { width: 500, height: 500, crop: 'fill' },
+                    { quality: 'auto:good' }
+                ]
+            });
+
+            // 2. Atualizar no banco de dados
+            await connection.query(
+                `UPDATE USUARIO SET foto_perfil_url = ? WHERE id = ?`,
+                [uploadResult.secure_url, idUsuario]
+            );
+
+            // 3. Retornar a URL
+            return { foto_perfil_url: uploadResult.secure_url };
+            
+        } catch (error) {
+            console.error('Erro ao atualizar foto de perfil:', error);
+            throw new AppError('Erro ao atualizar foto de perfil', 500);
+        }
+    });
+}
 }
 
 module.exports = FuncionarioService;

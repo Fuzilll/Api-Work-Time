@@ -2,6 +2,7 @@ const FuncionarioService = require('../services/funcionarioService');
 const { AppError } = require('../errors');
 const { validate } = require('../middlewares/validators');
 const funcionarioSchema = require('../validators/funcionarioSchema');
+const CloudinaryService = require('../services/CloudinaryService');
 const db = require('../config/db');
 
 class FuncionarioController {
@@ -241,6 +242,60 @@ class FuncionarioController {
   
     } catch (err) {
         next(err);
+    }
+}
+
+
+
+static async uploadFotoPerfil(req, res, next) {
+    try {
+        if (!req.file) {
+            throw new AppError('Nenhuma imagem foi enviada', 400);
+        }
+
+        // Verificar se o arquivo é uma imagem
+        if (!req.file.mimetype.startsWith('image/')) {
+            throw new AppError('O arquivo enviado não é uma imagem válida', 400);
+        }
+
+        // Tamanho máximo: 5MB
+        if (req.file.size > 5 * 1024 * 1024) {
+            throw new AppError('A imagem deve ter no máximo 5MB', 400);
+        }
+
+        // Fazer upload para o Cloudinary
+        const uploadResult = await CloudinaryService.uploadImage(req.file.buffer, {
+            folder: 'perfis',
+            public_id: `perfil_${req.usuario.id}`,
+            overwrite: true,
+            transformation: [
+                { width: 500, height: 500, crop: 'fill' },
+                { quality: 'auto:good' }
+            ]
+        });
+
+        // Atualizar URL no banco de dados
+        await db.query(
+            `UPDATE USUARIO SET foto_perfil_url = ? WHERE id = ?`,
+            [uploadResult.secure_url, req.usuario.id]
+        );
+
+        // Registrar log
+        await db.query(
+            `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) 
+             VALUES (?, ?, ?)`,
+            [req.usuario.id, 'Atualização Foto Perfil', `Nova foto de perfil: ${uploadResult.secure_url}`]
+        );
+
+        res.json({
+            success: true,
+            data: {
+                foto_perfil_url: uploadResult.secure_url
+            }
+        });
+
+    } catch (error) {
+        next(error);
     }
 }
   

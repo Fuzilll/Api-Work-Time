@@ -74,7 +74,7 @@ body {
 .sidebar {
     background-color: var(--claro-bg);
     color: var(--claro-primaria);
-    width: 240px;
+    width: 260px;
     transition: all var(--transition-time) var(--transition-function);
     height: calc(100vh - 60px);
     overflow: hidden;
@@ -85,8 +85,6 @@ body {
     top: 60px;
     left: 0;
     z-index: 100;
-    box-shadow: var(--sombra);
-    border-right: 1px solid var(--claro-borda);
 }
 
 .sidebar.closed {
@@ -193,6 +191,7 @@ body {
     padding: 30px;
     border-radius: 10px;
     margin: auto;
+    min-width: 100%;
 }
 
 h2 {
@@ -461,6 +460,189 @@ td .tag {
 .modal-footer {
     border-top-color: var(--border-color);
 }
+
+/* ========== COMPONENTES - COLUNAS dahsboard g-5 ========== */
+
+.coluna-container {
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+    padding: 20px 0;
+}
+
+.coluna {
+    background-color: var(--claro-card-bg);
+    border-radius: 10px;
+    box-shadow: var(--sombra);
+    padding: 20px;
+    flex: 1;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.coluna h2 {
+    font-size: 20px;
+    color: var(--claro-card-header);
+    margin-bottom: 15px;
+}
+
+.data {
+    font-size: 14px;
+    color: var(--claro-texto);
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--claro-borda);
+    padding-bottom: 8px;
+}
+
+.item,
+.notificacao {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--claro-borda);
+}
+
+.item:last-child,
+.notificacao:last-child {
+    border-bottom: none;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.hora {
+    font-weight: bold;
+    margin-right: 8px;
+    min-width: 45px;
+    text-align: right;
+}
+
+.texto {
+    flex: 1;
+    font-size: 14px;
+    color: var(--claro-texto);
+}
+
+.tempo {
+    font-weight: bold;
+}
+
+.verde {
+    color: var(--verde);
+}
+
+.vermelho {
+    color: var(--vermelho);
+}
+
+.cinza {
+    color: #999;
+}
+
+.roxo {
+    color: purple;
+}
+
+.scrollable {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.titulo-barra {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.botao-pequeno {
+    font-size: 12px;
+    background: #eee;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.botao-pequeno:hover {
+    background-color: #ddd;
+}
+
+.subtitulo {
+    font-weight: bold;
+    margin: 15px 0 5px;
+    color: #555;
+}
+
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#error-message {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: var(--vermelho);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: var(--sombra);
+    z-index: 1000;
+}
+
+.profile-picture-container {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.profile-picture {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    transition: all 0.3s ease;
+}
+
+.profile-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    border-radius: 50%;
+    transition: opacity 0.3s ease;
+}
+
+.profile-picture-container:hover .profile-overlay {
+    opacity: 1;
+}
+
+.profile-overlay i {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+
 
 /* ========== COMPONENTES - MENSAGENS E FEEDBACK ========== */
 #loading-overlay {

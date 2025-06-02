@@ -6,9 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebar.classList.toggle('closed');
   
       if (sidebar.classList.contains('closed')) {
-        toggleBtn.src = '/images/abrir.png';
+        toggleBtn.src = '/assets/images/abrir.png';
       } else {
-        toggleBtn.src = '/images/fechar.png';
+        toggleBtn.src = '/assets/images/fechar.png';
       }
     });
   });

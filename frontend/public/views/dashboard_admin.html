@@ -20,9 +20,9 @@
 </head>
 <body>
     <div class="sidebar closed" id="sidebar">
-        <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+        <img src="/assets/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
         <div class="logo-container text-center">
-            <img src="/images/logo.png" alt="Logo" class="img-fluid">
+            <img src="/assets/images/logo.png" alt="Logo" class="img-fluid">
         </div>
         <div id="menu"></div>
         <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
@@ -71,24 +71,50 @@
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="container mt-4">
-            <h3 class="mt-5 fw-bold">Últimos Registros de Ponto</h3>
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Funcionário</th>
-                            <th>Data</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-pontos">
-                        <!-- Registros via JS -->
-                    </tbody>
-                </table>
+
+            <!-- LINHA COM AS 3 COLUNAS -->
+            <div class="row g-5 mt-4">
+                <!-- Coluna 1: Últimos Registros de Pontos -->
+                <div class="col-md-4">
+                    <div class="coluna">
+                        <h2>Últimos registros de pontos</h2>
+                        <div class="data" id="data-atual"></div>
+                        <div class="scrollable" id="ultimos-registros-container">
+                            <!-- Conteúdo será carregado via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna 2: Status da Equipe -->
+                <div class="col-md-4">
+                    <div class="coluna">
+                        <h2>Status da Equipe</h2>
+                        <div class="scrollable">
+                            <div class="subtitulo">Em Jornada</div>
+                            <div id="em-jornada-container" class="status-container"></div>
+
+                            <div class="subtitulo">Intervalo</div>
+                            <div id="em-intervalo-container" class="status-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna 3: Notificações -->
+                <div class="col-md-4">
+                    <div class="coluna">
+                        <div class="titulo-barra d-flex justify-content-between align-items-center">
+                            <h2>Notificações</h2>
+                            <button class="botao-pequeno btn btn-sm btn-outline-primary" id="refresh-btn">Atualizar</button>
+                        </div>
+                        <div class="data" id="contador-notificacoes">0 notificações</div>
+                        <div class="scrollable" id="notificacoes-container">
+                            <!-- Conteúdo será carregado via JS -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
         <!-- passo 3 -->
         <div id="loading-overlay" style="display:none;">
             <div class="spinner"></div>
@@ -100,8 +126,6 @@
     <script src="/js/menu.js"></script>
     <script src="/js/sidebarToggle.js"></script>
     <script src="/js/dashboard_admin.js"></script>
-    <!-- passo 4 -->
     <script src="/js/alterar_modo.js"></script>
-    <!--fim-->
 </body>
 </html>
