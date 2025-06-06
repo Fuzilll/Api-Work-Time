@@ -10,64 +10,33 @@
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Adicione o SweetAlert2 se for usar -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Fallback local para Font Awesome -->
+
     <script>
         if (!document.querySelector('link[href*="fontawesome"]')) {
             document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
         }
     </script>
-    <style>
-        /* Botão hambúrguer visível apenas em telas menores */
-        .mobile-topbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            z-index: 1050;
-            background-color: var(--claro-bg);
-            border-bottom: 1px solid var(--claro-borda);
-        }
-
-        /* Ajustar posição da sidebar quando ativa no mobile */
-        @media (max-width: 768px) {
-            .sidebar {
-                left: -100%;
-                top: 60px;
-                height: calc(100vh - 60px);
-                width: 240px;
-                transition: left 0.3s ease;
-                z-index: 1100;
-            }
-
-            .sidebar.open {
-                left: 0;
-            }
-
-            .content {
-                margin-left: 0 !important;
-                margin-top: 60px;
-            }
-        }
-    </style>
 </head>
 
 <body>
-    <div class="mobile-topbar d-md-none d-flex justify-content-between align-items-center px-3 py-2 bg-light shadow-sm">
-  <button class="hamburger-btn btn btn-outline-secondary" id="hamburgerBtn">
-    <i class="fas fa-bars"></i>
-  </button>
-  <div class="logo-mobile">
-    <img src="/images/logo.png" alt="Logo" style="height: 40px;">
-  </div>
-</div>
     <div class="sidebar closed" id="sidebar">
-        <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+        <img src="/assets/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
         <div class="logo-container text-center">
-            <img src="/images/logo.png" alt="Logo" class="img-fluid">
+            <img src="/assets/images/logo.png" alt="Logo" class="img-fluid">
         </div>
         <div id="menu"></div>
         <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+    </div>
+    <div class="mobile-menu">
+        <div class="mobile-header">
+            <button class="mobile-menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <img src="/assets/images/logo-mobile.png" alt="Logo" class="mobile-logo">
+        </div>
+        <div class="mobile-menu-items" id="mobileMenu"></div>
     </div>
 
     <div class="content">
@@ -228,7 +197,6 @@
     <script src="/js/alterar_modo.js"></script>
     <script src="/js/sidebarToggle.js"></script>
     <script src="/js/cadastrar_funcionarios.js"></script>
-    <script src="/js/menusmartphone.js"></script>
 
 </body>
 

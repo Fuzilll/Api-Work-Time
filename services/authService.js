@@ -98,61 +98,99 @@ class AuthService {
    * Solicita a recuperação de senha, gerando um token e enviando um e-mail com instruções
    * @param {string} email - E-mail do usuário para o qual será enviado o link de recuperação
    */
+  /**
+   * Solicita a recuperação de senha, gerando um token e enviando um e-mail com instruções
+   * @param {string} email - E-mail do usuário para o qual será enviado o link de recuperação
+   * @returns {Promise<void>}
+   */
   static async solicitarRecuperacaoSenha(email) {
-    // Verifica se o usuário existe no banco com o e-mail fornecido
+    console.log('[AUTH SERVICE] Iniciando processo de recuperação para:', email);
+
+    // 1. Verificar se o usuário existe
     const [usuario] = await db.query(
-      'SELECT id, nome FROM USUARIO WHERE email = ?',
+      `SELECT id, nome, email, empresa_nome 
+     FROM USUARIO 
+     WHERE email = ? AND status = 'Ativo'`,
       [email]
     );
 
     if (!usuario) {
-      // Não revela se o e-mail não existe por questões de segurança
+      console.log('[AUTH SERVICE] Usuário não encontrado ou inativo');
+      // Por segurança, não revelamos se o email existe
       return;
     }
 
-    // Gera um token criptografado para recuperação de senha
-    const token = crypto.randomBytes(32).toString('hex'); // Gera um token único de 32 bytes
-    const expiration = new Date(Date.now() + 3600000); // Define a validade do token para 1 hora
+    // 2. Gerar token de recuperação
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiracao = new Date(Date.now() + 3600000); // 1 hora de validade
 
-    // Atualiza o banco de dados com o token gerado e sua data de validade
+    // 3. Salvar token no banco de dados
     await db.query(
       `UPDATE USUARIO 
-      SET token_recuperacao = ?, token_validade = ? 
-      WHERE id = ?`,
-      [token, expiration, usuario.id]
+     SET token_recuperacao = ?, token_validade = ?
+     WHERE id = ?`,
+      [token, expiracao, usuario.id]
     );
 
-    // Envia o e-mail de recuperação com o token gerado
-    await emailService.enviarEmailRecuperacao(email, token); // Função que envia o e-mail ao usuário
+    // 4. Preparar URL de reset
+    const resetUrl = `${process.env.FRONTEND_URL}/redefinir-senha?token=${token}`;
+
+    // 5. Enviar email
+    try {
+      await emailService.enviarEmailRecuperacaoSenha(usuario.email, {
+        nome: usuario.nome,
+        resetUrl: resetUrl,
+        expiracao: '1 hora',
+        empresa: usuario.empresa_nome || 'Work Time System'
+      });
+
+      console.log('[AUTH SERVICE] Email de recuperação enviado com sucesso');
+    } catch (error) {
+      console.error('[AUTH SERVICE] Erro ao enviar email de recuperação:', error);
+      throw new AppError('Falha ao enviar email de recuperação', 500);
+    }
   }
 
   /**
-   * Realiza a alteração da senha do usuário, validando o token de recuperação
-   * @param {string} token - Token de recuperação de senha
-   * @param {string} novaSenha - Nova senha do usuário
+   * Redefine a senha do usuário usando um token válido
+   * @param {string} token - Token de recuperação
+   * @param {string} novaSenha - Nova senha
+   * @returns {Promise<void>}
    */
   static async resetarSenha(token, novaSenha) {
-    // Verifica se o token de recuperação é válido e se não expirou
+    console.log('[AUTH SERVICE] Processando reset de senha para token:', token);
+
+    // 1. Validar token e obter usuário
     const [usuario] = await db.query(
-      `SELECT id FROM USUARIO 
-      WHERE token_recuperacao = ? AND token_validade > NOW()`,
+      `SELECT id, token_validade 
+     FROM USUARIO 
+     WHERE token_recuperacao = ? 
+     AND token_validade > NOW()`,
       [token]
     );
 
     if (!usuario) {
-      throw new AppError('Token inválido ou expirado', 400); // Lança erro se o token for inválido ou expirado
+      console.log('[AUTH SERVICE] Token inválido ou expirado');
+      throw new AppError('Token inválido ou expirado', 400);
     }
 
-    // Gera um hash da nova senha usando bcrypt
-    const senhaHash = await bcrypt.hash(novaSenha, 12); // Gera o hash da senha com 12 rounds de complexidade
+    // 2. Validar força da senha (opcional)
+    if (novaSenha.length < 8) {
+      throw new AppError('A senha deve ter pelo menos 8 caracteres', 400);
+    }
 
-    // Atualiza a senha no banco de dados e limpa os dados do token
+    // 3. Hash da nova senha
+    const senhaHash = await bcrypt.hash(novaSenha, 12);
+
+    // 4. Atualizar senha e limpar token
     await db.query(
       `UPDATE USUARIO 
-      SET senha = ?, token_recuperacao = NULL, token_validade = NULL 
-      WHERE id = ?`,
+     SET senha = ?, token_recuperacao = NULL, token_validade = NULL
+     WHERE id = ?`,
       [senhaHash, usuario.id]
     );
+
+    console.log('[AUTH SERVICE] Senha atualizada com sucesso para usuário:', usuario.id);
   }
 
   /**
@@ -184,7 +222,7 @@ class AuthService {
       throw new AppError('Falha ao carregar dados do dashboard', 500);
     }
   }
-  
+
   static async logout() {
     try {
       const response = await fetch('/api/auth/logout', {

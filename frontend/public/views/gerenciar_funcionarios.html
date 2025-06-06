@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <title>Gerenciar Funcionários</title>
@@ -15,15 +16,26 @@
     </script>
 
 </head>
+
 <body>
     <!-- Sidebar -->
     <div class="sidebar closed" id="sidebar">
-        <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+        <img src="/assets/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
         <div class="logo-container text-center">
-            <img src="/images/logo.png" alt="Logo" class="img-fluid">
+            <img src="/assets/images/logo.png" alt="Logo" class="img-fluid">
         </div>
         <div id="menu"></div>
         <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+    </div>
+
+    <div class="mobile-menu">
+        <div class="mobile-header">
+            <button class="mobile-menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <img src="/assets/images/logo-mobile.png" alt="Logo" class="mobile-logo">
+        </div>
+        <div class="mobile-menu-items" id="mobileMenu"></div>
     </div>
 
     <!-- Conteúdo principal -->
@@ -75,7 +87,8 @@
                         </div>
                         <div class="col-md-6 col-lg-3">
                             <label for="filtroMatricula" class="form-label">Matrícula</label>
-                            <input type="text" id="filtroMatricula" class="form-control" placeholder="Buscar por matrícula">
+                            <input type="text" id="filtroMatricula" class="form-control"
+                                placeholder="Buscar por matrícula">
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary me-2">
@@ -183,7 +196,7 @@
             <div class="spinner"></div>
         </div>
         <div id="error-message" class="alert alert-danger" style="display:none;"></div>
-        
+
     </div>
 
     <!-- Scripts -->
@@ -193,4 +206,5 @@
     <script src="/js/gerenciar_funcionarios.js"></script>
     <script src="/js/alterar_modo.js"></script>
 </body>
+
 </html>

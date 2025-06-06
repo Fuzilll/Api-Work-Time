@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,7 @@
     <link rel="stylesheet" href="/css/dashboard_admin.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
-   <!-- Adicione o SweetAlert2 se for usar -->
+    <!-- Adicione o SweetAlert2 se for usar -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- Fallback local para Font Awesome -->
     <script>
@@ -19,12 +20,22 @@
 
 <body>
     <div class="sidebar closed" id="sidebar">
-        <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+        <img src="/assets/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
         <div class="logo-container text-center">
-            <img src="/images/logo.png" alt="Logo" class="img-fluid">
+            <img src="/assets/images/logo.png" alt="Logo" class="img-fluid">
         </div>
         <div id="menu"></div>
         <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+    </div>
+
+    <div class="mobile-menu">
+        <div class="mobile-header">
+            <button class="mobile-menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <img src="/assets/images/logo-mobile.png" alt="Logo" class="mobile-logo">
+        </div>
+        <div class="mobile-menu-items" id="mobileMenu"></div>
     </div>
 
     <div class="content">
@@ -89,28 +100,31 @@
                     <h5 class="modal-title" id="modalAlteracaoLabel">
                         <i class="fas fa-edit me-2"></i>Solicitar Alteração de Ponto
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="formSolicitarAlteracao" novalidate>
                         <input type="hidden" id="idRegistro" name="idRegistro">
-                        
+
                         <div class="mb-3">
                             <label for="novoHorario" class="form-label">
                                 <i class="fas fa-clock me-1"></i> Novo Horário
                             </label>
-                            <input type="datetime-local" class="form-control" id="novoHorario" name="novoHorario" required>
+                            <input type="datetime-local" class="form-control" id="novoHorario" name="novoHorario"
+                                required>
                             <div class="invalid-feedback">Por favor, informe o novo horário.</div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="motivoAlteracao" class="form-label">
                                 <i class="fas fa-comment me-1"></i> Motivo da Alteração
                             </label>
-                            <textarea class="form-control" id="motivoAlteracao" name="motivoAlteracao" rows="4" required></textarea>
+                            <textarea class="form-control" id="motivoAlteracao" name="motivoAlteracao" rows="4"
+                                required></textarea>
                             <div class="invalid-feedback">Por favor, informe o motivo da alteração.</div>
                         </div>
-                        
+
                         <div class="d-grid gap-2 mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="fas fa-paper-plane me-2"></i>Enviar Solicitação
@@ -135,4 +149,5 @@
     <!-- Nosso Script -->
     <script src="/js/historico_pontos.js" type="module"></script>
 </body>
+
 </html>

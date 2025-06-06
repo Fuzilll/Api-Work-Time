@@ -1,297 +1,143 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Espelho de Ponto</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="/css/espelho_de_ponto.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    if (!document.querySelector('link[href*="fontawesome"]')) {
+      document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
     }
-    body {
-      background: #f5f6f8;
-      padding: 20px;
-      color: #333;
-    }
-    .container {
-      background: #fff;
-      border-radius: 8px;
-      padding: 25px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    }
-    h1 {
-      margin-bottom: 25px;
-      color: #2c3e50;
-      font-weight: 600;
-    }
-    .filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 25px;
-    }
-    .filters label {
-      display: flex;
-      flex-direction: column;
-      font-size: 14px;
-      color: #555;
-    }
-    .filters input, .filters select {
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 14px;
-      transition: border-color 0.2s;
-    }
-    .filters input:focus, .filters select:focus {
-      outline: none;
-      border-color: #3498db;
-      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-    }
-    .filters button {
-      padding: 8px 16px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.2s;
-    }
-    .filters button:hover {
-      background-color: #2980b9;
-    }
-    .export-buttons {
-      display: flex;
-      gap: 8px;
-      margin-left: auto;
-    }
-    .export-buttons button {
-      padding: 8px 12px;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-      transition: opacity 0.2s;
-    }
-    .export-buttons button:hover {
-      opacity: 0.9;
-    }
-    .export-buttons .excel {
-      background-color: #27ae60;
-    }
-    .export-buttons .pdf {
-      background-color: #e74c3c;
-    }
-    .user-info {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #eee;
-    }
-    .user-info img {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      margin-right: 15px;
-      object-fit: cover;
-      border: 2px solid #eee;
-    }
-    .user-info strong {
-      font-size: 18px;
-      color: #2c3e50;
-      display: block;
-      margin-bottom: 5px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-    table thead {
-      background-color: #f8f9fa;
-      position: sticky;
-      top: 0;
-    }
-    th, td {
-      padding: 10px 12px;
-      text-align: center;
-      border: 1px solid #e0e0e0;
-    }
-    th {
-      font-weight: 600;
-      color: #2c3e50;
-      background-color: #f1f5f9;
-    }
-    .obs {
-      text-align: left;
-      color: #666;
-    }
-    tr:nth-child(even) {
-      background-color: #f9f9f9;
-    }
-    tr:hover {
-      background-color: #f1f5f9;
-    }
-    #loading-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top: 4px solid #3498db;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin-right: 15px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .loading-text {
-      color: white;
-      font-size: 1.2rem;
-    }
-    #error-message {
-      display: none;
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 15px 20px;
-      background: #e74c3c;
-      color: white;
-      border-radius: 6px;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      max-width: 300px;
-    }
-    .empty-row {
-      color: #7f8c8d;
-      font-style: italic;
-    }
-    @media (max-width: 768px) {
-      .filters {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .export-buttons {
-        margin-left: 0;
-        margin-top: 10px;
-        justify-content: flex-end;
-      }
-      table {
-        font-size: 12px;
-      }
-      th, td {
-        padding: 6px 8px;
-      }
-    }
-  </style>
+  </script>
 </head>
+
 <body>
-  <div class="container">
-    <h1>Espelho de Ponto</h1>
-    
-    <div class="filters">
-      <label>
-        Data inicial
-        <input type="date" id="data-inicial">
-      </label>
-      <label>
-        Data final
-        <input type="date" id="data-final">
-      </label>
-      <select id="select-colaborador">
-        <option value="">Colaborador</option>
-        <option value="all" selected>Todos</option>
-      </select>
-      <select id="select-equipe">
-        <option value="">Equipe</option>
-        <option value="all" selected>Todos</option>
-      </select>
-      <select id="select-departamento">
-        <option value="">Departamento</option>
-        <option value="all" selected>Todos</option>
-      </select>
-      <button id="btn-gerar-relatorio">Gerar relatório</button>
-      
-      <div class="export-buttons">
-        <button id="btn-exportar-acjef">ACJEF</button>
-        <button id="btn-exportar-afdt">AFDT</button>
-        <button id="btn-exportar-afd">AFD</button>
-        <button class="excel" id="btn-exportar-excel">EXCEL</button>
-        <button class="pdf" id="btn-exportar-pdf">PDF</button>
-      </div>
+  <div class="sidebar closed" id="sidebar">
+    <img src="/assets/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+    <div class="logo-container text-center">
+      <img src="/assets/images/logo.png" alt="Logo" class="img-fluid">
     </div>
-    
-    <div class="user-info" id="user-info">
-      <img id="user-img" src="/assets/images/default-user.png" alt="Foto do usuário">
-      <div>
-        <strong id="user-name">Carregando...</strong>
-      </div>
+    <div id="menu"></div>
+    <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+  </div>
+  <div class="mobile-menu">
+    <div class="mobile-header">
+      <button class="mobile-menu-toggle">
+        <i class="fas fa-bars"></i>
+      </button>
+      <img src="/assets/images/logo-mobile.png" alt="Logo" class="mobile-logo">
     </div>
-    
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th rowspan="2">DATA</th>
-            <th colspan="2">1ª</th>
-            <th colspan="2">2ª</th>
-            <th colspan="2">TOTAIS DE JORNADA</th>
-            <th rowspan="2">INTERVALO</th>
-            <th rowspan="2">TRABALHADAS</th>
-            <th colspan="2">EXTRA</th>
-            <th colspan="2">A.N</th>
-            <th rowspan="2">SALDO</th>
-            <th rowspan="2">OBS</th>
-          </tr>
-          <tr>
-            <th>ENTRADA</th>
-            <th>SAÍDA</th>
-            <th>ENTRADA</th>
-            <th>SAÍDA</th>
-            <th>CRÉDITO</th>
-            <th>DÉBITO</th>
-            <th>HE 50%</th>
-            <th>HE 100%</th>
-            <th>NOTURNO</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tabela-body">
-          <!-- Dados serão inseridos dinamicamente via JavaScript -->
-        </tbody>
-      </table>
-    </div>
+    <div class="mobile-menu-items" id="mobileMenu"></div>
   </div>
 
-  <!-- Overlay de loading -->
-  <div id="loading-overlay">
-    <div class="spinner"></div>
-    <div class="loading-text">Carregando dados...</div>
-  </div>
-  
-  <!-- Mensagem de erro -->
-  <div id="error-message"></div>
 
+  <div class="content">
+    <div class="topbar">
+      <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
+    </div>
+    <div class="container">
+      <h1>Espelho de Ponto</h1>
+
+      <div class="filters">
+        <div class="filter-group">
+          <label for="data-inicial">Data inicial</label>
+          <input type="date" id="data-inicial" />
+        </div>
+        <div class="filter-group">
+          <label for="data-final">Data final</label>
+          <input type="date" id="data-final" />
+        </div>
+        <div class="filter-group">
+          <label for="filtroStatus">Status</label>
+          <select id="filtroStatus">
+            <option value="">Todos</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filtroDepartamento">Departamento</label>
+          <select id="filtroDepartamento">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filtroNome">Nome</label>
+          <input type="text" id="filtroNome" placeholder="Buscar por nome" />
+        </div>
+        <div class="filter-group">
+          <label for="filtroMatricula">Matrícula</label>
+          <input type="text" id="filtroMatricula" placeholder="Buscar por matrícula" />
+        </div>
+        <button id="btn-gerar-relatorio" class="btn-primary">Gerar relatório</button>
+        <div class="export-buttons">
+          <button id="export-button" class="excel"><i class="fas fa-file-excel"></i> Exportar Excel</button>
+        </div>
+      </div>
+
+      <div class="user-info" id="user-info">
+        <img id="user-img" src="/assets/images/default-user.png" alt="Foto do usuário" />
+        <div>
+          <strong id="user-name">Carregando...</strong>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">DATA</th>
+              <th colspan="2">1ª</th>
+              <th colspan="2">2ª</th>
+              <th colspan="2">TOTAIS DE JORNADA</th>
+              <th rowspan="2">INTERVALO</th>
+              <th rowspan="2">TRABALHADAS</th>
+              <th colspan="2">EXTRA</th>
+              <th colspan="2">A.N</th>
+              <th rowspan="2">SALDO</th>
+              <th rowspan="2">OBS</th>
+            </tr>
+            <tr>
+              <th>ENTRADA</th>
+              <th>SAÍDA</th>
+              <th>ENTRADA</th>
+              <th>SAÍDA</th>
+              <th>CRÉDITO</th>
+              <th>DÉBITO</th>
+              <th>HE 50%</th>
+              <th>HE 100%</th>
+              <th>NOTURNO</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabela-body">
+            <!-- Dados dinâmicos -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <div class="loading-text">Carregando dados...</div>
+    </div>
+    <div id="error-message"></div>
+
+  </div>
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/menu.js"></script>
   <script src="/js/espelhoDePonto.js"></script>
+  <script src="/js/alterar_modo.js"></script>
+  <script src="/js/sidebarToggle.js"></script>
+
 </body>
+
 </html>

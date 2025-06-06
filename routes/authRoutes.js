@@ -5,6 +5,7 @@ const authController = require('../controllers/authController');
 const { validate } = require('../middlewares/validators');
 const authSchema = require('../validators/authSchema');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { body } = require('express-validator');
 
 /**
  * @swagger
@@ -31,16 +32,17 @@ router.post('/login',
   authController.login         // Controller de login
 );
 
-// Rota para solicitar recuperação de senha - Valida os dados de recuperação e chama a função correspondente
 router.post('/recuperar-senha',
-  validate(authSchema.recuperarSenha),  // Valida os dados de recuperação de senha
-  authController.solicitarRecuperacaoSenha  // Chama a função que inicia o processo de recuperação de senha
+  body('email').isEmail().normalizeEmail(),
+  authController.solicitarRecuperacaoSenha
 );
 
-// Rota para resetar a senha - Valida os dados e chama a função de reset
 router.post('/resetar-senha',
-  validate(authSchema.resetarSenha),  // Valida os dados para resetar a senha
-  authController.resetarSenha        // Chama a função que efetua o reset da senha
+  [
+    body('token').notEmpty().trim(),
+    body('novaSenha').isLength({ min: 8 }).trim()
+  ],
+  authController.resetarSenha
 );
 
 // Rota protegida para verificar a sessão do usuário autenticado
@@ -49,7 +51,7 @@ router.get('/sessao',
   authController.verificarSessao  // Chama a função que verifica os dados da sessão do usuário
 );
 
-router.post('/logout', 
+router.post('/logout',
   authMiddleware.autenticacao,  // Garante que apenas usuários autenticados podem fazer logout
   authController.logout
 );

@@ -121,6 +121,8 @@ class AuthService {
         window.location.href = 'login.html';
     }
 
+
+
     static checkAuth() {
         const token = localStorage.getItem('authToken');
         const userData = localStorage.getItem('userData');
@@ -156,6 +158,70 @@ class AuthService {
             localStorage.clear();
             sessionStorage.clear();
             window.location.href = 'login.html';
+        }
+    }
+    /**
+ * Solicita recuperação de senha
+ * @param {string} email - Email do usuário
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+    static async solicitarRecuperacaoSenha(email) {
+        try {
+            const response = await fetch(`${API_BASE}/auth/recuperar-senha`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Erro ao solicitar recuperação');
+            }
+
+            return {
+                success: true,
+                message: data.message || 'Se o email estiver cadastrado, você receberá um link de recuperação'
+            };
+        } catch (error) {
+            console.error('[FRONTEND] Erro ao solicitar recuperação:', error);
+            return {
+                success: false,
+                message: error.message || 'Erro ao processar solicitação'
+            };
+        }
+    }
+
+    /**
+     * Redefine a senha usando token de recuperação
+     * @param {string} token - Token de recuperação
+     * @param {string} novaSenha - Nova senha
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    static async redefinirSenha(token, novaSenha) {
+        try {
+            const response = await fetch(`${API_BASE}/auth/resetar-senha`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, novaSenha })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Erro ao redefinir senha');
+            }
+
+            return {
+                success: true,
+                message: data.message || 'Senha redefinida com sucesso'
+            };
+        } catch (error) {
+            console.error('[FRONTEND] Erro ao redefinir senha:', error);
+            return {
+                success: false,
+                message: error.message || 'Erro ao processar redefinição'
+            };
         }
     }
 }

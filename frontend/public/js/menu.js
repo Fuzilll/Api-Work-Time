@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const menu = document.getElementById('menu');
+    const mobileMenu = document.getElementById('mobileMenu');
+    
     let menuItems = '';
     switch (userData.nivel) {
         case 'ADMIN':
@@ -17,8 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="solicitacoes-alteracao-ponto.html"><i class="fas fa-calendar"></i><span>Alterações de Ponto</span></a>
                 <a href="gerenciar_funcionarios.html"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Gerenciar Funcionários</span></a>
                 <a href="pagina_suporte_usuarios.html"><i class="fas fa-question-circle fa-lg mr-2"></i><span>Central de Suporte</span></a>
-                <a href="relatorio_de_pontos.html"><i class="fas fa-question-circle fa-lg mr-2"></i><span>novapagina.html</span></a>
-
+                <a href="relatorio_de_pontos.html"><i class="fas fa-user-clock"></i><span>Relatórios</span></a>
             `;
             break;
         case 'FUNCIONARIO':
@@ -26,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="dashboard_funcionario.html"><i class="fas fa-tachometer-alt"></i><span>Meu Dashboard</span></a>
                 <a href="historico_pontos_funcionario.html"><i class="fas fa-clock"></i><span>Meus Registros</span></a>
                 <a href="perfil_funcionario.html"><i class="fas fa-user"></i><span>Meu Perfil</span></a>
-                <a href="pagina_suporte_usuarios.html" class="d-flex align-items-center"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Central de Suporte</span></a>
+                <a href="pagina_suporte_usuarios.html"><i class="fas fa-question-circle"></i><span>Central de Suporte</span></a>
             `;
             break;
         case 'IT_SUPPORT':
@@ -39,36 +40,26 @@ document.addEventListener('DOMContentLoaded', () => {
             break;
     }
 
-    menu.innerHTML = menuItems;
+    if (menu) menu.innerHTML = menuItems;
+    if (mobileMenu) mobileMenu.innerHTML = menuItems + `<a href="#" id="logoutBtnMobile"><i class="fas fa-sign-out-alt"></i><span>Sair</span></a>`;
 
+    // Configurar logout para ambas as versões
+    const setupLogout = (btnId) => {
+        const btn = document.getElementById(btnId);
+        btn?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                await AuthService.logout();
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Erro durante logout:', error);
+                window.location.href = 'login.html';
+            }
+        });
+    };
 
-
-    // Adiciona handler para o botão de logout
-    const logoutBtn = document.getElementById('logoutBtn');
-    const logoutIcon = document.getElementById('logoutIcon');
-    const loadingSpinner = document.getElementById('loadingSpinner');
-
-    logoutBtn?.addEventListener('click', async (e) => {
-        e.preventDefault();
-
-        // Exibe o ícone de carregamento
-        if (logoutIcon) logoutIcon.style.display = 'none';
-        if (loadingSpinner) loadingSpinner.style.display = 'flex';
-
-        try {
-            await AuthService.logout();
-
-            // Redireciona após logout bem-sucedido
-            window.location.href = 'login.html';
-
-        } catch (error) {
-            console.error('Erro durante logout:', error);
-            // Redireciona mesmo em caso de erro
-            window.location.href = 'login.html';
-        } finally {
-            // Garante que os dados locais sejam limpos
-            localStorage.clear();
-            sessionStorage.clear();
-        }
-    });
+    setupLogout('logoutBtn');
+    setupLogout('logoutBtnMobile');
 });

@@ -22,13 +22,24 @@
 
 <body>
     <div class="sidebar closed" id="sidebar">
-        <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+        <img src="/assets/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
         <div class="logo-container text-center">
-            <img src="/images/logo.png" alt="Logo" class="img-fluid">
+            <img src="/assets/images/logo.png" alt="Logo" class="img-fluid">
         </div>
         <div id="menu"></div>
         <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
     </div>
+
+    <div class="mobile-menu">
+        <div class="mobile-header">
+            <button class="mobile-menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <img src="/assets/images/logo-mobile.png" alt="Logo" class="mobile-logo">
+        </div>
+        <div class="mobile-menu-items" id="mobileMenu"></div>
+    </div>
+
     <div class="content">
         <div class="topbar">
             <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
@@ -97,7 +108,8 @@
                 aria-label="Fechar"></button>
         </div>
     </div>
-    <div id="error-message" class="alert alert-danger" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 1100;"></div>
+    <div id="error-message" class="alert alert-danger"
+        style="display: none; position: fixed; top: 20px; right: 20px; z-index: 1100;"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/menu.js"></script>

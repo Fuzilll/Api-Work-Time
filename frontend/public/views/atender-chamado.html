@@ -66,9 +66,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!--fim-->
   <script>
-      if (!document.querySelector('link[href*="fontawesome"]')) {
-          document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
-      }
+    if (!document.querySelector('link[href*="fontawesome"]')) {
+      document.write('<link href="/css/fontawesome.all.min.css" rel="stylesheet">');
+    }
   </script>
 
 </head>
@@ -82,20 +82,30 @@
   </div>
 
   <div class="sidebar closed" id="sidebar">
-    <img src="/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
+    <img src="/assets/images/abrir.png" alt="Abrir" class="toggle-btn" id="toggleBtn">
     <div class="logo-container text-center">
-      <img src="/images/logo.png" alt="Logo" class="img-fluid">
+      <img src="/assets/images/logo.png" alt="Logo" class="img-fluid">
     </div>
     <div id="menu"></div>
     <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
   </div>
+  <div class="mobile-menu">
+    <div class="mobile-header">
+      <button class="mobile-menu-toggle">
+        <i class="fas fa-bars"></i>
+      </button>
+      <img src="/assets/images/logo-mobile.png" alt="Logo" class="mobile-logo">
+    </div>
+    <div class="mobile-menu-items" id="mobileMenu"></div>
+  </div>
+
 
   <div class="content">
     <!-- passo 2  -->
     <div class="topbar">
       <button class="help-btn"><i class="fas fa-question-circle"></i> Ajuda</button>
-  </div>
-  <!--fim-->
+    </div>
+    <!--fim-->
     <div class="container mt-5">
       <h2>Lista de Chamados</h2>
 
@@ -228,9 +238,9 @@
     <!-- passo 3 -->
     <div id="loading-overlay" style="display:none;">
       <div class="spinner"></div>
-  </div>
-  <div id="error-message" class="alert alert-danger" style="display:none;"></div>
-  <!--fim-->
+    </div>
+    <div id="error-message" class="alert alert-danger" style="display:none;"></div>
+    <!--fim-->
   </div>
 
   <!-- Scripts -->

@@ -76,7 +76,7 @@ class App {
 
     // Restante das configurações permanecem iguais
     this.app.use(cors({
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      origin: process.env.FRONTEND_URL || 'http://localhost:3001',
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
@@ -185,8 +185,9 @@ class App {
     this.app.use('/api/admin', authMiddleware.autenticacao, require('./routes/adminRoutes'));
     this.app.use('/api/dashboard', authMiddleware.autenticacao, require('./routes/dashboardRoutes'));
     this.app.use('/api/espelho-ponto',authMiddleware.autenticacao, require('./routes/espelhoPontoRoutes'));
+    
+    this.app.use('/api/exportar-excel', authMiddleware.autenticacao, require('./routes/exportRoutes'));
 
-    //testando
     this.app.use('/api/chamados', authMiddleware.autenticacao, require('./routes/chamadoRoutes'));
 
     // 6. Rota fallback (DEVE ser a última)
