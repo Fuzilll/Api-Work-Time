@@ -25,7 +25,6 @@ class AdminDashboard {
       { id: 'total-pontos', property: 'totalPontos', required: true },
       { id: 'pontos-aprovados', property: 'pontosAprovados', required: true },
       { id: 'pontos-pendentes', property: 'pontosPendentes', required: true },
-      { id: 'tabela-pontos', property: 'tabelaPontos', required: true },
       { id: 'loading-overlay', property: 'loadingOverlay', required: false },
       { id: 'error-message', property: 'errorMessage', required: false },
       { id: 'logout-btn', property: 'logoutBtn', required: false },
@@ -48,10 +47,10 @@ class AdminDashboard {
     });
   }
 
- 
+
   inicializarGraficos() {
     console.log('[ADMIN DASHBOARD] Inicializando gráficos...');
-   
+
     // Gráfico de Funcionários
     this.graficos.funcionarios = new Chart(this.elements.graficoFuncionariosCanvas, {
       type: 'doughnut',
@@ -89,7 +88,7 @@ class AdminDashboard {
         cutout: '70%'
       }
     });
- 
+
     // Gráfico de Pontos
     this.graficos.pontos = new Chart(this.elements.graficoPontosCanvas, {
       type: 'bar',
@@ -108,7 +107,7 @@ class AdminDashboard {
       }
     });
   }
- 
+
   setupEventListeners() {
     console.log('[ADMIN DASHBOARD] Configurando event listeners...');
     if (this.elements.logoutBtn) {
@@ -127,7 +126,7 @@ class AdminDashboard {
       });
     }
   }
- 
+
   // Métodos de autenticação
   logout() {
     console.log('[ADMIN DASHBOARD] Executando logout...');
@@ -135,7 +134,7 @@ class AdminDashboard {
     console.debug('[ADMIN DASHBOARD] Token removido do localStorage');
     window.location.href = 'login.html';
   }
- 
+
   async checkAuthAndLoad() {
     console.log('[ADMIN DASHBOARD] Verificando autenticação...');
     try {
@@ -157,11 +156,11 @@ class AdminDashboard {
       }, 3000);
     }
   }
- 
+
   async verifyAuthentication() {
     console.debug('[ADMIN DASHBOARD] Iniciando verificação de token...');
     const token = localStorage.getItem(this.authTokenKey);
-   
+
     if (!token) {
       console.warn('[ADMIN DASHBOARD] Nenhum token encontrado no localStorage');
       throw new Error('Token de autenticação não encontrado');
@@ -179,12 +178,12 @@ class AdminDashboard {
         });
         throw new Error('Token expirado');
       }
-     
+
       if (!payload.nivel) {
         console.warn('[ADMIN DASHBOARD] Token não contém informação de nível', payload);
         throw new Error('Token incompleto - falta informação de nível de acesso');
       }
-     
+
       if (payload.nivel.toUpperCase() !== 'ADMIN') {
         console.warn('[ADMIN DASHBOARD] Tentativa de acesso não autorizado', {
           nivelUsuario: payload.nivel,
@@ -192,7 +191,7 @@ class AdminDashboard {
         });
         throw new Error('Acesso restrito a administradores');
       }
-     
+
       console.log('[ADMIN DASHBOARD] Token válido e permissões confirmadas');
       return true;
     } catch (e) {
@@ -210,11 +209,11 @@ class AdminDashboard {
     console.log('[ADMIN DASHBOARD] Carregando dados do dashboard...');
     try {
       this.mostrarLoading();
- 
+
       const response = await this.fetchWithAuth('/api/dashboard');
       const dados = response.data || response;
       console.debug('[ADMIN DASHBOARD] Dados recebidos:', dados);
- 
+
       if (!dados) {
         throw new Error('Dados inválidos do dashboard');
       }
@@ -223,7 +222,7 @@ class AdminDashboard {
         this.processarStatusEquipe(response.data),
         Promise.resolve(this.criarNotificacoes(response.data))
       ]);
-      
+
       this.carregarResumo(dados.resumoFuncionarios || {});
       this.carregarRelatorioPontos(dados.relatorioPontos || {});
       this.carregarRegistrosRecentes(dados.pontosPendentes || []);
@@ -235,7 +234,7 @@ class AdminDashboard {
         this.atualizarContadorNotificacoes(notificacoes);
       });
 
- 
+
     } catch (erro) {
       console.error('[ADMIN DASHBOARD] Erro ao carregar dashboard', {
         error: erro.message,
@@ -247,7 +246,7 @@ class AdminDashboard {
       this.esconderLoading();
     }
   }
- 
+
   async fetchWithAuth(url, method = 'GET') {
     console.debug(`[ADMIN DASHBOARD] Fazendo requisição autenticada: ${method} ${url}`);
     const token = localStorage.getItem(this.authTokenKey);
@@ -298,7 +297,7 @@ class AdminDashboard {
       funcionariosInativos: dados.funcionariosInativos || 0
     };
   }
-  
+
   async processarRelatorioPontos(dados) {
     return {
       totalPontos: dados.totalPontos || 0,
@@ -307,40 +306,73 @@ class AdminDashboard {
     };
   }
   async obterUrlImagem(pontoId, urlOriginal, tamanho = 50) {
-    if (!urlOriginal) return 'https://i.pravatar.cc/36';
-
+    // Validação mais flexível do pontoId
+    const idValido = pontoId !== undefined && pontoId !== null && !isNaN(pontoId) && pontoId > 0;
+    
+    if (!idValido) {
+      console.warn('[ADMIN DASHBOARD] ID do ponto inválido, usando fallback:', pontoId);
+      return urlOriginal || '/assets/images/default-profile.png';
+    }
+  
     const cacheKey = `${pontoId}_${tamanho}`;
+    
+    // 1. Verifica o cache primeiro
     if (this.imageCache.has(cacheKey)) {
       return this.imageCache.get(cacheKey);
     }
-
+  
+    // 2. Se já temos uma URL válida
+    if (urlOriginal && (urlOriginal.startsWith('http') || urlOriginal.startsWith('/assets'))) {
+      // Otimiza a URL se for Cloudinary
+      let urlOtimizada = urlOriginal;
+      if (urlOriginal.includes('res.cloudinary.com')) {
+        urlOtimizada = urlOriginal.replace(
+          '/upload/', 
+          `/upload/w_${tamanho},h_${tamanho},c_fill,q_auto,f_auto/`
+        );
+      }
+      
+      this.imageCache.set(cacheKey, urlOtimizada);
+      return urlOtimizada;
+    }
+  
+    // 3. Busca da API
     try {
-      // Verifica se já temos a URL completa da imagem
-      if (urlOriginal.startsWith('http')) {
-        this.imageCache.set(cacheKey, urlOriginal);
-        return urlOriginal;
+      const response = await this.fetchWithAuth(`${this.API_BASE_URL}/ponto/${pontoId}/foto`);
+      
+      if (!response || !response.foto_url) {
+        throw new Error('URL da foto não encontrada na resposta');
       }
-
-      // Se não for uma URL completa, busca a imagem da API usando o pontoId
-      const response = await this.fetchWithAuth(`${this.API_BASE_URL}/pontos/${pontoId}/foto`);
-
-      if (response && response.foto_url) {
-        let urlOtimizada = response.foto_url;
-
-        // Otimização para Cloudinary (se aplicável)
-        if (urlOtimizada.includes('res.cloudinary.com')) {
-          urlOtimizada = urlOtimizada.replace('/upload/', `/upload/w_${tamanho},h_${tamanho},c_fill,q_auto,f_auto/`);
-        }
-
-        this.imageCache.set(cacheKey, urlOtimizada);
-        return urlOtimizada;
+  
+      let fotoUrl = response.foto_url;
+  
+      // Otimização para Cloudinary
+      if (fotoUrl.includes('res.cloudinary.com')) {
+        fotoUrl = fotoUrl.replace(
+          '/upload/', 
+          `/upload/w_${tamanho},h_${tamanho},c_fill,q_auto,f_auto/`
+        );
       }
-
-      // Fallback para avatar padrão se não houver imagem
-      return 'https://i.pravatar.cc/36';
+  
+      // Fallback para imagem padrão se a URL for inválida
+      if (!fotoUrl.startsWith('http') && !fotoUrl.startsWith('/assets')) {
+        fotoUrl = '/assets/images/default-profile.png';
+      }
+  
+      // Atualiza o cache
+      this.imageCache.set(cacheKey, fotoUrl);
+      return fotoUrl;
+  
     } catch (error) {
-      console.error('[ADMIN DASHBOARD] Erro ao obter URL da imagem:', error);
-      return 'https://i.pravatar.cc/36';
+      console.error('[ADMIN DASHBOARD] Erro ao obter URL da imagem:', {
+        error: error.message,
+        stack: error.stack,
+        pontoId,
+        urlOriginal
+      });
+      
+      // Retorna URL original ou imagem padrão em caso de erro
+      return urlOriginal || '/assets/images/default-profile.png';
     }
   }
 
@@ -348,7 +380,7 @@ class AdminDashboard {
   // Métodos de renderização
   carregarResumo(resumo) {
     console.debug('[ADMIN DASHBOARD] Carregando resumo...', resumo);
-   
+
     if (!resumo) {
       console.warn('[ADMIN DASHBOARD] Dados de resumo vazios ou indefinidos');
       return;
@@ -375,10 +407,10 @@ class AdminDashboard {
     }
   }
 
- 
+
   carregarRelatorioPontos(relatorio) {
     console.debug('[ADMIN DASHBOARD] Carregando relatório de pontos...', relatorio);
-   
+
     if (!relatorio) {
       console.warn('[ADMIN DASHBOARD] Dados de relatório de pontos vazios ou indefinidos');
       return;
@@ -406,7 +438,7 @@ class AdminDashboard {
   }
   carregarRegistrosRecentes(registros) {
     console.debug('[ADMIN DASHBOARD] Carregando registros recentes...', registros);
-   
+
     if (!this.elements.tabelaPontos || !Array.isArray(registros)) {
       console.warn('[ADMIN DASHBOARD] Elemento de tabela não encontrado ou dados inválidos');
       return;
@@ -429,7 +461,6 @@ class AdminDashboard {
       this.elements.ultimosRegistrosContainer.innerHTML = '<div class="item">Nenhum registro recente</div>';
       return;
     }
-
     this.elements.ultimosRegistrosContainer.innerHTML = registros.length > 0
       ? registros.map(registro => `
           <div class="item">
@@ -525,12 +556,14 @@ class AdminDashboard {
         }))
     );
   }
+
   async extrairEmJornada(dados) {
     if (!dados || !dados.pontosPendentes || !Array.isArray(dados.pontosPendentes)) return [];
 
     const agora = new Date();
     const inicioDia = new Date(agora);
     inicioDia.setHours(0, 0, 0, 0);
+    console.log(dados, 'Teste aqui para ver ser o id do registro esta vindo')
 
     const funcionarios = dados.pontosPendentes
       .filter(ponto => {
@@ -726,7 +759,7 @@ class AdminDashboard {
     });
   }
 
- 
+
   async processarStatusEquipe(dados) {
     return {
       emJornada: await this.extrairEmJornada(dados),
@@ -741,20 +774,20 @@ class AdminDashboard {
       contador.style.display = naoLidas > 0 ? 'block' : 'none';
     }
   }
- 
+
   // Utilitários de UI
   mostrarLoading() {
     if (this.elements.loadingOverlay) {
       this.elements.loadingOverlay.style.display = 'flex';
     }
   }
- 
+
   esconderLoading() {
     if (this.elements.loadingOverlay) {
       this.elements.loadingOverlay.style.display = 'none';
     }
   }
- 
+
   showError(message) {
     if (this.elements.errorMessage) {
       this.elements.errorMessage.textContent = message;
@@ -768,13 +801,13 @@ class AdminDashboard {
       alert(`Erro: ${message}`);
     }
   }
- 
+
   setElementText(elementKey, text) {
     if (this.elements[elementKey]) {
       this.elements[elementKey].textContent = text;
     }
   }
- 
+
   formatarHora(horaString) {
     try {
       if (!horaString) return 'N/A';
@@ -809,7 +842,7 @@ class AdminDashboard {
     return `<span class="badge bg-${classe}">${status || 'N/A'}</span>`;
   }
 }
- 
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
   console.log('[ADMIN DASHBOARD] DOM carregado, iniciando aplicação...');

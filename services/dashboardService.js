@@ -81,11 +81,13 @@ async function obterRegistrosRecentes(idEmpresa) {
     const query = `
       SELECT 
         u.nome AS usuario,
+        rp.id,
         rp.data_hora,
         rp.tipo,
         rp.status,
         rp.justificativa,
-        rp.id AS registro_id
+        rp.id AS registro_id,
+        rp.foto_url
       FROM REGISTRO_PONTO rp
       JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
       JOIN USUARIO u ON f.id_usuario = u.id

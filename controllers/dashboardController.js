@@ -12,63 +12,63 @@ const { AppError } = require('../errors');
 class DashboardController {
   async carregarDashboardAdmin(req, res, next) {
     try {
-        const idEmpresa = req.usuario.id_empresa;
-        
-        if (!idEmpresa) {
-            throw new AppError('ID da empresa não identificado', 400);
-        }
+      const idEmpresa = req.usuario.id_empresa;
 
-        const [resumo, relatorio, registros] = await Promise.all([
-            obterResumoEmpresa(idEmpresa).catch(e => {
-                console.error('Erro em obterResumoEmpresa:', e);
-                return null;
-            }),
-            obterRelatorioPontos(idEmpresa).catch(e => {
-                console.error('Erro em obterRelatorioPontos:', e);
-                return { totalPontos: 0, pontosAprovados: 0, pontosPendentes: 0 };
-            }),
-            obterRegistrosRecentes(idEmpresa).catch(e => {
-                console.error('Erro em obterRegistrosRecentes:', e);
-                return [];
-            })
-        ]);
-        res.json({
-            success: true,
-            data: {
-                resumoFuncionarios: resumo,
-                relatorioPontos: relatorio,
-                pontosPendentes: registros
-            }
-        });
+      if (!idEmpresa) {
+        throw new AppError('ID da empresa não identificado', 400);
+      }
+
+      const [resumo, relatorio, registros] = await Promise.all([
+        obterResumoEmpresa(idEmpresa).catch(e => {
+          console.error('Erro em obterResumoEmpresa:', e);
+          return null;
+        }),
+        obterRelatorioPontos(idEmpresa).catch(e => {
+          console.error('Erro em obterRelatorioPontos:', e);
+          return { totalPontos: 0, pontosAprovados: 0, pontosPendentes: 0 };
+        }),
+        obterRegistrosRecentes(idEmpresa).catch(e => {
+          console.error('Erro em obterRegistrosRecentes:', e);
+          return [];
+        })
+      ]);
+      res.json({
+        success: true,
+        data: {
+          resumoFuncionarios: resumo,
+          relatorioPontos: relatorio,
+          pontosPendentes: registros
+        }
+      });
     } catch (error) {
-        next(error);
+      next(error);
     }
-}
+  }
 
   async atualizarStatusPonto(req, res, next) {
     try {
       const { id } = req.params;
       const { status, observacao } = req.body;
-      
+
       if (!id || !status) {
         throw new AppError('ID e status são obrigatórios', 400);
       }
 
       const resultado = await atualizarStatusPonto(
-        id, 
-        status, 
-        observacao, 
-        req.usuario.id, 
+        id,
+        status,
+        observacao,
+        req.usuario.id,
         req.usuario.id_empresa
       );
-      
+
       if (!resultado) {
         throw new AppError('Registro de ponto não encontrado', 404);
       }
 
-      res.json({ 
-        success: true, 
-        message: 'Status do ponto atualizado com sucesso' 
+      res.json({
+        success: true,
+        message: 'Status do ponto atualizado com sucesso'
       });
     } catch (error) {
       next(error);
@@ -79,7 +79,7 @@ class DashboardController {
     try {
       const idEmpresa = req.usuario.id_empresa;
       const { ano } = req.query;
-      
+
       if (!ano) {
         throw new AppError('Ano é obrigatório', 400);
       }
@@ -95,7 +95,7 @@ class DashboardController {
     try {
       const idEmpresa = req.usuario.id_empresa;
       const funcionarios = await obterFuncionariosComPendentes(idEmpresa);
-      
+
       if (!funcionarios) {
         throw new AppError('Nenhum funcionário com pendências encontrado', 404);
       }
@@ -105,6 +105,41 @@ class DashboardController {
       next(error);
     }
   }
+
+  async obterFotoDashboard(req, res, next) {
+    try {
+      const { id } = req.params; // ID do registro de ponto
+      const idEmpresa = req.usuario.id_empresa;
+  
+      if (!idEmpresa) {
+        throw new AppError('ID da empresa não identificado', 400);
+      }
+  
+      // Busca o registro específico pelo ID
+      const query = `
+        SELECT foto_url 
+        FROM REGISTRO_PONTO 
+        WHERE id = ? AND id_funcionario IN (
+          SELECT id FROM FUNCIONARIO WHERE id_empresa = ?
+        )
+      `;
+  
+      const [registro] = await db.query(query, [id, idEmpresa]);
+  
+      if (!registro || registro.length === 0) {
+        return res.status(404).json({
+          foto_url: '/assets/images/default-profile.png'
+        });
+      }
+  
+      const fotoUrl = registro[0].foto_url || '/assets/images/default-profile.png';
+  
+      return res.json({ foto_url: fotoUrl });
+    } catch (error) {
+      next(error);
+    }
+  }
+
 }
 
 module.exports = DashboardController;

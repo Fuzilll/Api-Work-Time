@@ -260,7 +260,7 @@ h2 {
 
 .table th {
     background-color: var(--claro-tabela-header);
-    color: var(--branco);
+    color: var(--claro-primaria);
     padding: 15px;
     text-align: left;
 }
@@ -273,6 +273,13 @@ h2 {
 
 .table tr:hover {
     background-color: var(--claro-tabela-hover);
+}
+
+.tbody td { 
+    background-color: var(--claro-tabela-header);
+    color: var(--claro-primaria);
+    padding: 15px;
+    text-align: left;
 }
 
 /* ========== COMPONENTES - STATUS ========== */
@@ -591,7 +598,7 @@ input:checked+.slider:before {
     .mobile-menu-items.open {
         transform: translateY(0);
         opacity: 1;
-        max-height: 500px;
+        max-height: 550px;
         border-top: 1px solid var(--menu-border);
     }
 

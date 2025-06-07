@@ -26,4 +26,8 @@ router.put('/registros/:id/status',
   dashboardController.atualizarStatusPonto.bind(dashboardController)
 );
 
+router.put('/ponto/:id/foto',
+  dashboardController.obterFotoDashboard.bind(dashboardController)
+);
+
 module.exports = router;

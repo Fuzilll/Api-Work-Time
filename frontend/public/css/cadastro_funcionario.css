@@ -180,7 +180,7 @@ body {
 .content {
     margin-left: 240px;
     padding: 30px 20px 20px;
-    height: calc(100vh - 60px);
+    height: calc(100vh);
     display: flex;
     background-color: var(--claro-bg);
     justify-content: center;
@@ -190,6 +190,8 @@ body {
     overflow-y: auto;
     position: relative;
     z-index: 1;
+    margin-top: 09px;
+
 }
 
 
@@ -554,7 +556,7 @@ input:checked+.slider:before {
     .mobile-menu-items.open {
         transform: translateY(0);
         opacity: 1;
-        max-height: 500px;
+        max-height: 550px;
         border-top: 1px solid var(--menu-border);
     }
 

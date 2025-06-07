@@ -644,7 +644,7 @@ body.dark-mode .help-btn {
     .mobile-menu-items.open {
         transform: translateY(0);
         opacity: 1;
-        max-height: 500px;
+        max-height: 550px;
         border-top: 1px solid var(--menu-border);
     }
 
