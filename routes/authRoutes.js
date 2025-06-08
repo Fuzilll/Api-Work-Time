@@ -37,6 +37,7 @@ router.post('/recuperar-senha',
   authController.solicitarRecuperacaoSenha
 );
 
+
 router.post('/resetar-senha',
   [
     body('token').notEmpty().trim(),

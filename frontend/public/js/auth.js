@@ -198,6 +198,7 @@ class AuthService {
      * @param {string} novaSenha - Nova senha
      * @returns {Promise<{success: boolean, message: string}>}
      */
+    // No seu auth.js, adicione esta função (se já não existir):
     static async redefinirSenha(token, novaSenha) {
         try {
             const response = await fetch(`${API_BASE}/auth/resetar-senha`, {
@@ -226,9 +227,36 @@ class AuthService {
     }
 }
 
+document.getElementById('password-recovery-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const messageElement = document.getElementById('recovery-message');
+
+    try {
+        const result = await AuthService.solicitarRecuperacaoSenha(email);
+
+        messageElement.textContent = result.message;
+        messageElement.style.display = 'block';
+        messageElement.style.color = result.success ? 'green' : 'red';
+
+        if (result.success) {
+            document.getElementById('password-recovery-form').reset();
+        }
+    } catch (error) {
+        console.error('Erro ao solicitar recuperação:', error);
+        messageElement.textContent = 'Ocorreu um erro ao processar sua solicitação';
+        messageElement.style.display = 'block';
+        messageElement.style.color = 'red';
+    }
+});
+
 // Integração com formulário de login
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // Evita envio se botão não for clicado diretamente
+    const activeElement = document.activeElement;
+    if (activeElement && activeElement.tagName !== 'BUTTON') return;
     const email = document.getElementById('email').value;
     const senha = document.getElementById('senha').value;
     await AuthService.login(email, senha);
@@ -238,7 +266,12 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     const currentPath = window.location.pathname;
 
-    if (!currentPath.includes('login.html')) {
+    // Lista de páginas públicas que não devem redirecionar
+    const publicPages = ['login.html', 'password-recovery.html', 'reset-password.html'];
+
+    const isPublicPage = publicPages.some(page => currentPath.includes(page));
+
+    if (!isPublicPage) {
         const userData = AuthService.checkAuth();
         if (userData) {
             const expectedPath = {
@@ -253,3 +286,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+

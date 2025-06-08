@@ -158,7 +158,10 @@ class App {
     this.app.use('/api/auth', require('./routes/authRoutes'));
     this.app.use('/api/usuarios', require('./routes/usuarioRoutes'));
     this.app.use('/api/estados', require('./routes/estadosRoutes'));
-       
+    // No seu app.js, adicione esta rota:
+    this.app.get('/reset-password', (req, res) => {
+      res.sendFile(path.join(__dirname, 'frontend/public/views/reset-password.html'));
+    });
     // Health check
     this.app.get('/api/health', (req, res) => {
       res.json({ status: 'healthy', timestamp: new Date() });
@@ -171,7 +174,7 @@ class App {
 
     this.app.get('/dashboard-admin', authMiddleware.autenticacao, (req, res) => {
       res.sendFile(path.join(__dirname, 'frontend/public/views/dashboard_admin.html'));
-    });    
+    });
 
 
     this.app.get('/suporte-ti', authMiddleware.autenticacao, (req, res) => {
@@ -184,8 +187,8 @@ class App {
     this.app.use('/api/registros', authMiddleware.autenticacao, require('./routes/registroRoutes'));
     this.app.use('/api/admin', authMiddleware.autenticacao, require('./routes/adminRoutes'));
     this.app.use('/api/dashboard', authMiddleware.autenticacao, require('./routes/dashboardRoutes'));
-    this.app.use('/api/espelho-ponto',authMiddleware.autenticacao, require('./routes/espelhoPontoRoutes'));
-    
+    this.app.use('/api/espelho-ponto', authMiddleware.autenticacao, require('./routes/espelhoPontoRoutes'));
+
     this.app.use('/api/exportar-excel', authMiddleware.autenticacao, require('./routes/exportRoutes'));
 
     this.app.use('/api/chamados', authMiddleware.autenticacao, require('./routes/chamadoRoutes'));

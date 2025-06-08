@@ -108,7 +108,7 @@ class AuthService {
 
     // 1. Verificar se o usuário existe
     const [usuario] = await db.query(
-      `SELECT id, nome, email, empresa_nome 
+      `SELECT id, nome, email 
      FROM USUARIO 
      WHERE email = ? AND status = 'Ativo'`,
       [email]
@@ -133,8 +133,7 @@ class AuthService {
     );
 
     // 4. Preparar URL de reset
-    const resetUrl = `${process.env.FRONTEND_URL}/redefinir-senha?token=${token}`;
-
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password.html?token=${token}`;
     // 5. Enviar email
     try {
       await emailService.enviarEmailRecuperacaoSenha(usuario.email, {
