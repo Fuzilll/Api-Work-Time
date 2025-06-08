@@ -477,7 +477,7 @@ class FuncionarioService {
     try {
       // Primeiro buscamos os dados do usuário (nome, email)
       const usuario = await db.query(`
-          SELECT nome, email 
+          SELECT nome, email, foto_perfil_url 
           FROM USUARIO 
           WHERE id = ?
       `, [idUsuario]);
@@ -508,6 +508,7 @@ class FuncionarioService {
       return {
         nome: usuario[0].nome,
         email: usuario[0].email,
+        fotoPerfilUrl: usuario[0].foto_perfil_url,
         ...funcionario[0]
       };
     } catch (error) {

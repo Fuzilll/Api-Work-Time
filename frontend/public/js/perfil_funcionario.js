@@ -5,13 +5,15 @@ class PerfilFuncionario {
     this.loadPerfil();
     this.setupEventListeners();
   }
+
   initElements() {
     this.elements = {
       perfil: document.getElementById('perfil'),
-      profilePicture: document.getElementById('profilePicture'),
-      profilePictureInput: document.getElementById('profilePictureInput')
+      profilePicture: document.querySelector('#profilePicture'),
+      profilePictureInput: document.querySelector('#profilePictureInput')
     };
   }
+
   setupEventListeners() {
     if (this.elements.profilePictureInput) {
       this.elements.profilePictureInput.addEventListener('change', (e) => this.handleProfilePictureChange(e));
@@ -38,19 +40,18 @@ class PerfilFuncionario {
     if (!file) return;
 
     try {
-      // Mostrar preview da imagem
+      // Preview da imagem
       const reader = new FileReader();
       reader.onload = (e) => {
         this.elements.profilePicture.src = e.target.result;
       };
       reader.readAsDataURL(file);
 
-      // Fazer upload para o Cloudinary
-      const formData = new FormData();
-      formData.append('foto', file);
-
       const token = localStorage.getItem(this.authTokenKey);
       if (!token) throw new Error('Token de autenticação não encontrado');
+
+      const formData = new FormData();
+      formData.append('foto', file);
 
       const response = await fetch('/api/funcionarios/upload-foto-perfil', {
         method: 'POST',
@@ -68,7 +69,6 @@ class PerfilFuncionario {
       const result = await response.json();
       console.log('Foto atualizada com sucesso:', result);
 
-      // Mostrar mensagem de sucesso
       Swal.fire({
         icon: 'success',
         title: 'Sucesso!',
@@ -86,11 +86,11 @@ class PerfilFuncionario {
         timer: 3000
       });
 
-      // Reverter para a imagem original em caso de erro
       const perfilData = JSON.parse(localStorage.getItem('perfilData')) || {};
-      this.elements.profilePicture.src = perfilData.foto_perfil_url || '/images/default-profile.png';
+      this.elements.profilePicture.src = perfilData.fotoPerfilUrl || '/images/default-profile.png';
     }
   }
+
   async loadPerfil() {
     try {
       const token = localStorage.getItem(this.authTokenKey);
@@ -99,9 +99,9 @@ class PerfilFuncionario {
       const response = await this.makeAuthenticatedRequest('/api/funcionarios/perfil', 'GET', null, token);
       const perfil = response.data ?? response;
 
-      // Salvar dados do perfil localmente para uso posterior
-      localStorage.setItem('perfilData', JSON.stringify(perfil));
+      console.log('Dados do perfil recebidos:', perfil);
 
+      localStorage.setItem('perfilData', JSON.stringify(perfil));
       this.renderPerfil(perfil);
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);
@@ -112,36 +112,35 @@ class PerfilFuncionario {
   renderPerfil(perfil) {
     if (!this.elements.perfil) return;
 
-    this.elements.perfil.querySelector('.card-body').innerHTML = `
-            <div class="row">
-                <div class="col-md-12 text-center mb-4">
-                    <div class="profile-picture-container">
-                        <img id="profilePicture" src="${perfil.foto_perfil_url || '/assets/images/default-profile.png'}" 
-                             class="profile-picture img-thumbnail rounded-circle" 
-                             alt="Foto de Perfil">
-                        <div class="profile-overlay">
-                            <i class="fas fa-camera"></i>
-                            <span>Alterar Foto</span>
-                        </div>
-                        <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
-                    </div>
-                </div>
+    this.elements.perfil.innerHTML = `
+      <div class="row">
+        <div class="col-md-12 text-center mb-4">
+          <div class="profile-picture-container">
+            <img id="profilePicture" src="${perfil.fotoPerfilUrl || '/assets/images/default-profile.png'}" 
+                 class="profile-picture img-thumbnail rounded-circle" 
+                 alt="Foto de Perfil">
+            <div class="profile-overlay">
+              <i class="fas fa-camera"></i>
+              <span>Alterar Foto</span>
             </div>
-            <ul class="list-group">
-                <li class="list-group-item"><strong>Nome:</strong> ${perfil.nome}</li>
-                <li class="list-group-item"><strong>Email:</strong> ${perfil.email}</li>
-                <li class="list-group-item"><strong>Função:</strong> ${perfil.funcao}</li>
-                <li class="list-group-item"><strong>Registro:</strong> ${perfil.registro_emp}</li>
-                <li class="list-group-item"><strong>Departamento:</strong> ${perfil.departamento || 'Não informado'}</li>
-                <li class="list-group-item"><strong>Data de Admissão:</strong> ${new Date(perfil.data_admissao).toLocaleDateString()}</li>
-                <li class="list-group-item"><strong>Tipo de Contrato:</strong> ${perfil.tipo_contrato}</li>
-                <li class="list-group-item"><strong>Empresa:</strong> ${perfil.empresa_nome}</li>
-            </ul>
-        `;
+            <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
+          </div>
+        </div>
+      </div>
+      <ul class="list-group">
+        <li class="list-group-item"><strong>Nome:</strong> ${perfil.nome}</li>
+        <li class="list-group-item"><strong>Email:</strong> ${perfil.email}</li>
+        <li class="list-group-item"><strong>Função:</strong> ${perfil.funcao}</li>
+        <li class="list-group-item"><strong>Registro:</strong> ${perfil.registro_emp}</li>
+        <li class="list-group-item"><strong>Departamento:</strong> ${perfil.departamento || 'Não informado'}</li>
+        <li class="list-group-item"><strong>Data de Admissão:</strong> ${new Date(perfil.data_admissao).toLocaleDateString()}</li>
+        <li class="list-group-item"><strong>Tipo de Contrato:</strong> ${perfil.tipo_contrato}</li>
+        <li class="list-group-item"><strong>Empresa:</strong> ${perfil.empresa_nome}</li>
+      </ul>
+    `;
 
-    // Re-inicializar os elementos e event listeners após renderizar
-    this.initElements();
-    this.setupEventListeners();
+    this.initElements(); // Atualiza referências para novos elementos
+    this.setupEventListeners(); // Reassocia eventos
   }
 
   async makeAuthenticatedRequest(url, method = 'GET', body = null, token) {
@@ -172,10 +171,8 @@ class PerfilFuncionario {
   showError(message) {
     if (this.elements.perfil) {
       this.elements.perfil.innerHTML = `
-          <div class="alert alert-danger">
-            ${message}
-          </div>
-        `;
+        <div class="alert alert-danger">${message}</div>
+      `;
     }
   }
 }
