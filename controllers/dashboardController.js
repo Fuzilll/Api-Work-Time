@@ -10,9 +10,10 @@ const { AppError } = require('../errors');
 
 
 class DashboardController {
-  async carregarDashboardAdmin(req, res, next) {
+async carregarDashboardAdmin(req, res, next) {
     try {
       const idEmpresa = req.usuario.id_empresa;
+      console.log('[DASHBOARD CONTROLLER] ID Empresa:', idEmpresa);
 
       if (!idEmpresa) {
         throw new AppError('ID da empresa não identificado', 400);
@@ -32,6 +33,35 @@ class DashboardController {
           return [];
         })
       ]);
+
+      // Log detalhado dos registros recebidos
+      console.log('[DASHBOARD CONTROLLER] Registros recebidos:', {
+        quantidade: registros.length,
+        primeiroRegistro: registros[0] ? {
+          id: registros[0].id,
+          nomeFuncionario: registros[0].nomeFuncionario,
+          foto_url: registros[0].foto_url,
+          foto: registros[0].foto,
+          dataHora: registros[0].dataHora,
+          tipo: registros[0].tipo
+        } : null,
+        todosCampos: registros.length > 0 ? Object.keys(registros[0]) : 'Nenhum registro'
+      });
+
+      // Verificar URLs de imagem nos registros
+      if (registros.length > 0) {
+        registros.forEach((reg, index) => {
+          console.log(`[DASHBOARD CONTROLLER] Registro ${index + 1} - Foto:`, {
+            foto_url: reg.foto_url,
+            foto: reg.foto,
+            possuiFotoUrl: !!reg.foto_url,
+            possuiFoto: !!reg.foto,
+            tipoFotoUrl: typeof reg.foto_url,
+            tipoFoto: typeof reg.foto
+          });
+        });
+      }
+
       res.json({
         success: true,
         data: {
@@ -41,6 +71,11 @@ class DashboardController {
         }
       });
     } catch (error) {
+      console.error('[DASHBOARD CONTROLLER] Erro ao carregar dashboard:', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       next(error);
     }
   }

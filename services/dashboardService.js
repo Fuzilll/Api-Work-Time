@@ -64,18 +64,25 @@ async function obterRelatorioPontos(idEmpresa) {
 
 async function obterRegistrosRecentes(idEmpresa) {
   try {
+    console.log('[DASHBOARD SERVICE] Iniciando obterRegistrosRecentes para empresa:', idEmpresa);
+
     // 1. Verificar se a empresa existe
+    console.log('[DASHBOARD SERVICE] Verificando existência da empresa...');
     const [empresa] = await db.query('SELECT id FROM EMPRESA WHERE id = ?', [idEmpresa]);
     if (!empresa || empresa.length === 0) {
+      console.error('[DASHBOARD SERVICE] Empresa não encontrada');
       throw new AppError(`Empresa com ID ${idEmpresa} não encontrada`, 404);
     }
+    console.log('[DASHBOARD SERVICE] Empresa validada');
 
     // 2. Verificar se existem funcionários na empresa
+    console.log('[DASHBOARD SERVICE] Verificando funcionários da empresa...');
     const [funcionarios] = await db.query('SELECT id FROM FUNCIONARIO WHERE id_empresa = ?', [idEmpresa]);
     if (!funcionarios || funcionarios.length === 0) {
-      console.log(`Nenhum funcionário encontrado para empresa ${idEmpresa}`);
+      console.log(`[DASHBOARD SERVICE] Nenhum funcionário encontrado para empresa ${idEmpresa}`);
       return [];
     }
+    console.log(`[DASHBOARD SERVICE] ${funcionarios.length} funcionários encontrados`);
 
     // 3. Buscar registros de ponto
     const query = `
@@ -87,7 +94,8 @@ async function obterRegistrosRecentes(idEmpresa) {
         rp.status,
         rp.justificativa,
         rp.id AS registro_id,
-        rp.foto_url
+        rp.foto_url,
+        u.foto_perfil_url AS foto_perfil
       FROM REGISTRO_PONTO rp
       JOIN FUNCIONARIO f ON rp.id_funcionario = f.id
       JOIN USUARIO u ON f.id_usuario = u.id
@@ -96,54 +104,85 @@ async function obterRegistrosRecentes(idEmpresa) {
       LIMIT 10;
     `;
 
+    console.log('[DASHBOARD SERVICE] Executando query:', query.replace(/\s+/g, ' ').trim());
+    
     const resultado = await db.query(query, [idEmpresa]);
-
-    // DEBUG: Mostra o resultado bruto
-    console.log('Resultado bruto:', resultado);
+    console.log('[DASHBOARD SERVICE] Resultado bruto da query:', resultado);
 
     // Tratamento universal do resultado
     let registros = [];
 
     if (Array.isArray(resultado)) {
-      // Se for array (pode ser array de arrays ou array de objetos)
       if (resultado.length > 0 && Array.isArray(resultado[0])) {
-        // Caso [[registros], metadata] (formato comum do mysql2)
+        console.log('[DASHBOARD SERVICE] Resultado no formato [[registros], metadata]');
         registros = resultado[0];
       } else {
-        // Caso [registros] direto
+        console.log('[DASHBOARD SERVICE] Resultado no formato [registros] direto');
         registros = resultado;
       }
     } else if (resultado && typeof resultado === 'object' && !Array.isArray(resultado)) {
-      // Se for um objeto único (como no seu exemplo)
-      registros = [resultado]; // Transforma em array
+      console.log('[DASHBOARD SERVICE] Resultado no formato de objeto único');
+      registros = [resultado];
     }
 
     // Filtra valores nulos/undefined
     registros = registros.filter(Boolean);
+    console.log('[DASHBOARD SERVICE] Registros após filtro:', registros);
 
-    // DEBUG: Mostra os registros processados
-    console.log('Registros processados:', registros);
-    console.log('É array?', Array.isArray(registros));
-    console.log('Quantidade:', registros.length);
+    // Log detalhado da estrutura dos dados
+    if (registros.length > 0) {
+      console.log('[DASHBOARD SERVICE] Campos disponíveis no primeiro registro:', Object.keys(registros[0]));
+      console.log('[DASHBOARD SERVICE] Exemplo de registro completo:', registros[0]);
+      
+      // Verificar URLs de imagem
+      registros.forEach((reg, index) => {
+        console.log(`[DASHBOARD SERVICE] Registro ${index + 1} - Dados de imagem:`, {
+          foto_url: reg.foto_url,
+          foto_perfil: reg.foto_perfil,
+          possuiFotoUrl: !!reg.foto_url,
+          possuiFotoPerfil: !!reg.foto_perfil,
+          tipoFotoUrl: typeof reg.foto_url,
+          tipoFotoPerfil: typeof reg.foto_perfil
+        });
+      });
+    }
 
     if (registros.length === 0) {
-      console.log(`Nenhum registro de ponto encontrado para empresa ${idEmpresa}`);
+      console.log(`[DASHBOARD SERVICE] Nenhum registro de ponto encontrado para empresa ${idEmpresa}`);
       return [];
     }
-    return registros.map(reg => ({
-      nomeFuncionario: reg.usuario || 'N/A',
-      dataHora: reg.data_hora ? new Date(reg.data_hora).toISOString() : null,
-      tipo: reg.tipo || 'N/A',
-      status: reg.status || 'Pendente',
-      justificativa: reg.justificativa || null,
-      registro_id: reg.registro_id || null
-    }));
+
+    // Mapear para o formato final
+    const registrosFormatados = registros.map(reg => {
+      // Prioriza foto_url do registro, depois foto_perfil do usuário
+      const foto = reg.foto_url || reg.foto_perfil || null;
+      
+      console.log(`[DASHBOARD SERVICE] Processando registro ${reg.id} - Foto selecionada:`, foto);
+
+      return {
+        id: reg.id,
+        nomeFuncionario: reg.usuario || 'N/A',
+        dataHora: reg.data_hora ? new Date(reg.data_hora).toISOString() : null,
+        tipo: reg.tipo || 'N/A',
+        status: reg.status || 'Pendente',
+        justificativa: reg.justificativa || null,
+        registro_id: reg.registro_id || null,
+        foto_url: reg.foto_url || null,
+        foto_perfil: reg.foto_perfil || null,
+        foto: foto  // Campo unificado para o frontend
+      };
+    });
+
+    console.log('[DASHBOARD SERVICE] Registros formatados para retorno:', registrosFormatados);
+    return registrosFormatados;
+
   } catch (error) {
-    console.error('Erro em obterRegistrosRecentes:', {
+    console.error('[DASHBOARD SERVICE] Erro em obterRegistrosRecentes:', {
       message: error.message,
       stack: error.stack,
       query: error.sql,
-      parameters: error.values
+      parameters: error.values,
+      timestamp: new Date().toISOString()
     });
     throw new AppError('Erro ao carregar registros recentes: ' + error.message, 500);
   }

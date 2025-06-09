@@ -305,78 +305,34 @@ class AdminDashboard {
       pontosPendentes: dados.pontosPendentes || 0
     };
   }
-  async obterUrlImagem(pontoId, urlOriginal, tamanho = 50) {
-    // Validação mais flexível do pontoId
-    const idValido = pontoId !== undefined && pontoId !== null && !isNaN(pontoId) && pontoId > 0;
-    
-    if (!idValido) {
-      console.warn('[ADMIN DASHBOARD] ID do ponto inválido, usando fallback:', pontoId);
-      return urlOriginal || '/assets/images/default-profile.png';
-    }
-  
-    const cacheKey = `${pontoId}_${tamanho}`;
-    
-    // 1. Verifica o cache primeiro
-    if (this.imageCache.has(cacheKey)) {
-      return this.imageCache.get(cacheKey);
-    }
-  
-    // 2. Se já temos uma URL válida
-    if (urlOriginal && (urlOriginal.startsWith('http') || urlOriginal.startsWith('/assets'))) {
-      // Otimiza a URL se for Cloudinary
-      let urlOtimizada = urlOriginal;
-      if (urlOriginal.includes('res.cloudinary.com')) {
-        urlOtimizada = urlOriginal.replace(
-          '/upload/', 
-          `/upload/w_${tamanho},h_${tamanho},c_fill,q_auto,f_auto/`
-        );
-      }
-      
-      this.imageCache.set(cacheKey, urlOtimizada);
-      return urlOtimizada;
-    }
-  
-    // 3. Busca da API
-    try {
-      const response = await this.fetchWithAuth(`${this.API_BASE_URL}/ponto/${pontoId}/foto`);
-      
-      if (!response || !response.foto_url) {
-        throw new Error('URL da foto não encontrada na resposta');
-      }
-  
-      let fotoUrl = response.foto_url;
-  
-      // Otimização para Cloudinary
-      if (fotoUrl.includes('res.cloudinary.com')) {
-        fotoUrl = fotoUrl.replace(
-          '/upload/', 
-          `/upload/w_${tamanho},h_${tamanho},c_fill,q_auto,f_auto/`
-        );
-      }
-  
-      // Fallback para imagem padrão se a URL for inválida
-      if (!fotoUrl.startsWith('http') && !fotoUrl.startsWith('/assets')) {
-        fotoUrl = '/assets/images/default-profile.png';
-      }
-  
-      // Atualiza o cache
-      this.imageCache.set(cacheKey, fotoUrl);
-      return fotoUrl;
-  
-    } catch (error) {
-      console.error('[ADMIN DASHBOARD] Erro ao obter URL da imagem:', {
-        error: error.message,
-        stack: error.stack,
-        pontoId,
-        urlOriginal
-      });
-      
-      // Retorna URL original ou imagem padrão em caso de erro
-      return urlOriginal || '/assets/images/default-profile.png';
-    }
+async obterUrlImagem(urlOriginal, tamanho = 50) {
+  // Se não houver URL, retorna imagem padrão
+  if (!urlOriginal || urlOriginal === 'null' || urlOriginal === 'undefined') {
+    return '/assets/images/default-profile.png';
   }
 
-  // Métodos de renderização
+  // Se for URL do Cloudinary, otimiza
+  if (urlOriginal.includes('res.cloudinary.com')) {
+    return urlOriginal.replace(
+      '/upload/', 
+      `/upload/w_${tamanho},h_${tamanho},c_fill,q_auto,f_auto/`
+    );
+  }
+
+  // Se já for uma URL válida (http/https ou caminho relativo)
+  if (urlOriginal.startsWith('http') || urlOriginal.startsWith('/')) {
+    return urlOriginal;
+  }
+
+  // Se for um base64 (caso esteja vindo codificado)
+  if (urlOriginal.startsWith('data:image')) {
+    return urlOriginal;
+  }
+
+  // Fallback para imagem padrão
+  return '/assets/images/default-profile.png';
+}
+
   // Métodos de renderização
   carregarResumo(resumo) {
     console.debug('[ADMIN DASHBOARD] Carregando resumo...', resumo);
@@ -453,109 +409,112 @@ class AdminDashboard {
     `).join('');
   }
 
-  carregarUltimosRegistros(registros) {
-    if (!this.elements.ultimosRegistrosContainer) return;
+carregarUltimosRegistros(registros) {
+  if (!this.elements.ultimosRegistrosContainer) return;
 
-    if (!Array.isArray(registros)) {
-      console.warn('[ADMIN DASHBOARD] Dados de últimos registros inválidos:', registros);
-      this.elements.ultimosRegistrosContainer.innerHTML = '<div class="item">Nenhum registro recente</div>';
-      return;
-    }
-    this.elements.ultimosRegistrosContainer.innerHTML = registros.length > 0
-      ? registros.map(registro => `
-          <div class="item">
-            <img src="${registro.foto}" 
-                 class="avatar" 
-                 loading="lazy" 
-                 alt="Foto de ${registro.nomeFuncionario}"
-                 onerror="this.src='https://i.pravatar.cc/36'">
-            <div class="hora">${this.formatarHora(registro.dataHora)}</div>
-            <div class="texto">${registro.nomeFuncionario} - ${registro.tipo}</div>
-          </div>
-        `).join('')
-      : '<div class="item">Nenhum registro recente</div>';
+  if (!Array.isArray(registros)) {
+    console.warn('[ADMIN DASHBOARD] Dados de últimos registros inválidos:', registros);
+    this.elements.ultimosRegistrosContainer.innerHTML = '<div class="item">Nenhum registro recente</div>';
+    return;
   }
 
-  carregarStatusEquipe(statusEquipe) {
-    console.debug('[ADMIN DASHBOARD] Carregando status da equipe...', statusEquipe);
-
-    const { emJornada = [], emIntervalo = [] } = statusEquipe;
-
-    if (!this.elements.emJornadaContainer || !this.elements.emIntervaloContainer) {
-      console.warn('[ADMIN DASHBOARD] Elementos de status não encontrados');
-      return;
-    }
-
-    this.elements.emJornadaContainer.innerHTML = emJornada.map(funcionario => `
-      <div class="item">
-        <img src="${funcionario.foto}" 
-             class="avatar" 
-             loading="lazy" 
-             alt="Foto de ${funcionario.nome_completo}"
-             onerror="this.src='https://i.pravatar.cc/50'">
-        <div class="texto">
-          ${funcionario.nome_completo}<br>
-          <span class="hora cinza">${funcionario.ultima_acao}</span>
-          <span class="tempo ${funcionario.cor_status}">${this.formatarDuracao(funcionario.tempo_jornada)}</span>
+  this.elements.ultimosRegistrosContainer.innerHTML = registros.length > 0
+    ? registros.map(registro => `
+        <div class="item">
+          <img src="${registro.foto}" 
+               class="avatar" 
+               loading="lazy" 
+               alt="Foto de ${registro.nomeFuncionario}"
+               onerror="this.src='/assets/images/default-profile.png'">
+          <div class="hora">${this.formatarHora(registro.dataHora)}</div>
+          <div class="texto">${registro.nomeFuncionario} - ${registro.tipo}</div>
         </div>
+      `).join('')
+    : '<div class="item">Nenhum registro recente</div>';
+}
+
+carregarStatusEquipe(statusEquipe) {
+  console.debug('[ADMIN DASHBOARD] Carregando status da equipe...', statusEquipe);
+
+  const { emJornada = [], emIntervalo = [] } = statusEquipe;
+
+  if (!this.elements.emJornadaContainer || !this.elements.emIntervaloContainer) {
+    console.warn('[ADMIN DASHBOARD] Elementos de status não encontrados');
+    return;
+  }
+
+  this.elements.emJornadaContainer.innerHTML = emJornada.map(funcionario => `
+    <div class="item">
+      <img src="${funcionario.foto}" 
+           class="avatar" 
+           loading="lazy" 
+           alt="Foto de ${funcionario.nome_completo}"
+           onerror="this.src='/assets/images/default-profile.png'">
+      <div class="texto">
+        ${funcionario.nome_completo}<br>
+        <span class="hora cinza">${funcionario.ultima_acao}</span>
+        <span class="tempo ${funcionario.cor_status}">${this.formatarDuracao(funcionario.tempo_jornada)}</span>
       </div>
-    `).join('');
+    </div>
+  `).join('');
 
-    this.elements.emIntervaloContainer.innerHTML = emIntervalo.map(funcionario => `
-      <div class="item">
-        <img src="${funcionario.foto}" 
-             class="avatar" 
-             loading="lazy" 
-             alt="Foto de ${funcionario.nome_completo}"
-             onerror="this.src='https://i.pravatar.cc/50'">
-        <div class="texto">
-          ${funcionario.nome_completo}<br>
-          <span class="hora cinza">${funcionario.horario_intervalo}</span>
-          <span class="tempo verde">${this.formatarDuracao(funcionario.duracao_intervalo)}</span>
-        </div>
+  this.elements.emIntervaloContainer.innerHTML = emIntervalo.map(funcionario => `
+    <div class="item">
+      <img src="${funcionario.foto}" 
+           class="avatar" 
+           loading="lazy" 
+           alt="Foto de ${funcionario.nome_completo}"
+           onerror="this.src='/assets/images/default-profile.png'">
+      <div class="texto">
+        ${funcionario.nome_completo}<br>
+        <span class="hora cinza">${funcionario.horario_intervalo}</span>
+        <span class="tempo verde">${this.formatarDuracao(funcionario.duracao_intervalo)}</span>
       </div>
-    `).join('');
+    </div>
+  `).join('');
+}
+
+carregarNotificacoes(notificacoes) {
+  console.debug('[ADMIN DASHBOARD] Carregando notificações...', notificacoes);
+
+  if (!this.elements.notificacoesContainer || !Array.isArray(notificacoes)) {
+    console.warn('[ADMIN DASHBOARD] Elemento de notificações não encontrado ou dados inválidos');
+    return;
   }
 
-  carregarNotificacoes(notificacoes) {
-    console.debug('[ADMIN DASHBOARD] Carregando notificações...', notificacoes);
+  this.elements.notificacoesContainer.innerHTML = notificacoes.map(notificacao => `
+    <div class="notificacao">
+      <img src="${notificacao.foto}" 
+           class="avatar" 
+           loading="lazy" 
+           alt="Foto de ${notificacao.nome_funcionario || 'Funcionário'}"
+           onerror="this.src='/assets/images/default-profile.png'">
+      <div class="texto">
+        ${notificacao.mensagem}<br>
+        <span class="hora cinza">${this.formatarDataHora(notificacao.data_hora)}</span>
+        ${!notificacao.resolvida ? '<span class="roxo">não lida</span>' : ''}
+      </div>
+    </div>
+  `).join('');
 
-    if (!this.elements.notificacoesContainer || !Array.isArray(notificacoes)) {
-      console.warn('[ADMIN DASHBOARD] Elemento de notificações não encontrado ou dados inválidos');
-      return;
-    }
+  this.atualizarContadorNotificacoes(notificacoes);
+}
 
-    this.elements.notificacoesContainer.innerHTML = notificacoes.map(notificacao => `
-        <div class="notificacao">
-          <div class="texto">
-            ${notificacao.mensagem}<br>
-            <span class="hora cinza">${this.formatarDataHora(notificacao.data_hora)}</span>
-            ${!notificacao.resolvida ? '<span class="roxo">não lida</span>' : ''}
-          </div>
-        </div>
-      `).join('');
-
-    // Atualiza o contador de notificações
-    if (this.elements.contadorNotificacoes) {
-      const naoLidas = notificacoes.filter(n => !n.resolvida).length;
-      this.elements.contadorNotificacoes.textContent = `${naoLidas} notificação${naoLidas !== 1 ? 'es' : ''}`;
-    }
-  }
-
-  async processarUltimosRegistros(dados) {
-    if (!dados.pontosPendentes || !Array.isArray(dados.pontosPendentes)) return [];
-
-    return Promise.all(
-      dados.pontosPendentes
-        .sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora))
-        .slice(0, 10)
-        .map(async ponto => ({
-          ...ponto,
-          dataHora: new Date(ponto.dataHora).toLocaleTimeString('pt-BR'),
-          foto: await this.obterUrlImagem(ponto.id, ponto.foto, 36)
-        }))
-    );
-  }
+async processarUltimosRegistros(dados) {
+  if (!dados.pontosPendentes || !Array.isArray(dados.pontosPendentes)) return [];
+  console.log('Dados brutos recebidos:', dados);
+console.log('URL da foto do primeiro registro:', dados.pontosPendentes[5]?.foto_url);
+  return Promise.all(
+    dados.pontosPendentes
+      .sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora))
+      .slice(0, 10)
+      .map(async ponto => ({
+        ...ponto,
+        dataHora: new Date(ponto.dataHora).toLocaleTimeString('pt-BR'),
+        foto: await this.obterUrlImagem(ponto.foto_url || ponto.foto) // Usa foto_url ou foto
+      }))
+  );
+}
 
   async extrairEmJornada(dados) {
     if (!dados || !dados.pontosPendentes || !Array.isArray(dados.pontosPendentes)) return [];

@@ -1129,14 +1129,18 @@ class AdminService {
     });
   }
 
-  static async ultimosRegistrosPonto(idEmpresa, limite = 5) {
+// No AdminService.js
+
+static async ultimosRegistrosPonto(idEmpresa, limite = 5) {
+  try {
     const [registros] = await db.query(`
       SELECT 
-        u.foto_perfil_url AS foto,
+        rp.id,
         u.nome AS nome_completo,
-        TIME(rp.data_hora) AS horario_registro,
-        DATE(rp.data_hora) AS data,
-        rp.tipo AS tipo_registro
+        rp.foto_url AS foto_registro,
+        rp.data_hora,
+        rp.tipo,
+        u.foto_perfil_url AS foto_perfil
       FROM 
         REGISTRO_PONTO rp
       JOIN 
@@ -1149,48 +1153,54 @@ class AdminService {
         rp.data_hora DESC
       LIMIT ?
     `, [idEmpresa, limite]);
-    return registros;
+
+    // Processar URLs das fotos
+    return registros.map(registro => ({
+      id: registro.id,
+      nomeFuncionario: registro.nome_completo,
+      foto: registro.foto_registro || registro.foto_perfil || '/assets/images/default-profile.png',
+      dataHora: registro.data_hora,
+      tipo: this.formatarTipoRegistro(registro.tipo)
+    }));
+  } catch (error) {
+    console.error('[AdminService] Erro ao buscar últimos registros:', error);
+    throw new AppError('Erro ao buscar últimos registros de ponto', 500);
   }
-  static async funcionariosStatusJornada(idEmpresa) {
+}
+
+static async funcionariosStatusJornada(idEmpresa) {
+  try {
     const [result] = await db.query(`
       SELECT 
-        f.id AS id_funcionario,
+        f.id,
         u.nome AS nome_completo,
-        u.foto_perfil_url AS foto,
+        u.foto_perfil_url AS foto_perfil,
+        MAX(rp.foto_url) AS ultima_foto_registro,
         f.carga_horaria_diaria,
-        TIME(MAX(rp.data_hora)) AS ultima_acao,
-        MAX(rp.tipo) AS ultima_acao_tipo,
-        CASE 
-          WHEN MAX(rp.tipo) IN ('Entrada', 'Retorno', 'Intervalo') THEN 'Em Jornada'
-          ELSE 'Fora da Jornada'
-        END AS status_jornada,
-        SEC_TO_TIME(SUM(CASE 
-          WHEN rp.tipo = 'Entrada' THEN 
-            TIMESTAMPDIFF(SECOND, rp.data_hora, (
-              SELECT MIN(data_hora) FROM REGISTRO_PONTO 
-              WHERE id_funcionario = f.id 
-              AND tipo IN ('Saida', 'Intervalo') 
-              AND DATE(data_hora) = CURDATE()
-              AND data_hora > rp.data_hora
-              LIMIT 1
-            ))
-          ELSE 0
-        END)) AS horas_trabalhadas,
+        MAX(rp.data_hora) AS ultima_acao_data,
+        (
+          SELECT rp2.tipo 
+          FROM REGISTRO_PONTO rp2 
+          WHERE rp2.id_funcionario = f.id 
+          AND DATE(rp2.data_hora) = CURDATE()
+          ORDER BY rp2.data_hora DESC 
+          LIMIT 1
+        ) AS ultima_acao_tipo,
         SEC_TO_TIME(
-          TIME_TO_SEC(f.carga_horaria_diaria) - 
-          SUM(CASE 
-            WHEN rp.tipo = 'Entrada' THEN 
-              TIMESTAMPDIFF(SECOND, rp.data_hora, (
-                SELECT MIN(data_hora) FROM REGISTRO_PONTO 
-                WHERE id_funcionario = f.id 
-                AND tipo IN ('Saida', 'Intervalo') 
-                AND DATE(data_hora) = CURDATE()
-                AND data_hora > rp.data_hora
-                LIMIT 1
-              ))
-            ELSE 0
-          END)
-        ) AS horas_restantes
+          SUM(
+            CASE 
+              WHEN rp.tipo = 'Entrada' THEN 
+                  TIMESTAMPDIFF(SECOND, rp.data_hora, 
+                      (SELECT MIN(rp3.data_hora) 
+                       FROM REGISTRO_PONTO rp3 
+                       WHERE rp3.id_funcionario = f.id 
+                       AND rp3.tipo IN ('Saida', 'Intervalo') 
+                       AND DATE(rp3.data_hora) = CURDATE()
+                       AND rp3.data_hora > rp.data_hora))
+              ELSE 0 
+            END
+          )
+        ) AS horas_trabalhadas
       FROM 
         FUNCIONARIO f
       JOIN 
@@ -1203,23 +1213,100 @@ class AdminService {
         f.id
       ORDER BY 
         u.nome
-      LIMIT 10;
+      LIMIT 10
     `, [idEmpresa]);
 
-    return result;
+    return result.map(funcionario => {
+      const status = this.determinarStatusJornada(
+        funcionario.ultima_acao_tipo,
+        funcionario.ultima_acao_data,
+        funcionario.horas_trabalhadas,
+        funcionario.carga_horaria_diaria
+      );
+
+      return {
+        id_funcionario: funcionario.id,
+        nome_completo: funcionario.nome_completo,
+        foto: funcionario.ultima_foto_registro || funcionario.foto_perfil || '/assets/images/default-profile.png',
+        ultima_acao: funcionario.ultima_acao_data ? 
+          this.formatarHora(funcionario.ultima_acao_data) : 'N/A',
+        ultima_acao_tipo: funcionario.ultima_acao_tipo,
+        horas_trabalhadas: funcionario.horas_trabalhadas || '00:00:00',
+        status_jornada: status.status,
+        cor_status: status.cor
+      };
+    });
+  } catch (error) {
+    console.error('[AdminService] Erro ao buscar status da jornada:', error);
+    throw new AppError('Erro ao buscar status da jornada dos funcionários', 500);
   }
+}
+
+static determinarStatusJornada(ultimoTipo, ultimaData, horasTrabalhadas, cargaHoraria) {
+  const agora = new Date();
+  const ultimaAcaoDate = ultimaData ? new Date(ultimaData) : null;
   
-  static async notificacoesPendentes(idEmpresa) {
+  if (!ultimoTipo) {
+    return { status: 'Sem registros hoje', cor: 'cinza' };
+  }
+
+  if (ultimoTipo === 'Entrada' || ultimoTipo === 'Retorno') {
+    const minutosDesdeUltimaAcao = ultimaAcaoDate ? 
+      Math.floor((agora - ultimaAcaoDate) / (1000 * 60)) : 0;
+    
+    return {
+      status: 'Em jornada',
+      cor: minutosDesdeUltimaAcao > 120 ? 'vermelho' : 'verde'
+    };
+  }
+
+  if (ultimoTipo === 'Intervalo') {
+    return { status: 'Em intervalo', cor: 'amarelo' };
+  }
+
+  if (ultimoTipo === 'Saida') {
+    // Verificar se cumpriu a carga horária
+    const [horas, minutos] = (horasTrabalhadas || '00:00:00').split(':');
+    const totalMinutosTrabalhados = parseInt(horas) * 60 + parseInt(minutos);
+    const [horasCarga, minutosCarga] = (cargaHoraria || '08:00').split(':');
+    const totalMinutosCarga = parseInt(horasCarga) * 60 + parseInt(minutosCarga);
+
+    return {
+      status: 'Jornada concluída',
+      cor: totalMinutosTrabalhados >= totalMinutosCarga ? 'verde' : 'vermelho'
+    };
+  }
+
+  return { status: 'Status desconhecido', cor: 'cinza' };
+}
+
+static formatarHora(dataHora) {
+  if (!dataHora) return 'N/A';
+  const date = new Date(dataHora);
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+static formatarTipoRegistro(tipo) {
+  const tipos = {
+    'Entrada': 'Entrada',
+    'Saida': 'Saída',
+    'Intervalo': 'Intervalo',
+    'Retorno': 'Retorno'
+  };
+  return tipos[tipo] || tipo;
+}
+
+static async notificacoesPendentes(idEmpresa) {
+  try {
     const [notificacoes] = await db.query(`
       SELECT 
-        CASE 
-          WHEN n.tipo = 'FALTA_REGISTRO_SAIDA' THEN CONCAT('Funcionário ', u.nome, ' não registrou ponto de saída')
-          WHEN n.tipo = 'INTERVALO_LONGO' THEN CONCAT('Funcionário ', u.nome, ' está há mais de ', 
-            TIMESTAMPDIFF(MINUTE, n.data_hora, NOW()), ' minutos em intervalo')
-          ELSE n.mensagem
-        END AS mensagem,
+        n.id,
+        n.tipo,
+        n.mensagem,
         n.data_hora,
-        n.prioridade
+        n.prioridade,
+        u.nome AS nome_funcionario,
+        u.foto_perfil_url AS foto_funcionario
       FROM 
         NOTIFICACAO n
       JOIN 
@@ -1236,8 +1323,44 @@ class AdminService {
           WHEN 'Baixa' THEN 3
         END,
         n.data_hora DESC
+      LIMIT 10
     `, [idEmpresa]);
-    return notificacoes;
+
+    return notificacoes.map(notificacao => ({
+      id: notificacao.id,
+      tipo: notificacao.tipo,
+      mensagem: this.formatarMensagemNotificacao(
+        notificacao.tipo, 
+        notificacao.mensagem, 
+        notificacao.nome_funcionario,
+        notificacao.data_hora
+      ),
+      data_hora: notificacao.data_hora,
+      prioridade: notificacao.prioridade,
+      foto: notificacao.foto_funcionario || '/assets/images/default-profile.png',
+      resolvida: false
+    }));
+  } catch (error) {
+    console.error('[AdminService] Erro ao buscar notificações:', error);
+    throw new AppError('Erro ao buscar notificações pendentes', 500);
+  }
+}
+
+static formatarMensagemNotificacao(tipo, mensagemPadrao, nomeFuncionario, dataHora) {
+  const agora = new Date();
+  const dataNotificacao = new Date(dataHora);
+  const minutosDesdeNotificacao = Math.floor((agora - dataNotificacao) / (1000 * 60));
+
+  switch (tipo) {
+    case 'FALTA_REGISTRO_SAIDA':
+      return `${nomeFuncionario} não registrou saída (há ${minutosDesdeNotificacao} min)`;
+    case 'INTERVALO_LONGO':
+      return `${nomeFuncionario} está com intervalo prolongado (há ${minutosDesdeNotificacao} min)`;
+    case 'ATRASO_ENTRADA':
+      return `${nomeFuncionario} chegou atrasado (há ${minutosDesdeNotificacao} min)`;
+    default:
+      return mensagemPadrao || 'Nova notificação';
+  }
 }
 }
 

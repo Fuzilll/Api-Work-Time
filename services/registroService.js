@@ -6,17 +6,17 @@ const CloudinaryService = require('./CloudinaryService');
 const EmailService = require('./emailService');
 
 class RegistroService {
-// Método refatorado para cadastrar um novo registro de ponto usando ID do usuário
 static async cadastrarRegistro(dados) {
+  let usuario; // Declara a variável no escopo da função
+  
   try {
     const {
-      id_funcionario,  
+      id_funcionario,
       tipo,
       foto_url,
       foto,
       latitude,
       longitude,
-      precisao_geolocalizacao,
       dispositivo
     } = dados;
 
@@ -26,7 +26,7 @@ static async cadastrarRegistro(dados) {
     }
 
     // Busca informações do usuário e funcionário
-    const [usuario] = await db.query(
+    [usuario] = await db.query(
       `SELECT 
         u.id as id_usuario,
         u.nome, 
@@ -37,12 +37,17 @@ static async cadastrarRegistro(dados) {
       FROM USUARIO u
       LEFT JOIN FUNCIONARIO f ON f.id_usuario = u.id
       LEFT JOIN EMPRESA e ON f.id_empresa = e.id
-      WHERE u.id = ?`, 
+      WHERE u.id = ?`,
       [id_funcionario]
     );
 
-    if (!usuario || !id_funcionario) {
+    if (!usuario || !usuario.id_funcionario) {
       throw new AppError('Usuário não é um funcionário válido ou não encontrado', 404);
+    }
+
+    const tiposValidos = ['entrada', 'saida', 'intervalo', 'retorno', 'pausa']; // Adicionei 'pausa'
+    if (!tiposValidos.includes(tipo.toLowerCase())) {
+      throw new AppError('Tipo de registro inválido', 400);
     }
 
     // Processamento da foto
@@ -60,24 +65,33 @@ static async cadastrarRegistro(dados) {
     }
 
     // Registra no banco de dados usando a procedure
-    const [resultados] = await db.query(
-      `CALL registrarPonto(?, ?, ?, ?, ?, ?, ?)`,
+    const resultados = await db.query(
+      `CALL registrarPonto(?, ?, ?, ?, ?, ?)`,
       [
-        usuario.id_usuario,  // Passando o ID do usuário para a procedure
+        usuario.id_funcionario,
         tipo,
-        fotoUrl,
         latitude,
         longitude,
-        precisao_geolocalizacao,
+        fotoUrl,
         dispositivo
       ]
     );
 
-    // Envio de email assíncrono e não bloqueante usando dados do usuário
+    // Verificação robusta do resultado
+    if (!resultados || resultados.length === 0) {
+      throw new AppError('A procedure não retornou resultados', 500);
+    }
+
+    let dadosRetorno;
+    if (Array.isArray(resultados[0])) {
+      dadosRetorno = resultados[0][0] || {};
+    } else {
+      dadosRetorno = resultados[0] || {};
+    }
+
     if (process.env.EMAIL_ENABLED === 'true' && usuario.email) {
-      this.enviarEmailConfirmacao(usuario, tipo, dispositivo, fotoUrl).catch(error => {
-        console.error('Falha no envio de email:', error);
-      });
+      this.enviarEmailConfirmacao(usuario, tipo, dispositivo, fotoUrl)
+        .catch(error => console.error('Falha no envio de email:', error));
     }
 
     return {
@@ -86,35 +100,47 @@ static async cadastrarRegistro(dados) {
         id_funcionario: usuario.id_funcionario,
         id_usuario: usuario.id_usuario,
         tipo,
-        data_hora: new Date(),
+        data_hora: dadosRetorno.data_hora || new Date(),
         foto_url: fotoUrl || null,
         latitude,
         longitude,
-        dispositivo
+        dispositivo,
+        // Inclui quaisquer outros dados retornados pela procedure
+        ...dadosRetorno
       },
-      message: 'Ponto registrado com sucesso'
+      message: dadosRetorno.mensagem || 'Ponto registrado com sucesso'
     };
 
   } catch (error) {
-    console.error('Erro no cadastro de registro:', error);
-    throw error instanceof AppError ? error : new AppError('Erro ao registrar ponto', 500);
+    console.error('Erro detalhado:', {
+      message: error.message,
+      stack: error.stack,
+      dadosRecebidos: dados,
+      usuario: usuario ? usuario.id_funcionario : 'não definido'
+    });
+    
+    if (error.code === 'ER_SP_WRONG_NO_OF_ARGS') {
+      throw new AppError('Erro na procedure: número incorreto de parâmetros', 500);
+    }
+    
+    throw error instanceof AppError ? error : new AppError(`Falha ao registrar ponto: ${error.message}`, 500);
   }
 }
 
-// Método refatorado para enviar email de confirmação usando dados do usuário
-static async enviarEmailConfirmacao(usuario, tipo, dispositivo, fotoUrl) {
-  const emailData = {
-    nome: usuario.nome,
-    tipo: tipo,
-    dataHora: new Date(),
-    dispositivo: dispositivo,
-    fotoUrl: fotoUrl,
-    empresa: usuario.empresa_nome,
-    dashboardUrl: `${process.env.FRONTEND_URL}/dashboard`
-  };
+  // Método refatorado para enviar email de confirmação usando dados do usuário
+  static async enviarEmailConfirmacao(usuario, tipo, dispositivo, fotoUrl) {
+    const emailData = {
+      nome: usuario.nome,
+      tipo: tipo,
+      dataHora: new Date(),
+      dispositivo: dispositivo,
+      fotoUrl: fotoUrl,
+      empresa: usuario.empresa_nome,
+      dashboardUrl: `${process.env.FRONTEND_URL}/dashboard`
+    };
 
-  await EmailService.enviarEmailRegistroPonto(usuario.email, emailData);
-}
+    await EmailService.enviarEmailRegistroPonto(usuario.email, emailData);
+  }
   // Método para buscar os registros de ponto de um funcionário específico
   static async buscarRegistrosFuncionario(idFuncionario) {
     // Verifica se o funcionário existe no banco de dados

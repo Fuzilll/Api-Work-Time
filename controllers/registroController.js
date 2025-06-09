@@ -14,7 +14,6 @@ class RegistroController {
         foto_url: req.body.foto_url, 
         latitude: req.body.latitude,
         longitude: req.body.longitude,
-        precisao_geolocalizacao: req.body.precisao_geolocalizacao,
         dispositivo: req.body.dispositivo
       };
       console.log('[Controller]dadosRegistro',dadosRegistro)
