@@ -105,4 +105,15 @@ router.post('/solicitacoes/:id/processar',
 
 router.get('/dashboard', adminController.dashboardCompletoAdmin);
 
+router.post('/fechamento/aprovar/:id',
+  adminController.aprovarFechamento
+);
+router.get('/fechamentos/:idFechamento/detalhes',
+  adminController.mostrarDetalhes
+);
+
+router.get('/fechamentos/pendentes',
+  adminController.carregarFechamentos
+);
+
 module.exports = router;

@@ -162,18 +162,18 @@ class AdminController {
     }
   }
 
-static async listarDepartamentos(req, res, next) {
-  try {
-    const departamentos = await AdminService.listarDepartamentos(req.usuario.id_empresa);
-    res.json({
-      success: true,
-      data: departamentos
-    });
-  } catch (err) {
-    console.error('Erro ao listar departamentos:', err);
-    next(err);
+  static async listarDepartamentos(req, res, next) {
+    try {
+      const departamentos = await AdminService.listarDepartamentos(req.usuario.id_empresa);
+      res.json({
+        success: true,
+        data: departamentos
+      });
+    } catch (err) {
+      console.error('Erro ao listar departamentos:', err);
+      next(err);
+    }
   }
-}
 
   /**
   * @api {get} /api/admin/pontos/analise Listar Pontos para Análise
@@ -213,14 +213,14 @@ static async listarDepartamentos(req, res, next) {
       if (!req.usuario.permissoes?.aprovar_pontos && req.usuario.nivel !== 'ADMIN') {
         throw new AppError('Você não tem permissão para aprovar/rejeitar pontos', 403);
       }
-  
+
       const resultado = await AdminService.atualizarStatusPonto(
         req.params.id,              // ID do ponto
         req.body.status,            // 'Aprovado' ou 'Rejeitado'
         req.usuario.id,             // ID do usuário autenticado (aprovador)
         req.body.justificativa      // Justificativa (opcional)
       );
-  
+
       res.json({
         success: true,
         data: resultado
@@ -280,10 +280,10 @@ static async listarDepartamentos(req, res, next) {
     }
   }
 
-    /**
-   * Desativa um funcionário (sem excluir do banco)
-   * - Ideal quando o funcionário sai da empresa mas precisa manter o histórico
-   */
+  /**
+ * Desativa um funcionário (sem excluir do banco)
+ * - Ideal quando o funcionário sai da empresa mas precisa manter o histórico
+ */
   static async reativarFuncionario(req, res, next) {
     try {
       const resultado = await AdminService.reativarFuncionario(
@@ -362,222 +362,222 @@ static async listarDepartamentos(req, res, next) {
  * @apiBody {String="Aprovada","Rejeitada"} acao Ação a ser tomada
  * @apiBody {String} resposta Resposta do admin
  */
-static async responderSolicitacao(req, res, next) {
-  try {
+  static async responderSolicitacao(req, res, next) {
+    try {
       const { acao, resposta } = req.body;
-      
+
       // Verifica se o usuário é um admin
       if (req.usuario.nivel !== 'ADMIN') {
-          throw new AppError('Apenas administradores podem responder solicitações', 403);
+        throw new AppError('Apenas administradores podem responder solicitações', 403);
       }
-      
+
       // Obtém o ID do admin associado ao usuário
       const [admin] = await db.query(
-          'SELECT id FROM ADMIN WHERE id_usuario = ?',
-          [req.usuario.id]
+        'SELECT id FROM ADMIN WHERE id_usuario = ?',
+        [req.usuario.id]
       );
-      
+
       if (!admin.length) {
-          throw new AppError('Administrador não encontrado', 404);
+        throw new AppError('Administrador não encontrado', 404);
       }
-      
+
       const resultado = await AdminService.responderSolicitacaoAlteracao(
-          req.params.id,
-          admin[0].id,
-          acao,
-          resposta
+        req.params.id,
+        admin[0].id,
+        acao,
+        resposta
       );
-      
+
       // Aqui você pode chamar o serviço de email para notificar o funcionário
       // await emailService.enviarEmailRespostaSolicitacao(resultado);
-      
-      res.json({
-          success: true,
-          data: resultado
-      });
-  } catch (err) {
-      next(err);
-  }
-}
 
-/**
-* @api {get} /api/admin/solicitacoes/:id Obter Detalhes da Solicitação
-* @apiName ObterDetalhesSolicitacao
-* @apiGroup Admin
-* 
-* @apiParam {Number} id ID da solicitação
-*/
-static async obterDetalhesSolicitacao(req, res, next) {
-  try {
+      res.json({
+        success: true,
+        data: resultado
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+  * @api {get} /api/admin/solicitacoes/:id Obter Detalhes da Solicitação
+  * @apiName ObterDetalhesSolicitacao
+  * @apiGroup Admin
+  * 
+  * @apiParam {Number} id ID da solicitação
+  */
+  static async obterDetalhesSolicitacao(req, res, next) {
+    try {
       // Verifica se o usuário é um admin
       if (req.usuario.nivel !== 'ADMIN') {
-          throw new AppError('Apenas administradores podem visualizar solicitações', 403);
+        throw new AppError('Apenas administradores podem visualizar solicitações', 403);
       }
-      
+
       // Obtém o ID do admin associado ao usuário
       const [admin] = await db.query(
-          'SELECT id FROM ADMIN WHERE id_usuario = ?',
-          [req.usuario.id]
+        'SELECT id FROM ADMIN WHERE id_usuario = ?',
+        [req.usuario.id]
       );
-      
+
       if (!admin.length) {
-          throw new AppError('Administrador não encontrado', 404);
+        throw new AppError('Administrador não encontrado', 404);
       }
-      
+
       const solicitacao = await AdminService.obterDetalhesSolicitacao(
-          req.params.id,
-          admin[0].id
+        req.params.id,
+        admin[0].id
       );
-      
+
       res.json({
-          success: true,
-          data: solicitacao
+        success: true,
+        data: solicitacao
       });
-  } catch (err) {
+    } catch (err) {
       next(err);
+    }
   }
-}
 
 
-//METODOS EM TESTE PARA solicitações de alteração de ponto 
-// No AdminController.js
+  //METODOS EM TESTE PARA solicitações de alteração de ponto 
+  // No AdminController.js
 
-/**
- * @api {get} /api/admin/solicitacoes/pendentes Listar Solicitações Pendentes
- * @apiName ListarSolicitacoesPendentes
- * @apiGroup Admin
- * 
- * @apiSuccess {Object[]} data Lista de solicitações pendentes
- */
-static async listarSolicitacoesPendentes(req, res, next) {
-  try {
+  /**
+   * @api {get} /api/admin/solicitacoes/pendentes Listar Solicitações Pendentes
+   * @apiName ListarSolicitacoesPendentes
+   * @apiGroup Admin
+   * 
+   * @apiSuccess {Object[]} data Lista de solicitações pendentes
+   */
+  static async listarSolicitacoesPendentes(req, res, next) {
+    try {
       const { id_empresa } = req.usuario;
-      
+
       if (!id_empresa) {
-          throw new AppError('ID da empresa não encontrado no token', 400);
+        throw new AppError('ID da empresa não encontrado no token', 400);
       }
 
       const solicitacoes = await AdminService.obterSolicitacoesAlteracaoPendentes(id_empresa);
-      console.log('[AdminController] Solicitações',solicitacoes)
+      console.log('[AdminController] Solicitações', solicitacoes)
 
 
       res.json({
-          success: true,
-          data: solicitacoes
+        success: true,
+        data: solicitacoes
       });
-  } catch (error) {
+    } catch (error) {
       console.error('[AdminController] Erro ao listar solicitações pendentes:', error);
       next(error);
+    }
   }
-}
 
-/**
-* @api {post} /api/admin/solicitacoes/:id/processar Processar Solicitação
-* @apiName ProcessarSolicitacao
-* @apiGroup Admin
-* 
-* @apiParam {Number} id ID da solicitação
-* @apiBody {String="aprovar","rejeitar"} acao Ação a ser tomada
-* @apiBody {String} motivo Motivo da decisão
-* 
-* @apiSuccess {String} message Mensagem de sucesso
-*/
-static async processarSolicitacao(req, res, next) {
-  try {
+  /**
+  * @api {post} /api/admin/solicitacoes/:id/processar Processar Solicitação
+  * @apiName ProcessarSolicitacao
+  * @apiGroup Admin
+  * 
+  * @apiParam {Number} id ID da solicitação
+  * @apiBody {String="aprovar","rejeitar"} acao Ação a ser tomada
+  * @apiBody {String} motivo Motivo da decisão
+  * 
+  * @apiSuccess {String} message Mensagem de sucesso
+  */
+  static async processarSolicitacao(req, res, next) {
+    try {
       const { id } = req.params;
       const { id: idUsuario } = req.usuario;
       const { acao, motivo } = req.body;
 
       if (!['aprovar', 'rejeitar'].includes(acao)) {
-          throw new AppError('Ação inválida. Use "aprovar" ou "rejeitar"', 400);
+        throw new AppError('Ação inválida. Use "aprovar" ou "rejeitar"', 400);
       }
 
       if (!motivo || motivo.trim().length < 5) {
-          throw new AppError('Informe um motivo válido (mínimo 5 caracteres)', 400);
+        throw new AppError('Informe um motivo válido (mínimo 5 caracteres)', 400);
       }
 
       const resultado = await AdminService.processarSolicitacaoAlteracao(
-          id, 
-          idUsuario, 
-          acao, 
-          motivo
+        id,
+        idUsuario,
+        acao,
+        motivo
       );
 
       res.json({
-          success: true,
-          message: resultado.message,
-          data: resultado.data
+        success: true,
+        message: resultado.message,
+        data: resultado.data
       });
-  } catch (error) {
+    } catch (error) {
       console.error('[AdminController] Erro ao processar solicitação:', error);
       next(error);
+    }
   }
-}
-static async listarFuncionarios(req, res, next) {
-  try {
+  static async listarFuncionarios(req, res, next) {
+    try {
       const funcionarios = await AdminService.listarFuncionarios(
-          req.usuario.id_empresa,
-          {
-              status: req.query.status,
-              departamento: req.query.departamento,
-              nome: req.query.nome,
-              registro_emp: req.query.registro_emp
-          }
+        req.usuario.id_empresa,
+        {
+          status: req.query.status,
+          departamento: req.query.departamento,
+          nome: req.query.nome,
+          registro_emp: req.query.registro_emp
+        }
       );
-      
+
       res.json({
-          success: true,
-          data: funcionarios
+        success: true,
+        data: funcionarios
       });
-  } catch (err) {
+    } catch (err) {
       next(err);
+    }
   }
-}
-static async obterHorariosFuncionario(req, res, next) {
-  try {
-    const { id } = req.params;
+  static async obterHorariosFuncionario(req, res, next) {
+    try {
+      const { id } = req.params;
 
-    const horarios = await AdminService.obterHorariosFuncionario(id);
+      const horarios = await AdminService.obterHorariosFuncionario(id);
 
-    res.json({ success: true, data: horarios });
-  } catch (error) {
-    next(error);
+      res.json({ success: true, data: horarios });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-static async atualizarHorariosFuncionario(req, res, next) {
-  try {
+  static async atualizarHorariosFuncionario(req, res, next) {
+    try {
       const horariosAtualizados = await AdminService.atualizarHorariosFuncionario(
-          req.params.id,
-          req.body.horarios
+        req.params.id,
+        req.body.horarios
       );
 
       res.json({
-          success: true,
-          data: horariosAtualizados,
-          message: 'Horários atualizados com sucesso'
+        success: true,
+        data: horariosAtualizados,
+        message: 'Horários atualizados com sucesso'
       });
-  } catch (err) {
+    } catch (err) {
       next(err);
+    }
   }
-}
-static async obterFuncionario(req, res, next) {
-  try {
+  static async obterFuncionario(req, res, next) {
+    try {
       const funcionario = await AdminService.obterFuncionario(
-          req.params.id,
-          req.usuario.id_empresa
+        req.params.id,
+        req.usuario.id_empresa
       );
-      
+
       res.json({
-          success: true,
-          data: funcionario
+        success: true,
+        data: funcionario
       });
-  } catch (err) {
+    } catch (err) {
       next(err);
+    }
   }
-}
-static async atualizarFuncionario(req, res, next) {
-  try {
+  static async atualizarFuncionario(req, res, next) {
+    try {
       // Remover campos que não devem ser atualizados
       const dadosAtualizacao = { ...req.body };
       delete dadosAtualizacao.id;
@@ -586,126 +586,182 @@ static async atualizarFuncionario(req, res, next) {
       delete dadosAtualizacao.cpf;
 
       const funcionarioAtualizado = await AdminService.atualizarFuncionario(
-          req.params.id,
-          req.usuario.id_empresa,
-          dadosAtualizacao
+        req.params.id,
+        req.usuario.id_empresa,
+        dadosAtualizacao
       );
 
       res.json({
-          success: true,
-          data: funcionarioAtualizado,
-          message: 'Funcionário atualizado com sucesso'
+        success: true,
+        data: funcionarioAtualizado,
+        message: 'Funcionário atualizado com sucesso'
       });
-  } catch (err) {
+    } catch (err) {
       next(err);
+    }
   }
-}
-    static async ultimosRegistros(req, res, next) {
-        try {
-            const idEmpresa = req.usuario.id_empresa;
-            const registros = await DashboardService.ultimosRegistrosPonto(idEmpresa);
+  static async ultimosRegistros(req, res, next) {
+    try {
+      const idEmpresa = req.usuario.id_empresa;
+      const registros = await DashboardService.ultimosRegistrosPonto(idEmpresa);
 
-            res.json({
-                success: true,
-                data: registros
-            });
-        } catch (err) {
-            console.error('Erro no DashboardController.ultimosRegistros:', {
-                error: err.stack,
-                user: req.usuario?.id,
-                timestamp: new Date().toISOString()
-            });
-            next(err);
-        }
+      res.json({
+        success: true,
+        data: registros
+      });
+    } catch (err) {
+      console.error('Erro no DashboardController.ultimosRegistros:', {
+        error: err.stack,
+        user: req.usuario?.id,
+        timestamp: new Date().toISOString()
+      });
+      next(err);
     }
+  }
 
-    static async statusEquipe(req, res, next) {
-        try {
-            const idEmpresa = req.usuario.id_empresa;
-            const status = await DashboardService.statusEquipe(idEmpresa);
+  static async statusEquipe(req, res, next) {
+    try {
+      const idEmpresa = req.usuario.id_empresa;
+      const status = await DashboardService.statusEquipe(idEmpresa);
 
-            res.json({
-                success: true,
-                data: status
-            });
-        } catch (err) {
-            console.error('Erro no DashboardController.statusEquipe:', {
-                error: err.stack,
-                user: req.usuario?.id,
-                timestamp: new Date().toISOString()
-            });
-            next(err);
-        }
+      res.json({
+        success: true,
+        data: status
+      });
+    } catch (err) {
+      console.error('Erro no DashboardController.statusEquipe:', {
+        error: err.stack,
+        user: req.usuario?.id,
+        timestamp: new Date().toISOString()
+      });
+      next(err);
     }
+  }
 
-    static async notificacoes(req, res, next) {
-        try {
-            const idEmpresa = req.usuario.id_empresa;
-            const notificacoes = await DashboardService.notificacoesPendentes(idEmpresa);
+  static async notificacoes(req, res, next) {
+    try {
+      const idEmpresa = req.usuario.id_empresa;
+      const notificacoes = await DashboardService.notificacoesPendentes(idEmpresa);
 
-            res.json({
-                success: true,
-                data: notificacoes
-            });
-        } catch (err) {
-            console.error('Erro no DashboardController.notificacoes:', {
-                error: err.stack,
-                user: req.usuario?.id,
-                timestamp: new Date().toISOString()
-            });
-            next(err);
-        }
+      res.json({
+        success: true,
+        data: notificacoes
+      });
+    } catch (err) {
+      console.error('Erro no DashboardController.notificacoes:', {
+        error: err.stack,
+        user: req.usuario?.id,
+        timestamp: new Date().toISOString()
+      });
+      next(err);
     }
+  }
 
-    static async dashboardCompleto(req, res, next) {
-        try {
-            const idEmpresa = req.usuario.id_empresa;
-            const dashboardData = await DashboardService.dashboard(idEmpresa);
+  static async dashboardCompleto(req, res, next) {
+    try {
+      const idEmpresa = req.usuario.id_empresa;
+      const dashboardData = await DashboardService.dashboard(idEmpresa);
 
-            res.json({
-                success: true,
-                data: dashboardData
-            });
-        } catch (err) {
-            console.error('Erro no DashboardController.dashboardCompleto:', {
-                error: err.stack,
-                user: req.usuario?.id,
-                timestamp: new Date().toISOString()
-            });
-            next(err);
-        }
+      res.json({
+        success: true,
+        data: dashboardData
+      });
+    } catch (err) {
+      console.error('Erro no DashboardController.dashboardCompleto:', {
+        error: err.stack,
+        user: req.usuario?.id,
+        timestamp: new Date().toISOString()
+      });
+      next(err);
     }
+  }
 
 
-    static async dashboardCompletoAdmin(req, res, next) {
-      try {
-        const idEmpresa = req.usuario?.id_empresa || 1; // valor fixo por enquanto, se necessário
-        const [ultimosRegistros, statusEquipeCompleto, notificacoes] = await Promise.all([
-          AdminService.ultimosRegistrosPonto(idEmpresa),
-          AdminService.statusEquipeCompleto(idEmpresa),
-          AdminService.notificacoesPendentes(idEmpresa)
-        ]);
-    
-        res.json({
-          success: true,
-          data: {
-            ultimosRegistros,
-            statusEquipe: statusEquipeCompleto, // Renomeado para compatibilidade com frontend
-            notificacoes
-          }
-        });
-      } catch (err) {
-        console.error('Erro no DashboardController.dashboardCompletoAdmin:', {
-          error: err.stack,
-          user: req.usuario?.id,
-          timestamp: new Date().toISOString()
-        });
-        next(err);
+  static async dashboardCompletoAdmin(req, res, next) {
+    try {
+      const idEmpresa = req.usuario?.id_empresa || 1; // valor fixo por enquanto, se necessário
+      const [ultimosRegistros, statusEquipeCompleto, notificacoes] = await Promise.all([
+        AdminService.ultimosRegistrosPonto(idEmpresa),
+        AdminService.statusEquipeCompleto(idEmpresa),
+        AdminService.notificacoesPendentes(idEmpresa)
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          ultimosRegistros,
+          statusEquipe: statusEquipeCompleto, // Renomeado para compatibilidade com frontend
+          notificacoes
+        }
+      });
+    } catch (err) {
+      console.error('Erro no DashboardController.dashboardCompletoAdmin:', {
+        error: err.stack,
+        user: req.usuario?.id,
+        timestamp: new Date().toISOString()
+      });
+      next(err);
+    }
+  }
+
+  static async aprovarFechamento(req, res, next) {
+    try {
+      // Verifica se o usuário tem permissão (middleware já validou)
+      if (!req.usuario.permissoes?.aprovar_fechamentos && req.usuario.nivel !== 'ADMIN') {
+        throw new AppError('Você não tem permissão para aprovar fechamentos', 403);
       }
+
+      const resultado = await AdminService.aprovarFechamento(
+        req.params.id,              // ID do fechamento
+        req.usuario.id,             // ID do usuário autenticado (aprovador)
+        req.body.justificativa      // Justificativa (opcional)
+      );
+
+      res.json({
+        success: true,
+        data: resultado,
+        message: 'Fechamento aprovado com sucesso'
+      });
+    } catch (err) {
+      next(err);
     }
-    
-    
-    
+  }
+  static async mostrarDetalhes(req, res, next) {
+    try {
+      const detalhes = await AdminService.obterDetalhesFechamento(
+        req.params.idFechamento
+      );
+
+      res.json({
+        success: true,
+        data: detalhes,
+        message: 'Detalhes do fechamento carregados com sucesso'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async carregarFechamentos(req, res, next) {
+    try {
+      const resultado = await AdminService.listarFechamentosPendentes({
+        nome: req.query.nome,
+        mes: req.query.mes,
+        page: req.query.page,
+        limit: req.query.limit
+      });
+
+      res.json({
+        success: true,
+        data: Array.isArray(resultado.data) ? resultado.data : [resultado.data],
+        total: resultado.total,
+        page: resultado.page,
+        limit: resultado.limit
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 // Exporta a classe para uso nas rotas (ex: admin.routes.js)

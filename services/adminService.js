@@ -1362,6 +1362,237 @@ static formatarMensagemNotificacao(tipo, mensagemPadrao, nomeFuncionario, dataHo
       return mensagemPadrao || 'Nova notificação';
   }
 }
+
+
+
+static async aprovarFechamento(idFechamento, idUsuarioAprovador, justificativa = null) {
+  return await db.transaction(async (conn) => {
+    // 1. Verificar se o fechamento existe e travar para edição
+    const [fechamento] = await conn.query(
+      `SELECT 
+         ff.id AS id_fechamento, 
+         ff.id_empresa, 
+         ff.status,
+         ff.mes_referencia,
+         ff.ano_referencia,
+         f.id_empresa
+       FROM FECHAMENTO_FOLHA ff
+       JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
+       WHERE ff.id = ? FOR UPDATE`,
+      [idFechamento]
+    );
+
+    if (!fechamento?.length) {
+      throw new AppError('Fechamento não encontrado', 404);
+    }
+
+    const fechamentoData = fechamento[0];
+
+    // 2. Buscar informações do usuário aprovador
+    const [usuarioRows] = await conn.query(
+      `SELECT 
+         u.id,
+         u.nome,
+         u.nivel,
+         a.id AS admin_id,
+         a.id_empresa
+       FROM USUARIO u
+       LEFT JOIN ADMIN a ON u.id = a.id_usuario
+       WHERE u.id = ?`,
+      [idUsuarioAprovador]
+    );
+
+    if (!usuarioRows?.length) {
+      throw new AppError('Usuário não encontrado', 404);
+    }
+
+    const user = usuarioRows[0];
+
+    // 3. Verificar permissões
+    if (user.nivel === 'IT_SUPPORT') {
+      // Verificar se o IT_SUPPORT tem acesso à empresa do fechamento
+      const [itSupportAccess] = await conn.query(
+        `SELECT 1 FROM IT_SUPPORT 
+         WHERE id_usuario = ? AND id_empresa = ?`,
+        [idUsuarioAprovador, fechamentoData.id_empresa]
+      );
+      
+      if (!itSupportAccess?.length) {
+        throw new AppError('Você não tem permissão para aprovar este fechamento', 403);
+      }
+    } else if (user.nivel === 'ADMIN') {
+      if (user.id_empresa !== fechamentoData.id_empresa) {
+        throw new AppError('Você não tem permissão para aprovar este fechamento', 403);
+      }
+    } else {
+      throw new AppError('Usuário não autorizado para aprovar fechamentos', 403);
+    }
+
+    // 4. Verificar se o fechamento já está aprovado
+    if (fechamentoData.status === 'Aprovado') {
+      throw new AppError('Este fechamento já está aprovado', 400);
+    }
+
+    // 5. Atualizar status do fechamento
+    await conn.query(
+      `UPDATE FECHAMENTO_FOLHA 
+       SET status = 'Aprovado', 
+           data_aprovacao = NOW(),
+           id_admin_responsavel = ?,
+           observacoes = ?
+       WHERE id = ?`,
+      [user.admin_id, justificativa, idFechamento]
+    );
+
+    // 6. Inserir log de auditoria
+    const acao = 'Aprovação de Fechamento de Folha';
+    const detalhe = `Fechamento ID ${idFechamento} aprovado para o período ${fechamentoData.mes_referencia}/${fechamentoData.ano_referencia}`;
+    await conn.query(
+      `INSERT INTO LOG_AUDITORIA (id_usuario, acao, detalhe) VALUES (?, ?, ?)`,
+      [idUsuarioAprovador, acao, detalhe]
+    );
+
+    // 7. Retornar dados atualizados do fechamento
+    const [fechamentoAtualizadoRows] = await conn.query(
+      `SELECT 
+         ff.*, 
+         u.nome as nome_admin_responsavel,
+         e.nome_fantasia as empresa_nome,
+         func.nome as funcionario_nome
+       FROM FECHAMENTO_FOLHA ff
+       JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
+       JOIN USUARIO func ON f.id_usuario = func.id
+       JOIN EMPRESA e ON f.id_empresa = e.id_empresa
+       LEFT JOIN ADMIN a ON ff.id_admin_responsavel = a.id
+       LEFT JOIN USUARIO u ON a.id_usuario = u.id
+       WHERE ff.id = ?`,
+      [idFechamento]
+    );
+
+    return fechamentoAtualizadoRows[0];
+  });
+}
+
+static async obterDetalhesFechamento(idFechamento) {
+  return await db.transaction(async (conn) => {
+    // 1. Buscar informações básicas do fechamento
+    const [fechamentoRows] = await conn.query(
+      `SELECT 
+         ff.*,
+         uf.nome as funcionario_nome,
+         f.registro_emp,
+         f.funcao,
+         e.nome_fantasia as empresa_nome,
+         ua.nome as admin_responsavel_nome
+       FROM FECHAMENTO_FOLHA ff
+       JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
+       JOIN USUARIO uf ON f.id_usuario = uf.id
+       JOIN EMPRESA e ON f.id_empresa = e.id_empresa
+       LEFT JOIN ADMIN a ON ff.id_admin_responsavel = a.id
+       LEFT JOIN USUARIO ua ON a.id_usuario = ua.id
+       WHERE ff.id = ?`,
+      [idFechamento]
+    );
+
+    if (!fechamentoRows?.length) {
+      throw new AppError('Fechamento não encontrado', 404);
+    }
+
+    const fechamento = fechamentoRows[0];
+
+    // 2. Buscar horas trabalhadas relacionadas ao período do fechamento
+    const [horasRows] = await conn.query(
+      `SELECT 
+         ht.*
+       FROM HORAS_TRABALHADAS ht
+       WHERE ht.id_funcionario = ?
+         AND MONTH(ht.data) = ?
+         AND YEAR(ht.data) = ?
+         AND ht.status = 'Validado'
+       ORDER BY ht.data`,
+      [fechamento.id_funcionario, fechamento.mes_referencia, fechamento.ano_referencia]
+    );
+
+    // 3. Buscar ocorrências relacionadas ao período do fechamento
+    const [ocorrenciasRows] = await conn.query(
+      `SELECT 
+         o.*
+       FROM OCORRENCIA o
+       WHERE o.id_funcionario = ?
+         AND MONTH(o.data_ocorrencia) = ?
+         AND YEAR(o.data_ocorrencia) = ?
+         AND o.status = 'Aprovada'
+       ORDER BY o.data_ocorrencia`,
+      [fechamento.id_funcionario, fechamento.mes_referencia, fechamento.ano_referencia]
+    );
+
+    return {
+      ...fechamento,
+      horas_trabalhadas: horasRows || [],
+      ocorrencias: ocorrenciasRows || []
+    };
+  });
+}
+
+static async listarFechamentosPendentes(filtros = {}) {
+  const { nomeEmpresa, mes, ano, page = 1, limit = 10 } = filtros;
+  const parsedLimit = parseInt(limit);
+  const parsedPage = parseInt(page);
+  const offset = (parsedPage - 1) * parsedLimit;
+
+  let query = `
+    SELECT 
+      ff.id,
+      ff.id_funcionario,
+      ff.mes_referencia,
+      ff.ano_referencia,
+      ff.status,
+      ff.data_fechamento,
+      e.nome AS empresa_nome,
+      u.nome AS funcionario_nome,
+      f.funcao,
+      COUNT(*) OVER() AS total_count
+    FROM FECHAMENTO_FOLHA ff
+    JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
+    JOIN USUARIO u ON f.id_usuario = u.id
+    JOIN EMPRESA e ON f.id_empresa = e.id
+    WHERE ff.status = 'Pendente'
+  `;
+
+  const params = [];
+
+  if (nomeEmpresa) {
+    query += ` AND e.nome LIKE ?`;
+    params.push(`%${nomeEmpresa}%`);
+  }
+
+  if (mes) {
+    query += ` AND ff.mes_referencia = ?`;
+    params.push(mes);
+  }
+
+  if (ano) {
+    query += ` AND ff.ano_referencia = ?`;
+    params.push(ano);
+  }
+
+  query += `
+    ORDER BY ff.data_fechamento DESC
+    LIMIT ? OFFSET ?
+  `;
+  params.push(parsedLimit, offset);
+
+  const [rows] = await db.query(query, params);
+
+  return {
+    data: rows,
+    total: rows[0]?.total_count || 0,
+    page: parsedPage,
+    limit: parsedLimit,
+    totalPages: Math.ceil((rows[0]?.total_count || 0) / parsedLimit)
+  };
+}
+
 }
 
 module.exports = AdminService;
