@@ -705,6 +705,121 @@ static async atualizarFuncionario(req, res, next) {
     }
     
     
+static async carregarFechamentos(req, res, next) {
+  try {
+    const { mes, ano } = req.query;
+    const empresaId = req.usuario?.id_empresa || 1; // Pega do usuário logado ou usa 1 como fallback
+
+    // Validação de entrada com valores padrão
+    const mesNum = mes ? parseInt(mes, 10) : new Date().getMonth() + 1;
+    const anoNum = ano ? parseInt(ano, 10) : new Date().getFullYear();
+
+    if (
+      isNaN(mesNum) || isNaN(anoNum) ||
+      mesNum < 1 || mesNum > 12 || 
+      anoNum < 2000 || anoNum > new Date().getFullYear() + 1
+    ) {
+      throw new AppError('Mês e ano válidos são obrigatórios (ex: mes=6&ano=2025)', 400);
+    }
+
+    if (!empresaId) {
+      throw new AppError('Empresa não identificada.', 401);
+    }
+
+    // Consulta via service
+    const fechamentos = await AdminService.listarFechamentosPendentes(mesNum, anoNum, empresaId);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        data: fechamentos,
+        total: fechamentos.length,
+        mes: mesNum,
+        ano: anoNum
+      },
+      message: `Fechamentos pendentes carregados com sucesso para ${mesNum}/${anoNum}`
+    });
+
+  } catch (err) {
+    console.error('Erro no carregarFechamentos:', err);
+    next(err);
+  }
+}
+
+
+
+  /**
+   * Retorna os dados detalhados de um funcionário para fechamento
+   */
+  static async carregarDetalhesFuncionarioFechamento(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { mes, ano } = req.query;
+
+      if (!mes || !ano) {
+        throw new AppError('Mês e ano são obrigatórios', 400);
+      }
+
+      const funcionario = await AdminService.obterDetalhesFechamentoFuncionario(
+        id,
+        parseInt(mes),
+        parseInt(ano)
+      );
+
+      if (!funcionario) {
+        throw new AppError('Funcionário não encontrado', 404);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          id: funcionario.id,
+          nome: funcionario.nome,
+          cargo: funcionario.funcao,
+          salario_base: funcionario.salario_base,
+          horas_trabalhadas: funcionario.horas_trabalhadas,
+          horas_extras: funcionario.horas_extras,
+          dias_trabalhados: funcionario.dias_trabalhados,
+          banco_horas: funcionario.banco_horas,
+          observacoes: funcionario.observacoes,
+        },
+      });
+    } catch (err) {
+      console.error('Erro no carregarDetalhesFuncionarioFechamento:', err);
+      next(err);
+    }
+  }
+
+ /**
+   * Realiza o fechamento de ponto de um funcionário
+   */
+  static async fecharPontoFuncionario(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { mes, ano, observacoes } = req.body;
+
+      if (!mes || !ano) {
+        throw new AppError('Mês e ano são obrigatórios', 400);
+      }
+
+      const resultado = await AdminService.fecharPontoIndividual(
+        id,
+        parseInt(mes),
+        parseInt(ano),
+        observacoes
+      );
+
+      res.json({
+        success: true,
+        message: 'Fechamento realizado com sucesso',
+        data: resultado
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+    
     
 }
 

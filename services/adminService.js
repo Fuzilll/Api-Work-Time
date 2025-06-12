@@ -1208,7 +1208,7 @@ class AdminService {
 
     return result;
   }
-  
+
   static async notificacoesPendentes(idEmpresa) {
     const [notificacoes] = await db.query(`
       SELECT 
@@ -1238,7 +1238,193 @@ class AdminService {
         n.data_hora DESC
     `, [idEmpresa]);
     return notificacoes;
+  }
+
+
+
+
+
+
+  /**
+   * Lista todos os fechamentos pendentes para um mês/ano específico
+   */
+static async listarFechamentosPendentes(mes, ano, idEmpresa) {
+  try {
+    // Execute a query SEM desestruturar o primeiro elemento
+    const result = await db.query(
+      `
+      SELECT 
+        f.id AS id_funcionario,
+        f.registro_emp,
+        u.nome AS nome_funcionario,
+        u.status AS status_usuario,
+        u.foto_perfil_url,
+        f.funcao,
+        e.nome AS empresa_nome,
+        COALESCE(SUM(ht.horas_normais), 0) AS horas_trabalhadas,
+        COALESCE(SUM(ht.horas_extras), 0) AS horas_extras
+      FROM funcionario f
+      INNER JOIN usuario u ON f.id_usuario = u.id
+      INNER JOIN empresa e ON f.id_empresa = e.id
+      LEFT JOIN horas_trabalhadas ht 
+        ON ht.id_funcionario = f.id 
+        AND MONTH(ht.data) = ? 
+        AND YEAR(ht.data) = ?
+      LEFT JOIN fechamento_folha ff 
+        ON ff.id_funcionario = f.id 
+        AND ff.mes_referencia = ? 
+        AND ff.ano_referencia = ?
+      WHERE 
+        u.status = 'Ativo'
+        AND f.data_demissao IS NULL
+        AND f.id_empresa = ? 
+        AND (ff.id IS NULL OR ff.status = 'Pendente')
+      GROUP BY 
+        f.id, f.registro_emp, u.nome, u.status, u.foto_perfil_url, f.funcao, e.nome
+      ORDER BY f.registro_emp
+      `,
+      [mes, ano, mes, ano, idEmpresa]  
+    );
+
+    // DEBUG: Verifique a estrutura completa do retorno
+    console.log('Estrutura completa do resultado:', result);
+
+    // Ajuste conforme o formato retornado pelo seu driver de banco de dados:
+    // Opção 1: Se o resultado estiver em result[0]
+    const registros = Array.isArray(result[0]) ? result[0] : 
+                     // Opção 2: Se estiver em result.rows
+                     (result.rows ? result.rows : 
+                     // Opção 3: Se for diretamente o array
+                     (Array.isArray(result) ? result : []));
+
+    console.log(registros, 'Registros encontrados');
+    
+    return registros;
+  } catch (error) {
+    console.error('Erro no listarFechamentosPendentes:', error);
+    if (error instanceof AppError) throw error;
+    throw new AppError('Erro ao listar fechamentos pendentes: ' + error.message, 500);
+  }
 }
+
+
+
+
+  /**
+   * Obtém os detalhes completos de um funcionário para fechamento
+   */
+  static async obterDetalhesFechamentoFuncionario(funcionarioId, mes, ano) {
+    try {
+      const query = `
+                    SELECT 
+                        f.id,
+                        u.nome,
+                        u.status,
+                        f.funcao,
+                        f.salario_base,
+                        e.nome AS empresa_nome,
+                        COALESCE(SUM(ht.horas_normais), 0) AS horas_trabalhadas,
+                        COALESCE(SUM(ht.horas_extras), 0) AS horas_extras,
+                        COUNT(DISTINCT ht.data) AS dias_trabalhados,
+                        SUM(ht.horas_extras - ht.horas_devidas) AS banco_horas,
+                        ff.observacoes
+                    FROM funcionario f
+                    JOIN usuario u ON f.id_usuario = u.id
+                    JOIN empresa e ON f.id_empresa = e.id
+                    LEFT JOIN horas_trabalhadas ht ON ht.id_funcionario = f.id 
+                        AND MONTH(ht.data) = ? AND YEAR(ht.data) = ?
+                    LEFT JOIN fechamento_folha ff ON ff.id_funcionario = f.id 
+                        AND ff.mes_referencia = ? AND ff.ano_referencia = ?
+                    WHERE f.id = ? AND u.status = 'Ativo' AND f.data_demissao IS NULL
+                    GROUP BY f.id, u.nome, u.status, f.funcao, f.salario_base, e.nome, ff.observacoes;
+    `;
+
+      const result = await db.query(query, [mes, ano, mes, ano, funcionarioId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Erro ao obter detalhes do funcionário:', error);
+      throw new AppError('Erro ao obter detalhes do funcionário', 500);
+    }
+  }
+
+  /**
+   * Realiza o fechamento de ponto individual para um funcionário
+   */
+  static async fecharPontoIndividual(funcionarioId, mes, ano, observacoes = null) {
+    try {
+      // Verifica se já existe fechamento para este período
+      const checkQuery = `
+      SELECT id FROM fechamento_ponto 
+      WHERE funcionario_id = ? AND mes = ? AND ano = ?
+    `;
+      const checkResult = await db.query(checkQuery, [funcionarioId, mes, ano]);
+
+      if (checkResult.rows.length > 0) {
+        throw new AppError('Fechamento já realizado para este período', 400);
+      }
+
+      // Obtém os dados temporários do fechamento
+      const dadosQuery = `
+      SELECT 
+        SUM(horas_trabalhadas) AS horas_trabalhadas,
+        SUM(horas_extras) AS horas_extras,
+        SUM(CASE WHEN falta = true THEN 1 ELSE 0 END) AS faltas,
+        SUM(CASE WHEN atraso > 0 THEN 1 ELSE 0 END) AS atrasos,
+        SUM(CASE WHEN saida_antecipada > 0 THEN 1 ELSE 0 END) AS saidas_antecipadas,
+        SUM(CASE WHEN registro_incompleto = true THEN 1 ELSE 0 END) AS pontos_nao_registrados,
+        COUNT(DISTINCT data) AS dias_trabalhados,
+        SUM(horas_extras - horas_devidas) AS banco_horas
+      FROM fechamento_temporario
+      WHERE funcionario_id = ? AND mes = ? AND ano = ?
+    `;
+      const dadosResult = await db.query(dadosQuery, [funcionarioId, mes, ano]);
+      const dados = dadosResult.rows[0];
+
+      // Insere o fechamento definitivo
+      const insertQuery = `
+      INSERT INTO fechamento_ponto (
+        funcionario_id, mes, ano, 
+        horas_trabalhadas, horas_extras, 
+        faltas, atrasos, saidas_antecipadas, 
+        pontos_nao_registrados, dias_trabalhados, 
+        banco_horas, observacoes, data_fechamento
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      RETURNING id
+    `;
+
+      const insertParams = [
+        funcionarioId,
+        mes,
+        ano,
+        dados.horas_trabalhadas || 0,
+        dados.horas_extras || 0,
+        dados.faltas || 0,
+        dados.atrasos || 0,
+        dados.saidas_antecipadas || 0,
+        dados.pontos_nao_registrados || 0,
+        dados.dias_trabalhados || 0,
+        dados.banco_horas || 0,
+        observacoes
+      ];
+
+      const result = await db.query(insertQuery, insertParams);
+
+      // Remove os dados temporários após o fechamento
+      await db.query(
+        'DELETE FROM fechamento_temporario WHERE funcionario_id = ? AND mes = ? AND ano = ?',
+        [funcionarioId, mes, ano]
+      );
+
+      return {
+        id: result.rows[0].id,
+        ...dados
+      };
+    } catch (error) {
+      console.error('Erro ao fechar ponto do funcionário:', error);
+      throw new AppError(error.message || 'Erro ao fechar ponto do funcionário', 500);
+    }
+  }
+
 }
 
 module.exports = AdminService;

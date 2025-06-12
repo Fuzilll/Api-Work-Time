@@ -710,6 +710,58 @@ tr:hover {
 .mobile-menu-items a:hover {
   background-color: var(--claro-secundaria);
 }
+.periodo-controle {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.periodo-controle .form-select {
+    width: auto;
+}
+
+/* Filtros */
+.filtros-container {
+    margin-bottom: 20px;
+}
+
+.filtros {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.filtros .input-group {
+    width: auto;
+    min-width: 200px;
+}
+
+/* Tabela */
+.table-responsive {
+    margin-bottom: 20px;
+}
+
+#tabelaFuncionarios tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#tabelaFuncionarios tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Paginação */
+.pagination {
+    margin-top: 20px;
+}
+
+/* Modais */
+.modal-content {
+    padding: 20px;
+}
+
+
+
 
 /* ========== MEDIA QUERIES ========== */
 @media (max-width: 992px) {

@@ -105,4 +105,19 @@ router.post('/solicitacoes/:id/processar',
 
 router.get('/dashboard', adminController.dashboardCompletoAdmin);
 
+
+// 📌 Lista todos os fechamentos pendentes de um mês/ano
+router.get('/fechamentos/pendentes', adminController.carregarFechamentos);
+
+// 📌 Detalhes de fechamento de um funcionário específico
+router.get('/fechamentos/:id/detalhes', adminController.carregarDetalhesFuncionarioFechamento);
+
+// 📌 Fecha o ponto de um funcionário
+router.post('/fechamentos/:id/fechar', adminController.fecharPontoFuncionario);
+
+router.post('/fechamento/executar', 
+  adminController.fecharPontoFuncionario
+);
+
+
 module.exports = router;
