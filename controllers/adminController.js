@@ -748,47 +748,110 @@ static async carregarFechamentos(req, res, next) {
 
 
 
-  /**
-   * Retorna os dados detalhados de um funcionário para fechamento
-   */
-  static async carregarDetalhesFuncionarioFechamento(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { mes, ano } = req.query;
+/**
+ * Retorna os dados detalhados de um funcionário para fechamento
+ */
+static async carregarDetalhesFuncionarioFechamento(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { mes, ano } = req.query;
 
-      if (!mes || !ano) {
-        throw new AppError('Mês e ano são obrigatórios', 400);
-      }
+    // Validação de entrada mais robusta
+    if (!id || id === 'undefined') {
+      throw new AppError('ID do funcionário é obrigatório', 400);
+    }
 
-      const funcionario = await AdminService.obterDetalhesFechamentoFuncionario(
-        id,
-        parseInt(mes),
-        parseInt(ano)
-      );
+    const mesNum = parseInt(mes);
+    const anoNum = parseInt(ano);
+    
+    if (isNaN(mesNum)) {
+      throw new AppError('Parâmetro "mes" deve ser um número entre 1 e 12', 400);
+    }
 
-      if (!funcionario) {
-        throw new AppError('Funcionário não encontrado', 404);
-      }
+    if (isNaN(anoNum)) {
+      throw new AppError('Parâmetro "ano" deve ser um número válido', 400);
+    }
 
-      res.json({
-        success: true,
-        data: {
+    if (mesNum < 1 || mesNum > 12) {
+      throw new AppError('Mês deve estar entre 1 e 12', 400);
+    }
+
+    // Obtém os dados do service
+    const funcionario = await AdminService.obterDetalhesFechamentoFuncionario(
+      id,
+      mesNum,
+      anoNum
+    );
+
+    if (!funcionario) {
+      throw new AppError('Funcionário não encontrado, inativo ou já demitido', 404);
+    }
+
+    // Formata a resposta com estrutura mais clara
+    const response = {
+      success: true,
+      data: {
+        funcionario: {
           id: funcionario.id,
           nome: funcionario.nome,
-          cargo: funcionario.funcao,
-          salario_base: funcionario.salario_base,
-          horas_trabalhadas: funcionario.horas_trabalhadas,
-          horas_extras: funcionario.horas_extras,
-          dias_trabalhados: funcionario.dias_trabalhados,
-          banco_horas: funcionario.banco_horas,
-          observacoes: funcionario.observacoes,
+          cargo: funcionario.cargo,
+          empresa: funcionario.empresa_nome,
+          status: funcionario.status,
+          salario_base: funcionario.salario_base
         },
-      });
-    } catch (err) {
-      console.error('Erro no carregarDetalhesFuncionarioFechamento:', err);
-      next(err);
+        fechamento: {
+          status: funcionario.status_fechamento || 'Pendente',
+          observacoes: funcionario.observacoes || '',
+          periodo: {
+            mes: mesNum,
+            ano: anoNum,
+            referencia: `${mesNum.toString().padStart(2, '0')}/${anoNum}`
+          }
+        },
+        horas: {
+          trabalhadas: funcionario.horas_trabalhadas,
+          extras: funcionario.horas_extras,
+          banco: funcionario.banco_horas,
+          dias_trabalhados: funcionario.dias_trabalhados
+        },
+        ocorrencias: funcionario.desvios
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        version: '1.0'
+      }
+    };
+
+    res.json(response);
+
+  } catch (err) {
+    console.error('Erro no carregarDetalhesFuncionarioFechamento:', err);
+    
+    // Tratamento específico para erros de validação
+    if (err instanceof AppError) {
+      const errorResponse = {
+        success: false,
+        message: err.message,
+        code: err.code || 'INTERNAL_ERROR',
+        details: {}
+      };
+
+      if (err.statusCode === 400) {
+        errorResponse.details = {
+          required_params: {
+            mes: 'Número do mês (1-12)',
+            ano: 'Ano com 4 dígitos'
+          },
+          example: '/api/fechamento/:id/detalhes?mes=6&ano=2025'
+        };
+      }
+
+      return res.status(err.statusCode || 500).json(errorResponse);
     }
+
+    next(err);
   }
+}
 
  /**
    * Realiza o fechamento de ponto de um funcionário

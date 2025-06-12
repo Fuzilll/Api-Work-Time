@@ -1310,42 +1310,88 @@ static async listarFechamentosPendentes(mes, ano, idEmpresa) {
 
 
 
-  /**
-   * Obtém os detalhes completos de um funcionário para fechamento
-   */
-  static async obterDetalhesFechamentoFuncionario(funcionarioId, mes, ano) {
-    try {
-      const query = `
-                    SELECT 
-                        f.id,
-                        u.nome,
-                        u.status,
-                        f.funcao,
-                        f.salario_base,
-                        e.nome AS empresa_nome,
-                        COALESCE(SUM(ht.horas_normais), 0) AS horas_trabalhadas,
-                        COALESCE(SUM(ht.horas_extras), 0) AS horas_extras,
-                        COUNT(DISTINCT ht.data) AS dias_trabalhados,
-                        SUM(ht.horas_extras - ht.horas_devidas) AS banco_horas,
-                        ff.observacoes
-                    FROM funcionario f
-                    JOIN usuario u ON f.id_usuario = u.id
-                    JOIN empresa e ON f.id_empresa = e.id
-                    LEFT JOIN horas_trabalhadas ht ON ht.id_funcionario = f.id 
-                        AND MONTH(ht.data) = ? AND YEAR(ht.data) = ?
-                    LEFT JOIN fechamento_folha ff ON ff.id_funcionario = f.id 
-                        AND ff.mes_referencia = ? AND ff.ano_referencia = ?
-                    WHERE f.id = ? AND u.status = 'Ativo' AND f.data_demissao IS NULL
-                    GROUP BY f.id, u.nome, u.status, f.funcao, f.salario_base, e.nome, ff.observacoes;
+
+/**
+ * Obtém os detalhes completos de um funcionário para fechamento incluindo desvios
+ * Refatorado para:
+ * - Corrigir nome da tabela OCORRENCIA
+ * - Usar tipos corretos de ocorrência
+ * - Adicionar tratamento para horas_devidas
+ * - Melhorar tratamento de erros
+ */
+static async obterDetalhesFechamentoFuncionario(funcionarioId, mes, ano) {
+  try {
+    // Validação básica dos parâmetros
+    if (!funcionarioId || isNaN(mes) || isNaN(ano)) {
+      throw new AppError('Parâmetros inválidos para consulta de fechamento', 400);
+    }
+
+    // 1. Query principal para dados básicos e horas trabalhadas (com COALESCE para horas_devidas)
+    const queryFuncionario = `
+      SELECT 
+        f.id,
+        u.nome,
+        u.status,
+        f.funcao AS cargo,
+        f.salario_base,
+        e.nome AS empresa_nome,
+        COALESCE(SUM(ht.horas_normais), 0) AS horas_trabalhadas,
+        COALESCE(SUM(ht.horas_extras), 0) AS horas_extras,
+        COUNT(DISTINCT ht.data) AS dias_trabalhados,
+        COALESCE(SUM(ht.horas_extras - ht.horas_devidas), 0) AS banco_horas,
+        ff.observacoes,
+        ff.status AS status_fechamento
+      FROM funcionario f
+      JOIN usuario u ON f.id_usuario = u.id
+      JOIN empresa e ON f.id_empresa = e.id
+      LEFT JOIN horas_trabalhadas ht ON ht.id_funcionario = f.id 
+        AND MONTH(ht.data) = ? AND YEAR(ht.data) = ?
+      LEFT JOIN fechamento_folha ff ON ff.id_funcionario = f.id 
+        AND ff.mes_referencia = ? AND ff.ano_referencia = ?
+      WHERE f.id = ? AND u.status = 'Ativo' AND f.data_demissao IS NULL
+      GROUP BY f.id, u.nome, u.status, f.funcao, f.salario_base, e.nome, ff.observacoes, ff.status
     `;
 
-      const result = await db.query(query, [mes, ano, mes, ano, funcionarioId]);
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Erro ao obter detalhes do funcionário:', error);
-      throw new AppError('Erro ao obter detalhes do funcionário', 500);
+    // 2. Query para contabilizar desvios (com nome correto da tabela e tipos)
+    const queryDesvios = `
+      SELECT 
+        SUM(CASE WHEN tipo = 'Falta' THEN 1 ELSE 0 END) AS faltas,
+        SUM(CASE WHEN tipo = 'Atraso' THEN 1 ELSE 0 END) AS atrasos,
+        SUM(CASE WHEN tipo = 'HoraExtra' THEN 1 ELSE 0 END) AS horas_extras,
+        SUM(CASE WHEN tipo = 'Advertencia' THEN 1 ELSE 0 END) AS advertências
+      FROM OCORRENCIA
+      WHERE id_funcionario = ?
+        AND MONTH(data_ocorrencia) = ?
+        AND YEAR(data_ocorrencia) = ?
+    `;
+
+    // Executa as queries em paralelo
+    const [resultFuncionario, resultDesvios] = await Promise.all([
+      db.query(queryFuncionario, [mes, ano, mes, ano, funcionarioId]),
+      db.query(queryDesvios, [funcionarioId, mes, ano])
+    ]);
+
+    const funcionario = resultFuncionario.rows[0];
+    if (!funcionario) {
+      return null;
     }
+
+    // Combina os resultados com valores padrão
+    return {
+      ...funcionario,
+      desvios: {
+        faltas: resultDesvios.rows[0]?.faltas || 0,
+        atrasos: resultDesvios.rows[0]?.atrasos || 0,
+        horas_extras: resultDesvios.rows[0]?.horas_extras || 0,
+        advertências: resultDesvios.rows[0]?.advertências || 0
+      }
+    };
+
+  } catch (error) {
+    console.error('Erro ao obter detalhes do funcionário:', error);
+    throw new AppError(`Erro ao obter detalhes do funcionário: ${error.message}`, 500, error.code);
   }
+}
 
   /**
    * Realiza o fechamento de ponto individual para um funcionário
