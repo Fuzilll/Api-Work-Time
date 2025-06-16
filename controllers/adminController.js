@@ -703,65 +703,224 @@ class AdminController {
       next(err);
     }
   }
+ 
+//fechamentoPonto
 
-  static async aprovarFechamento(req, res, next) {
-    try {
-      // Verifica se o usuário tem permissão (middleware já validou)
-      if (!req.usuario.permissoes?.aprovar_fechamentos && req.usuario.nivel !== 'ADMIN') {
-        throw new AppError('Você não tem permissão para aprovar fechamentos', 403);
+
+
+static async aprovarFechamento(req, res, next) {
+  try {
+    // Verifica se o usuário tem permissão (middleware já validou)
+    if (!req.usuario.permissoes?.aprovar_fechamentos && req.usuario.nivel !== 'ADMIN') {
+      throw new AppError('Você não tem permissão para aprovar fechamentos', 403);
+    }
+
+    const resultado = await AdminService.aprovarFechamento(
+      req.params.id,              // ID do fechamento
+      req.usuario.id,             // ID do usuário autenticado (aprovador)
+      req.body.justificativa      // Justificativa (opcional)
+    );
+
+    res.json({
+      success: true,
+      data: resultado,
+      message: 'Fechamento aprovado com sucesso'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+static async mostrarDetalhes(req, res, next) {
+  try {
+    const detalhes = await AdminService.obterDetalhesFechamento(
+      req.params.idFechamento
+    );
+
+    res.json({
+      success: true,
+      data: detalhes,
+      message: 'Detalhes do fechamento carregados com sucesso'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+static async carregarFechamentos(req, res, next) {
+  try {
+    const resultado = await AdminService.listarFechamentosPendentes({
+      nome: req.query.nome,
+      mes: req.query.mes,
+      page: req.query.page,
+      limit: req.query.limit
+    });
+
+    res.json({
+      success: true,
+      data: Array.isArray(resultado.data) ? resultado.data : [resultado.data],
+      total: resultado.total,
+      page: resultado.page,
+      limit: resultado.limit
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+static async carregarFuncionariosFechamento(req, res, next) {
+  try {
+      const { ano, mes } = req.query;
+      
+      if (!ano || !mes) {
+          throw new AppError('Ano e mês são obrigatórios', 400);
       }
 
-      const resultado = await AdminService.aprovarFechamento(
-        req.params.id,              // ID do fechamento
-        req.usuario.id,             // ID do usuário autenticado (aprovador)
-        req.body.justificativa      // Justificativa (opcional)
+      const funcionarios = await AdminService.listarFuncionariosParaFechamento(
+          parseInt(ano),
+          parseInt(mes)
+      );
+console.log(funcionarios, 'listarFuncionariosParaFechamento')
+      // Formatar os dados para o frontend
+      const dadosFormatados = funcionarios.map(func => ({
+          id: func.id,
+          nome: func.nome,
+          cargo: func.cargo,
+          empresa_nome: func.empresa_nome,
+          horas_trabalhadas: func.horas_trabalhadas,
+          horas_extras: func.horas_extras,
+          faltas: func.faltas,
+          atrasos: func.atrasos,
+          saidas_antecipadas: func.saidas_antecipadas,
+          pontos_nao_registrados: func.pontos_nao_registrados,
+          ja_fechado: func.ja_fechado
+      }));
+
+      res.json({
+          success: true,
+          data: dadosFormatados
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+// Método para executar o fechamento de folha
+static async executarFechamentoFolha(req, res, next) {
+  try {
+      const { idFuncionario, ano, mes } = req.body;
+      
+      if (!idFuncionario || !ano || !mes) {
+          throw new AppError('ID do funcionário, ano e mês são obrigatórios', 400);
+      }
+
+      const resultado = await AdminService.executarFechamentoFolha(
+          parseInt(idFuncionario),
+          parseInt(ano),
+          parseInt(mes)
       );
 
       res.json({
+          success: true,
+          data: resultado,
+          message: 'Fechamento realizado com sucesso'
+      });
+  } catch (err) {
+      next(err);
+  }
+}
+static async carregarDetalhesFuncionarioFechamento(req, res, next) {
+try {
+    const { id } = req.params;
+    const { ano, mes } = req.query;
+    console.log('aaaaaaaaaaaaaaaaaaa')
+
+    if (!ano || !mes) {
+        throw new AppError('Ano e mês são obrigatórios', 400);
+    }
+
+    const detalhes = await AdminService.carregarDetalhesFuncionarioFechamento(
+        parseInt(id),
+        parseInt(ano),
+        parseInt(mes)
+    );
+
+    res.json({
+        success: true,
+        data: detalhes
+    });
+} catch (err) {
+    next(err);
+}
+}
+static async fecharPontoFuncionario(req, res, next) {
+try {
+    const { id } = req.params;
+    const { ano, mes } = req.body;
+
+    if (!ano || !mes) {
+        throw new AppError('Ano e mês são obrigatórios', 400);
+    }
+
+    const resultado = await AdminService.executarFechamentoFolha(
+        parseInt(id),
+        parseInt(ano),
+        parseInt(mes)
+    );
+    res.json({
         success: true,
         data: resultado,
-        message: 'Fechamento aprovado com sucesso'
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-  static async mostrarDetalhes(req, res, next) {
-    try {
-      const detalhes = await AdminService.obterDetalhesFechamento(
-        req.params.idFechamento
-      );
+        message: 'Fechamento do ponto realizado com sucesso'
+    });
+} catch (err) {
+    next(err);
+}
+}
 
-      res.json({
-        success: true,
-        data: detalhes,
-        message: 'Detalhes do fechamento carregados com sucesso'
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
 
-  static async carregarFechamentos(req, res, next) {
-    try {
-      const resultado = await AdminService.listarFechamentosPendentes({
-        nome: req.query.nome,
-        mes: req.query.mes,
-        page: req.query.page,
-        limit: req.query.limit
-      });
 
-      res.json({
-        success: true,
-        data: Array.isArray(resultado.data) ? resultado.data : [resultado.data],
-        total: resultado.total,
-        page: resultado.page,
-        limit: resultado.limit
-      });
-    } catch (err) {
-      next(err);
+static async carregarTodosParaFechamento(req, res, next) {
+  try {
+    const { ano, mes } = req.query;
+    
+    if (!ano || !mes) {
+      throw new AppError('Ano e mês são obrigatórios', 400);
     }
+
+    const funcionarios = await AdminService.carregarTodosFuncionariosParaFechamento(
+      parseInt(ano),
+      parseInt(mes)
+    );
+
+    res.json({
+      success: true,
+      data: funcionarios
+    });
+  } catch (err) {
+    next(err);
   }
+}
+
+static async carregarDadosFechamentoIndividual(req, res, next) {
+  try {
+    const { idFuncionario, mes, ano } = req.query;
+
+    if (!idFuncionario || !mes || !ano) {
+      throw new AppError('ID do funcionário, mês e ano são obrigatórios', 400);
+    }
+
+    const dados = await AdminService.carregarDadosFechamentoIndividual(
+      parseInt(idFuncionario),
+      parseInt(mes),
+      parseInt(ano)
+    );
+
+    res.json({
+      success: true,
+      data: dados
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+    
 }
 
 // Exporta a classe para uso nas rotas (ex: admin.routes.js)

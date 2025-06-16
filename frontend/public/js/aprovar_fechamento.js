@@ -238,7 +238,7 @@ class FechamentoFolhaManager {
                 limit: this.itemsPerPage
             });
 
-            const data = await this.fazerRequisicao(`/fechamentos/pendentes?${params.toString()}`);
+            const data = await this.fazerRequisicao(`/fechamentos/aprovar_fechamento/pendentes?${params.toString()}`);
 
             if (data && data.success) {
                 this.fechamentos = Array.isArray(data.data) ? data.data : [];
@@ -416,7 +416,7 @@ class FechamentoFolhaManager {
     async mostrarDetalhes(idFechamento) {
         this.mostrarLoading(true);
         try {
-            const data = await this.fazerRequisicao(`/fechamentos/${idFechamento}/detalhes`);
+            const data = await this.fazerRequisicao(`/fechamentos/aprovar_fechamento/${idFechamento}/detalhes`);
             
             if (data.success) {
                 this.exibirModalDetalhes(data.data);
@@ -429,178 +429,154 @@ class FechamentoFolhaManager {
         }
     }
 
-    exibirModalDetalhes(detalhes) {
+    exibirModalDetalhes(detalhes) { 
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            const modalElement = document.getElementById('detalhesFechamentoModal');
+            const modalElement = document.getElementById('modalDetalhes');
             if (!modalElement) {
-                this.criarModalDetalhes();
-                this.exibirModalDetalhes(detalhes); // Recursivo após criar o modal
+                console.error('Modal não encontrado');
                 return;
             }
-
+    
+            // Fechar qualquer modal aberto antes de abrir um novo
+            const modaisAbertos = document.querySelectorAll('.modal.show');
+            modaisAbertos.forEach(modal => {
+                bootstrap.Modal.getInstance(modal)?.hide();
+            });
+    
             // Preencher os dados do modal
-            document.getElementById('modalFuncionarioNome').textContent = detalhes.funcionario_nome;
-            document.getElementById('modalEmpresaNome').textContent = detalhes.empresa_nome;
-            document.getElementById('modalPeriodo').textContent = 
-                `${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}`;
-            document.getElementById('modalStatus').innerHTML = this.criarBadgeStatus(detalhes.status.toLowerCase());
-            document.getElementById('modalRegistroEmp').textContent = detalhes.registro_emp;
-            document.getElementById('modalFuncao').textContent = detalhes.funcao;
-            document.getElementById('modalDataFechamento').textContent = 
-                new Date(detalhes.data_fechamento).toLocaleDateString();
-            
-            if (detalhes.data_aprovacao) {
-                document.getElementById('modalDataAprovacao').textContent = 
-                    new Date(detalhes.data_aprovacao).toLocaleDateString();
-                document.getElementById('modalAprovador').textContent = detalhes.admin_responsavel_nome || 'N/A';
-            } else {
-                document.getElementById('modalDataAprovacao').textContent = 'N/A';
-                document.getElementById('modalAprovador').textContent = 'N/A';
-            }
-
-            // Preencher tabela de horas trabalhadas
-            const horasTbody = document.getElementById('modalHorasTrabalhadas');
-            if (horasTbody) {
-                horasTbody.innerHTML = detalhes.horas_trabalhadas.map(ht => `
-                    <tr>
-                        <td>${new Date(ht.data).toLocaleDateString()}</td>
-                        <td>${ht.horas_trabalhadas}</td>
-                        <td>${ht.horas_extras || '0'}</td>
-                        <td>${ht.observacoes || '-'}</td>
-                    </tr>
-                `).join('') || '<tr><td colspan="4">Nenhum registro encontrado</td></tr>';
-            }
-
-            // Preencher tabela de ocorrências
-            const ocorrenciasTbody = document.getElementById('modalOcorrencias');
-            if (ocorrenciasTbody) {
-                ocorrenciasTbody.innerHTML = detalhes.ocorrencias.map(o => `
-                    <tr>
-                        <td>${new Date(o.data_ocorrencia).toLocaleDateString()}</td>
-                        <td>${o.tipo}</td>
-                        <td>${o.descricao}</td>
-                        <td>${o.observacoes || '-'}</td>
-                    </tr>
-                `).join('') || '<tr><td colspan="4">Nenhuma ocorrência registrada</td></tr>';
-            }
-
-            // Mostrar o modal
-            const modal = new bootstrap.Modal(modalElement);
+            const modalBody = document.getElementById('modalDetalhesBody');
+            modalBody.innerHTML = `
+                <div class="container-fluid">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <h6>Funcionário</h6>
+                            <p>${detalhes.funcionario_nome || 'N/A'}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Empresa</h6>
+                            <p>${detalhes.empresa_nome || 'N/A'}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Período</h6>
+                            <p>${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <h6>Status</h6>
+                            <p>${this.criarBadgeStatus(detalhes.status?.toLowerCase() || 'indefinido')}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Registro Emp.</h6>
+                            <p>${detalhes.registro_emp || 'N/A'}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Função</h6>
+                            <p>${detalhes.funcao || 'N/A'}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Data Fechamento</h6>
+                            <p>${detalhes.data_fechamento ? new Date(detalhes.data_fechamento).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>Data Aprovação</h6>
+                            <p>${detalhes.data_aprovacao ? new Date(detalhes.data_aprovacao).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Aprovador</h6>
+                            <p>${detalhes.admin_responsavel_nome || 'N/A'}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Horas Trabalhadas</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Horas Normais</th>
+                                        <th>Horas Extras</th>
+                                        <th>Observações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${detalhes.horas_trabalhadas ? detalhes.horas_trabalhadas.map(ht => `
+                                        <tr>
+                                            <td>${ht.data ? new Date(ht.data).toLocaleDateString() : 'N/A'}</td>
+                                            <td>${ht.horas_trabalhadas || '0'}</td>
+                                            <td>${ht.horas_extras || '0'}</td>
+                                            <td>${ht.observacoes || '-'}</td>
+                                        </tr>
+                                    `).join('') : '<tr><td colspan="4">Nenhum registro encontrado</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Ocorrências</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Tipo</th>
+                                        <th>Descrição</th>
+                                        <th>Observações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${detalhes.ocorrencias ? detalhes.ocorrencias.map(o => `
+                                        <tr>
+                                            <td>${o.data_ocorrencia ? new Date(o.data_ocorrencia).toLocaleDateString() : 'N/A'}</td>
+                                            <td>${o.tipo || '-'}</td>
+                                            <td>${o.descricao || '-'}</td>
+                                            <td>${o.observacoes || '-'}</td>
+                                        </tr>
+                                    `).join('') : '<tr><td colspan="4">Nenhuma ocorrência registrada</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+    
+            // Configurar o modal
+            const modal = new bootstrap.Modal(modalElement, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+    
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                // Se quiser limpar o conteúdo ou resetar algo
+            });
+    
+            modalElement.addEventListener('shown.bs.modal', () => {
+                // Se quiser focar em algo no modal
+            });
+    
             modal.show();
+    
+            // Garantir a ordem correta de exibição
+            modalElement.style.zIndex = '1060';
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.style.zIndex = '1050';
+            }
         } else {
-            // Fallback caso o Bootstrap não esteja disponível
+            // Fallback simples
             console.log('Detalhes do fechamento:', detalhes);
             alert(`Detalhes do fechamento:\nFuncionário: ${detalhes.funcionario_nome}\nEmpresa: ${detalhes.empresa_nome}\nPeríodo: ${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}`);
         }
     }
-
-    criarModalDetalhes() {
-        const modalHTML = `
-        <div class="modal fade" id="detalhesFechamentoModal" tabindex="-1" aria-labelledby="detalhesFechamentoModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title" id="detalhesFechamentoModalLabel">Detalhes do Fechamento</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <h6>Funcionário</h6>
-                                <p id="modalFuncionarioNome">-</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6>Empresa</h6>
-                                <p id="modalEmpresaNome">-</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6>Período</h6>
-                                <p id="modalPeriodo">-</p>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <h6>Status</h6>
-                                <p id="modalStatus">-</p>
-                            </div>
-                            <div class="col-md-3">
-                                <h6>Registro Emp.</h6>
-                                <p id="modalRegistroEmp">-</p>
-                            </div>
-                            <div class="col-md-3">
-                                <h6>Função</h6>
-                                <p id="modalFuncao">-</p>
-                            </div>
-                            <div class="col-md-3">
-                                <h6>Data Fechamento</h6>
-                                <p id="modalDataFechamento">-</p>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <h6>Data Aprovação</h6>
-                                <p id="modalDataAprovacao">-</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Aprovador</h6>
-                                <p id="modalAprovador">-</p>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h5>Horas Trabalhadas</h5>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Horas Normais</th>
-                                            <th>Horas Extras</th>
-                                            <th>Observações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="modalHorasTrabalhadas">
-                                        <tr>
-                                            <td colspan="4">Carregando...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h5>Ocorrências</h5>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Tipo</th>
-                                            <th>Descrição</th>
-                                            <th>Observações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="modalOcorrencias">
-                                        <tr>
-                                            <td colspan="4">Carregando...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-    }
+    
+    
 
     confirmarAprovacao(idFechamento) {
         if (typeof Swal !== 'undefined') {
@@ -642,7 +618,7 @@ class FechamentoFolhaManager {
         this.mostrarLoading(true);
         try {
             const resultado = await this.fazerRequisicao(
-                `/fechamento/aprovar/${idFechamento}`,
+                `/fechamento/aprovar_fechamento/${idFechamento}`,
                 'POST',
                 {
                     justificativa: justificativa

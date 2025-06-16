@@ -1365,13 +1365,17 @@ static formatarMensagemNotificacao(tipo, mensagemPadrao, nomeFuncionario, dataHo
 
 
 
+// fechamentoPonto
+
+
+
+
 static async aprovarFechamento(idFechamento, idUsuarioAprovador, justificativa = null) {
   return await db.transaction(async (conn) => {
     // 1. Verificar se o fechamento existe e travar para edição
     const [fechamento] = await conn.query(
       `SELECT 
          ff.id AS id_fechamento, 
-         ff.id_empresa, 
          ff.status,
          ff.mes_referencia,
          ff.ano_referencia,
@@ -1457,12 +1461,12 @@ static async aprovarFechamento(idFechamento, idUsuarioAprovador, justificativa =
       `SELECT 
          ff.*, 
          u.nome as nome_admin_responsavel,
-         e.nome_fantasia as empresa_nome,
+         e.nome as empresa_nome,
          func.nome as funcionario_nome
        FROM FECHAMENTO_FOLHA ff
        JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
        JOIN USUARIO func ON f.id_usuario = func.id
-       JOIN EMPRESA e ON f.id_empresa = e.id_empresa
+       JOIN EMPRESA e ON f.id_empresa = e.id
        LEFT JOIN ADMIN a ON ff.id_admin_responsavel = a.id
        LEFT JOIN USUARIO u ON a.id_usuario = u.id
        WHERE ff.id = ?`,
@@ -1482,12 +1486,12 @@ static async obterDetalhesFechamento(idFechamento) {
          uf.nome as funcionario_nome,
          f.registro_emp,
          f.funcao,
-         e.nome_fantasia as empresa_nome,
+         e.nome as empresa_nome,
          ua.nome as admin_responsavel_nome
        FROM FECHAMENTO_FOLHA ff
        JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
        JOIN USUARIO uf ON f.id_usuario = uf.id
-       JOIN EMPRESA e ON f.id_empresa = e.id_empresa
+       JOIN EMPRESA e ON f.id_empresa = e.id
        LEFT JOIN ADMIN a ON ff.id_admin_responsavel = a.id
        LEFT JOIN USUARIO ua ON a.id_usuario = ua.id
        WHERE ff.id = ?`,
@@ -1583,7 +1587,6 @@ static async listarFechamentosPendentes(filtros = {}) {
   params.push(parsedLimit, offset);
 
   const [rows] = await db.query(query, params);
-
   return {
     data: rows,
     total: rows[0]?.total_count || 0,
@@ -1591,6 +1594,301 @@ static async listarFechamentosPendentes(filtros = {}) {
     limit: parsedLimit,
     totalPages: Math.ceil((rows[0]?.total_count || 0) / parsedLimit)
   };
+}
+
+
+
+
+
+
+static async listarFuncionariosParaFechamento(ano, mes) {
+  return await db.transaction(async (conn) => {
+      // Calcula as datas de início e fim do mês/ano
+      const primeiroDia = `${ano}-${mes.toString().padStart(2, '0')}-01`;
+      const ultimoDia = new Date(ano, mes, 0).toISOString().split('T')[0];
+
+      const [funcionarios] = await conn.query(`
+          SELECT 
+              f.id,
+              u.nome AS nome,
+              f.funcao AS cargo,
+              e.nome AS empresa_nome,
+              COALESCE(SUM(ht.horas_normais), 0) AS horas_trabalhadas,
+              COALESCE(SUM(ht.horas_extras), 0) AS horas_extras,
+              SUM(CASE WHEN ht.faltas = TRUE THEN 1 ELSE 0 END) AS faltas,
+              SUM(CASE WHEN o.tipo = 'Atraso' THEN 1 ELSE 0 END) AS atrasos,
+              SUM(CASE WHEN n.tipo = 'SAIDA_ANTECIPADA' THEN 1 ELSE 0 END) AS saidas_antecipadas,
+              SUM(CASE WHEN n.tipo = 'NAO_BATEU_PONTO' THEN 1 ELSE 0 END) AS pontos_nao_registrados,
+              CASE WHEN ff.id IS NULL THEN 0 ELSE 1 END AS ja_fechado
+          FROM funcionario f
+          JOIN usuario u ON f.id_usuario = u.id
+          JOIN empresa e ON f.id_empresa = e.id
+          LEFT JOIN horas_trabalhadas ht ON f.id = ht.id_funcionario
+              AND ht.data BETWEEN ? AND ?
+          LEFT JOIN ocorrencia o ON f.id = o.id_funcionario 
+              AND o.tipo = 'Atraso'
+              AND o.data_ocorrencia BETWEEN ? AND ?
+          LEFT JOIN notificacao n ON f.id = n.id_funcionario 
+              AND n.tipo IN ('SAIDA_ANTECIPADA', 'NAO_BATEU_PONTO')
+              AND n.data_hora BETWEEN ? AND ?
+          LEFT JOIN fechamento_folha ff ON ff.id_funcionario = f.id 
+              AND ff.mes_referencia = ? 
+              AND ff.ano_referencia = ?
+          WHERE EXISTS (
+              SELECT 1 FROM horas_trabalhadas ht
+              WHERE ht.id_funcionario = f.id
+              AND ht.data BETWEEN ? AND ?
+          )
+          GROUP BY f.id, u.nome, f.funcao, e.nome, ff.id
+          ORDER BY u.nome
+      `, [primeiroDia, ultimoDia, primeiroDia, ultimoDia, primeiroDia, ultimoDia, mes, ano, primeiroDia, ultimoDia]);
+
+      
+      return funcionarios;
+  });
+}
+
+// Método para executar o fechamento de folha mensal usando a procedure
+static async executarFechamentoFolha(idFuncionario, ano, mes) {
+  return await db.transaction(async (conn) => {
+      // Verificar se o funcionário existe
+      const [funcionario] = await conn.query(
+          `SELECT id FROM funcionario WHERE id = ?`,
+          [idFuncionario]
+      );
+
+      if (!funcionario?.length) {
+          throw new AppError('Funcionário não encontrado', 404);
+      }
+
+      // Executar a procedure
+      await conn.query(
+          `CALL SP_FECHAMENTO_FOLHA_MENSAL(?, ?, ?)`,
+          [idFuncionario, ano, mes]
+      );
+
+      // Retornar os dados do fechamento criado
+      const [fechamento] = await conn.query(`
+          SELECT 
+              ff.*,
+              u.nome AS funcionario_nome,
+              e.nome AS empresa_nome
+          FROM fechamento_folha ff
+          JOIN funcionario f ON ff.id_funcionario = f.id
+          JOIN usuario u ON f.id_usuario = u.id
+          JOIN empresa e ON f.id_empresa = e.id
+          WHERE ff.id_funcionario = ?
+          AND ff.mes_referencia = ?
+          AND ff.ano_referencia = ?
+      `, [idFuncionario, mes, ano]);
+
+      return fechamento[0];
+  });
+}
+
+static async carregarDetalhesFuncionarioFechamento(idFuncionario, ano, mes) {
+  return await db.transaction(async (conn) => {
+      const primeiroDia = `${ano}-${mes.toString().padStart(2, '0')}-01`;
+      const ultimoDia = new Date(ano, mes, 0).toISOString().split('T')[0];
+
+      const [detalhes] = await conn.query(`
+          SELECT 
+              u.nome,
+              f.funcao AS cargo,
+              e.nome AS empresa_nome,
+              COALESCE(SUM(ht.horas_normais), 0) AS horas_trabalhadas,
+              COALESCE(SUM(ht.horas_extras), 0) AS horas_extras,
+              SUM(CASE WHEN ht.faltas = TRUE THEN 1 ELSE 0 END) AS faltas,
+              SUM(CASE WHEN o.tipo = 'Atraso' THEN 1 ELSE 0 END) AS atrasos,
+              SUM(CASE WHEN n.tipo = 'SAIDA_ANTECIPADA' THEN 1 ELSE 0 END) AS saidas_antecipadas,
+              SUM(CASE WHEN n.tipo = 'NAO_BATEU_PONTO' THEN 1 ELSE 0 END) AS pontos_nao_registrados
+          FROM funcionario f
+          JOIN usuario u ON f.id_usuario = u.id
+          JOIN empresa e ON f.id_empresa = e.id
+          LEFT JOIN horas_trabalhadas ht ON f.id = ht.id_funcionario 
+              AND ht.data BETWEEN ? AND ?
+          LEFT JOIN ocorrencia o ON f.id = o.id_funcionario 
+              AND o.tipo = 'Atraso'
+              AND o.data_ocorrencia BETWEEN ? AND ?
+          LEFT JOIN notificacao n ON f.id = n.id_funcionario 
+              AND n.tipo IN ('SAIDA_ANTECIPADA', 'NAO_BATEU_PONTO')
+              AND n.data_hora BETWEEN ? AND ?
+          WHERE f.id = ?
+          GROUP BY u.nome, f.funcao, e.nome
+      `, [primeiroDia, ultimoDia, primeiroDia, ultimoDia, primeiroDia, ultimoDia, idFuncionario]);
+
+      return detalhes[0];
+  });
+}
+
+
+
+
+  /**
+   * Realiza o fechamento de ponto individual para um funcionário
+   */
+/**
+ * Realiza o fechamento de ponto individual para um funcionário
+ * utilizando a stored procedure SP_FECHAMENTO_FOLHA_MENSAL
+ */
+static async fecharPontoIndividual(funcionarioId, mes, ano, observacoes = null) {
+  try {
+      // Verifica se já existe fechamento para este período
+      const checkQuery = `
+          SELECT id FROM fechamento_ponto 
+          WHERE funcionario_id = ? AND mes = ? AND ano = ?
+      `;
+      const checkResult = await db.query(checkQuery, [funcionarioId, mes, ano]);
+
+      if (checkResult.rows.length > 0) {
+          throw new AppError('Fechamento já realizado para este período', 400);
+      }
+
+      // Chama a stored procedure para processar o fechamento
+      const spQuery = `
+          CALL SP_FECHAMENTO_FOLHA_MENSAL(?, ?, ?)
+      `;
+      await db.query(spQuery, [funcionarioId, ano, mes]);
+
+      // Obtém os dados do fechamento que foi processado pela stored procedure
+      const dadosFechamentoQuery = `
+          SELECT 
+              total_horas_trabalhadas AS horas_trabalhadas,
+              total_horas_extras AS horas_extras,
+              total_horas_faltas AS faltas,
+              total_atrasos AS atrasos,
+              0 AS saidas_antecipadas,  // Não mapeado na SP original
+              0 AS pontos_nao_registrados,  // Não mapeado na SP original
+              (total_horas_trabalhadas / 8) AS dias_trabalhados,  // Estimativa
+              (total_horas_extras - (total_horas_faltas * 8)) AS banco_horas  // Estimativa
+          FROM fechamento_folha
+          WHERE id_funcionario = ? 
+            AND mes_referencia = ? 
+            AND ano_referencia = ?
+          ORDER BY data_fechamento DESC
+          LIMIT 1
+      `;
+      const dadosFechamentoResult = await db.query(dadosFechamentoQuery, [funcionarioId, mes, ano]);
+      const dados = dadosFechamentoResult.rows[0];
+
+      // Insere o registro de fechamento de ponto com os dados consolidados
+      const insertQuery = `
+          INSERT INTO fechamento_ponto (
+              funcionario_id, mes, ano, 
+              horas_trabalhadas, horas_extras, 
+              faltas, atrasos, saidas_antecipadas, 
+              pontos_nao_registrados, dias_trabalhados, 
+              banco_horas, observacoes, data_fechamento
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          RETURNING id
+      `;
+
+      const insertParams = [
+          funcionarioId,
+          mes,
+          ano,
+          dados.horas_trabalhadas || 0,
+          dados.horas_extras || 0,
+          dados.faltas || 0,
+          dados.atrasos || 0,
+          dados.saidas_antecipadas || 0,
+          dados.pontos_nao_registrados || 0,
+          dados.dias_trabalhados || 0,
+          dados.banco_horas || 0,
+          observacoes
+      ];
+
+      const result = await db.query(insertQuery, insertParams);
+
+      return {
+          id: result.rows[0].id,
+          ...dados
+      };
+  } catch (error) {
+      console.error('Erro ao fechar ponto do funcionário:', error);
+      throw new AppError(error.message || 'Erro ao fechar ponto do funcionário', 500);
+  }
+}
+
+
+
+static async carregarTodosFuncionariosParaFechamento(ano, mes) {
+  return await db.transaction(async (conn) => {
+    const primeiroDia = `${ano}-${mes.toString().padStart(2, '0')}-01`;
+    const ultimoDia = new Date(ano, mes, 0).toISOString().split('T')[0];
+
+    const [funcionarios] = await conn.query(`
+      SELECT 
+        f.id,
+        u.nome,
+        f.funcao AS cargo,
+        e.nome AS empresa_nome,
+        COALESCE(SUM(ht.horas_normais), 0) AS horas_normais,
+        COALESCE(SUM(ht.horas_extras), 0) AS horas_extras,
+        COALESCE(SUM(ht.horas_noturnas), 0) AS horas_noturnas,
+        COALESCE(SUM(ht.horas_domingo_feriado), 0) AS horas_domingo_feriado,
+        COALESCE(SUM(ht.total_horas), 0) AS total_geral,
+        SUM(CASE WHEN ht.faltas = TRUE THEN 1 ELSE 0 END) AS total_faltas,
+        COALESCE(SUM(ht.atrasos_minutos), 0) AS total_atrasos,
+        CASE WHEN ff.id IS NULL THEN 0 ELSE 1 END AS ja_fechado
+      FROM funcionario f
+      JOIN usuario u ON f.id_usuario = u.id
+      JOIN empresa e ON f.id_empresa = e.id
+      LEFT JOIN horas_trabalhadas ht ON f.id = ht.id_funcionario
+        AND ht.data BETWEEN ? AND ?
+      LEFT JOIN fechamento_folha ff ON ff.id_funcionario = f.id 
+        AND ff.mes_referencia = ? 
+        AND ff.ano_referencia = ?
+      GROUP BY f.id, u.nome, f.funcao, e.nome, ff.id
+      ORDER BY u.nome
+    `, [primeiroDia, ultimoDia, mes, ano]);
+
+    return funcionarios;
+  });
+}
+
+static async carregarDadosFechamentoIndividual(idFuncionario, mes, ano) {
+  return await db.transaction(async (conn) => {
+    // 1. Buscar informações básicas do funcionário
+    const [funcionario] = await conn.query(
+      `SELECT 
+        f.id, 
+        u.nome, 
+        f.funcao AS cargo,
+        e.nome AS empresa_nome
+       FROM funcionario f
+       JOIN usuario u ON f.id_usuario = u.id
+       JOIN empresa e ON f.id_empresa = e.id
+       WHERE f.id = ?`,
+      [idFuncionario]
+    );
+
+    if (!funcionario?.length) {
+      throw new AppError('Funcionário não encontrado', 404);
+    }
+
+    // 2. Calcular totais do período
+    const [totais] = await conn.query(
+      `SELECT
+        SUM(horas_normais) AS horas_normais,
+        SUM(horas_extras) AS horas_extras,
+        SUM(horas_noturnas) AS horas_noturnas,
+        SUM(horas_domingo_feriado) AS horas_domingo_feriado,
+        SUM(total_horas) AS total_geral,
+        SUM(CASE WHEN faltas THEN 1 ELSE 0 END) AS total_faltas,
+        SUM(atrasos_minutos) AS total_atrasos
+       FROM horas_trabalhadas
+       WHERE id_funcionario = ?
+         AND MONTH(data) = ?
+         AND YEAR(data) = ?`,
+      [idFuncionario, mes, ano]
+    );
+
+    return {
+      ...funcionario[0],
+      totais: totais[0] || {}
+    };
+  });
 }
 
 }

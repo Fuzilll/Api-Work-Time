@@ -105,6 +105,9 @@ router.post('/solicitacoes/:id/processar',
 
 router.get('/dashboard', adminController.dashboardCompletoAdmin);
 
+
+
+//fechamentoFolha
 router.post('/fechamento/aprovar/:id',
   adminController.aprovarFechamento
 );
@@ -116,4 +119,24 @@ router.get('/fechamentos/pendentes',
   adminController.carregarFechamentos
 );
 
+// Carrega os funcionários com dados de fechamento (faltas, atrasos, horas, etc.)
+router.get('/fechamento/funcionarios', adminController.carregarFuncionariosFechamento);
+
+// Retorna os dados detalhados de um funcionário específico para o fechamento
+router.get('/fechamento/funcionario/:id', adminController.carregarDetalhesFuncionarioFechamento);
+
+// Realiza o fechamento de ponto individual de um funcionário (por ID)
+router.post('/fechamento/funcionario/:id/fechar', adminController.fecharPontoFuncionario);
+
+// Realiza o fechamento geral da folha do mês/ano
+router.post('/fechamento/geral', adminController.executarFechamentoFolha);
+
+
+router.get('/fechamento/detalhes-individual', 
+  adminController.carregarDadosFechamentoIndividual
+);
+
+router.get('/fechamento/todos', 
+  adminController.carregarTodosParaFechamento
+);
 module.exports = router;
