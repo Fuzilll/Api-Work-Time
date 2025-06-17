@@ -475,60 +475,73 @@ class FechamentoFolhaManager {
         }
     }
 
-exibirModalDetalhes(detalhes) {
-    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-        const modalElement = document.getElementById('modalDetalhes');
-        if (!modalElement) {
-            console.error('Modal não encontrado');
-            return;
-        }
+    exibirModalDetalhes(detalhes) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
 
-        // Fechar qualquer modal existente primeiro
-        if (this.modalInstance) {
-            this.modalInstance.hide();
-            this.modalInstance.dispose();
-        }
+            const modalElement = document.getElementById('modalDetalhes');
 
-        // Preencher os dados do modal
-        const modalBody = document.getElementById('modalDetalhesBody');
-        modalBody.innerHTML = this.gerarConteudoModalDetalhes(detalhes);
+            console.log('Modal instance:', this.modalInstance);
+            console.log('Modal element:', modalElement);
+            console.log('Backdrop element:', document.querySelector('.modal-backdrop'));
+            // Verifique se há elementos cobrindo o modal
+            const checkOverlay = () => {
+                const elements = document.elementsFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+                console.log('Elements at center:', elements);
+            };
+            setTimeout(checkOverlay, 500);
+            
+            if (!modalElement) {
+                console.error('Modal não encontrado');
+                return;
+            }
 
-        // Criar nova instância do modal
-        this.modalInstance = new bootstrap.Modal(modalElement, {
-            backdrop: true,  // Permite fechar clicando fora
-            keyboard: true,  // Permite fechar com ESC
-            focus: true      // Foca no modal quando aberto
-        });
 
-        // Configurar eventos de fechamento
-        modalElement.addEventListener('hidden.bs.modal', () => {
-            modalBody.innerHTML = ''; // Limpa o conteúdo ao fechar
-        });
-
-        // Mostrar o modal
-        this.modalInstance.show();
-
-        // Adicionar event listener manual para o botão de fechar
-        const closeButton = modalElement.querySelector('.btn-close');
-        if (closeButton) {
-            closeButton.addEventListener('click', () => {
+            // Fechar qualquer modal existente primeiro
+            if (this.modalInstance) {
                 this.modalInstance.hide();
-            });
-        }
+                this.modalInstance.dispose();
+            }
 
-        // Adicionar event listener para o botão de fechar no footer
-        const footerCloseButton = modalElement.querySelector('.modal-footer .btn-secondary');
-        if (footerCloseButton) {
-            footerCloseButton.addEventListener('click', () => {
-                this.modalInstance.hide();
+            // Preencher os dados do modal
+            const modalBody = document.getElementById('modalDetalhesBody');
+            modalBody.innerHTML = this.gerarConteudoModalDetalhes(detalhes);
+
+            // Criar nova instância do modal
+            this.modalInstance = new bootstrap.Modal(modalElement, {
+                backdrop: true,  // Permite fechar clicando fora
+                keyboard: true,  // Permite fechar com ESC
+                focus: true      // Foca no modal quando aberto
             });
+
+            // Configurar eventos de fechamento
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                modalBody.innerHTML = ''; // Limpa o conteúdo ao fechar
+            });
+
+            // Mostrar o modal
+            this.modalInstance.show();
+
+            // Adicionar event listener manual para o botão de fechar
+            const closeButton = modalElement.querySelector('.btn-close');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    this.modalInstance.hide();
+                });
+            }
+
+            // Adicionar event listener para o botão de fechar no footer
+            const footerCloseButton = modalElement.querySelector('.modal-footer .btn-secondary');
+            if (footerCloseButton) {
+                footerCloseButton.addEventListener('click', () => {
+                    this.modalInstance.hide();
+                });
+            }
+        } else {
+            // Fallback simples
+            console.log('Detalhes do fechamento:', detalhes);
+            alert(`Detalhes do fechamento:\nFuncionário: ${detalhes.funcionario_nome}\nEmpresa: ${detalhes.empresa_nome}\nPeríodo: ${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}`);
         }
-    } else {
-        // Fallback simples
-        console.log('Detalhes do fechamento:', detalhes);
-        alert(`Detalhes do fechamento:\nFuncionário: ${detalhes.funcionario_nome}\nEmpresa: ${detalhes.empresa_nome}\nPeríodo: ${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}`);
     }
-}
 
     gerarConteudoModalDetalhes(detalhes) {
         return `
