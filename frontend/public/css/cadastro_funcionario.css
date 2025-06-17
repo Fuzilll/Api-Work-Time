@@ -327,6 +327,10 @@ body.dark-mode {
     background-color: var(--escuro-bg);
     color: var(--escuro-texto);
 }
+body.dark-mode .content{
+    background-color: var(--escuro-bg);
+    color: var(--escuro-texto);
+}
 
 body.dark-mode .topbar {
     background-color: var(--escuro-bg);
