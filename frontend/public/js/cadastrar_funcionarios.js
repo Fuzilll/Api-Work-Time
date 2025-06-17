@@ -193,56 +193,96 @@ class FuncionarioCadastro {
         };
     }
 
-    validarDados(funcionario) {
-        const erros = [];
+validarDados(funcionario) {
+    const erros = [];
 
-        if (!funcionario.nome || funcionario.nome.length < 2) {
-            erros.push("O nome deve ter pelo menos 2 caracteres");
-        }
+    const nome = funcionario.nome?.trim();
+    const email = funcionario.email?.trim();
+    const senha = funcionario.senha;
+    const cpf = funcionario.cpf?.trim();
+    const registroEmp = funcionario.registro_emp?.trim();
+    const funcao = funcionario.funcao?.trim();
+    const dataAdmissao = funcionario.data_admissao;
+    const departamento = funcionario.departamento;
+    const salario = funcionario.salario_base;
+    const tipoContrato = funcionario.tipo_contrato;
 
-        if (!funcionario.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(funcionario.email)) {
-            erros.push("E-mail inválido");
-        }
-
-        if (!funcionario.senha || funcionario.senha.length < 8) {
-            erros.push("A senha deve ter pelo menos 8 caracteres");
-        }
-
-        if (!funcionario.cpf || funcionario.cpf.length !== 11 || !/^\d+$/.test(funcionario.cpf)) {
-            erros.push("CPF deve ter exatamente 11 dígitos numéricos");
-        }
-
-        if (!funcionario.registro_emp || funcionario.registro_emp.trim() === '') {
-            erros.push("Registro de empregado é obrigatório");
-        }
-
-        if (!funcionario.funcao || funcionario.funcao.trim() === '') {
-            erros.push("Função é obrigatória");
-        }
-
-        if (!funcionario.data_admissao || isNaN(new Date(funcionario.data_admissao).getTime())) {
-            erros.push("Data de admissão é obrigatória e deve ser válida");
-        }
-
-        if (!funcionario.departamento) {
-            erros.push("Departamento é obrigatório");
-        }
-
-        if (!funcionario.salario_base || isNaN(funcionario.salario_base) || funcionario.salario_base <= 0) {
-            erros.push("Salário base deve ser um valor positivo");
-        }
-
-        if (!funcionario.tipo_contrato) {
-            erros.push("Tipo de contrato é obrigatório");
-        }
-
-        if (erros.length > 0) {
-            this.mostrarErros(erros);
-            return false;
-        }
-
-        return true;
+    // Nome
+    if (!nome || nome.length < 2) {
+        erros.push("O nome deve conter pelo menos 2 caracteres.");
     }
+
+    // E-mail
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        erros.push("E-mail inválido.");
+    }
+
+    // Senha
+    if (!senha || senha.length < 8 || !/[A-Z]/.test(senha) || !/[a-z]/.test(senha) || !/\d/.test(senha)) {
+        erros.push("A senha deve ter pelo menos 8 caracteres, incluindo uma letra maiúscula, uma minúscula e um número.");
+    }
+
+    // CPF (com validação algorítmica)
+    if (!cpf || cpf.length !== 11 || !/^\d+$/.test(cpf) || !this.validarCPF(cpf)) {
+        erros.push("CPF inválido.");
+    }
+
+    // Registro
+    if (!registroEmp) {
+        erros.push("Registro de empregado é obrigatório.");
+    }
+
+    // Função
+    if (!funcao) {
+        erros.push("Função é obrigatória.");
+    }
+
+    // Data de admissão
+    const data = new Date(dataAdmissao);
+    if (!dataAdmissao || isNaN(data.getTime())) {
+        erros.push("Data de admissão inválida.");
+    } else if (data > new Date()) {
+        erros.push("Data de admissão não pode ser futura.");
+    }
+
+    // Departamento
+    if (!departamento) {
+        erros.push("Departamento é obrigatório.");
+    }
+
+    // Salário
+    if (!salario || isNaN(salario) || salario <= 0) {
+        erros.push("Salário base deve ser um número positivo.");
+    }
+
+    // Tipo de contrato
+    if (!tipoContrato) {
+        erros.push("Tipo de contrato é obrigatório.");
+    }
+
+    if (erros.length > 0) {
+        this.mostrarErros(erros);
+        return false;
+    }
+
+    return true;
+}
+validarCPF(cpf) {
+    if (!cpf || cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    return resto === parseInt(cpf.substring(10, 11));
+}
+
 
     async salvarFuncionario(funcionario) {
         const token = localStorage.getItem('authToken');
@@ -341,7 +381,7 @@ class FuncionarioCadastro {
             icon: 'success',
             confirmButtonText: 'OK'
         }).then(() => {
-            window.location.href = '/lista-funcionarios.html';
+            window.location.href = '/cadastrar_funcionarios.html';
         });
     }
 
