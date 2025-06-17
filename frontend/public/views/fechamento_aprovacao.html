@@ -43,8 +43,18 @@
             <h1>Fechamentos Pendentes</h1>
 
             <div class="filtros d-flex gap-3 mb-3">
-                <input type="text" class="form-control" id="filtroNome" placeholder="Pesquisar por nome">
-                <input type="month" class="form-control" id="filtroMes">
+                <select class="form-control" id="filtroStatus">
+                    <option value="">Todos</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Aprovado">Aprovado</option>
+                </select>
+
+                <select class="form-control" id="filtroOrdenacao">
+                    <option value="data_fechamento DESC">Mais Recentes</option>
+                    <option value="data_fechamento ASC">Mais Antigos</option>
+                    <option value="funcionario_nome ASC">Nome (A-Z)</option>
+                    <option value="funcionario_nome DESC">Nome (Z-A)</option>
+                </select>
             </div>
 
             <table class="table table-bordered" id="tabelaFechamentos">
@@ -77,23 +87,22 @@
         </div>
     </div>
 
-    <!-- Modal de Detalhes (opcional) -->
-    <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detalhes do Fechamento</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="modalDetalhesBody">
-                    <!-- Conteúdo será preenchido dinamicamente -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                </div>
+<div class="modal fade" id="modalDetalhes" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Fechamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalDetalhesBody">
+                <!-- Conteúdo dinâmico -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
+</div>
 
     <script src="/js/menu.js"></script>
     <script src="/js/sidebarToggle.js"></script>

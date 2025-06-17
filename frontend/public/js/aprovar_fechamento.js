@@ -6,82 +6,105 @@ class FechamentoFolhaManager {
         this.fechamentos = [];
         this.currentPage = 1;
         this.itemsPerPage = 10;
+        this.elements = {};
+        this.currentMonth = new Date().getMonth() + 1;
+        this.currentYear = new Date().getFullYear();
         this.loadingOverlay = document.getElementById('loading-overlay');
         this.errorMessage = document.getElementById('error-message');
-        this.elements = {};
-        this.currentMonth = new Date().getMonth() + 1; // Mês atual como padrão
 
         this.init();
     }
 
     init() {
-        if (!window.location.pathname.includes('/fechamento_aprovacao.html')) {
-            console.warn('Acesso incorreto - redirecionando');
-            window.location.href = '/fechamento_aprovacao.html';
-            return;
-        }
+        if (!this.verifyPageAccess()) return;
 
         this.initElements();
         this.setupEventListeners();
         this.checkAuthAndLoad();
     }
 
+    verifyPageAccess() {
+        if (!window.location.pathname.includes('/fechamento_aprovacao.html')) {
+            console.warn('Acesso incorreto - redirecionando');
+            window.location.href = '/fechamento_aprovacao.html';
+            return false;
+        }
+        return true;
+    }
     initElements() {
-        this.elements = {
-            tabelaFechamentos: document.getElementById('tabelaFechamentos'),
-            paginacao: document.getElementById('paginacao'),
-            filtroNome: document.getElementById('filtroNome'),
-            filtroMes: document.getElementById('filtroMes'),
-            filtroAno: document.getElementById('filtroAno'),
-            loading: document.getElementById('loading'),
-            erro: document.getElementById('erro'),
-            btnAprovar: document.querySelectorAll('.aprovar-btn')
-        };
+        const elementsConfig = [
+            { id: 'tabelaFechamentos', property: 'tabelaFechamentos', required: true },
+            { id: 'paginacao', property: 'paginacao', required: false },
+            { id: 'filtroNome', property: 'filtroNome', required: false },
+            { id: 'filtroMes', property: 'filtroMes', required: false },
+            { id: 'filtroAno', property: 'filtroAno', required: false },
+            { id: 'filtroStatus', property: 'filtroStatus', required: false },
+            { id: 'filtroOrdenacao', property: 'filtroOrdenacao', required: false },
+            { id: 'loading', property: 'loading', required: false },
+            { id: 'erro', property: 'erro', required: false }
+        ];
 
-        // Configurar o mês atual como padrão se não houver seleção
+        elementsConfig.forEach(({ id, property, required }) => {
+            this.elements[property] = document.getElementById(id);
+            if (!this.elements[property] && required) {
+                console.error(`Elemento requerido com ID '${id}' não encontrado.`);
+            }
+        });
+
+        // Configurar valores padrão
         if (this.elements.filtroMes && !this.elements.filtroMes.value) {
             this.elements.filtroMes.value = this.currentMonth;
         }
-
-        // Configurar o ano atual como padrão
         if (this.elements.filtroAno && !this.elements.filtroAno.value) {
-            this.elements.filtroAno.value = new Date().getFullYear();
+            this.elements.filtroAno.value = this.currentYear;
         }
     }
 
     setupEventListeners() {
+        this.setupFilterListeners();
+        this.setupTableListeners();
+    }
+
+
+    setupFilterListeners() {
+        let timeout;
+
+        // Verifica se o elemento existe antes de adicionar o listener
         if (this.elements.filtroNome) {
             this.elements.filtroNome.addEventListener('input', () => {
-                this.currentPage = 1;
-                this.carregarFechamentos();
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    this.currentPage = 1;
+                    this.carregarFechamentos();
+                }, 500);
             });
         }
 
-        if (this.elements.filtroMes) {
-            this.elements.filtroMes.addEventListener('change', () => {
-                this.currentPage = 1;
-                this.carregarFechamentos();
-            });
-        }
-
-        if (this.elements.filtroAno) {
-            this.elements.filtroAno.addEventListener('change', () => {
-                this.currentPage = 1;
-                this.carregarFechamentos();
-            });
-        }
-
-        // Delegar eventos para os botões de aprovação
+        // Outros filtros - agora verificando se o elemento existe
+        ['filtroMes', 'filtroAno', 'filtroStatus', 'filtroOrdenacao'].forEach(element => {
+            if (this.elements[element]) {
+                this.elements[element].addEventListener('change', () => {
+                    this.currentPage = 1;
+                    this.carregarFechamentos();
+                });
+            }
+        });
+    }
+    setupTableListeners() {
         if (this.elements.tabelaFechamentos) {
             this.elements.tabelaFechamentos.addEventListener('click', (e) => {
                 if (e.target.classList.contains('aprovar-btn')) {
                     const idFechamento = e.target.getAttribute('data-id');
                     this.confirmarAprovacao(idFechamento);
                 }
+                if (e.target.classList.contains('detalhes-btn')) {
+                    const row = e.target.closest('tr');
+                    const idFechamento = row.querySelector('.aprovar-btn').getAttribute('data-id');
+                    this.mostrarDetalhes(idFechamento);
+                }
             });
         }
     }
-
     async checkAuthAndLoad() {
         try {
             const token = localStorage.getItem(this.authTokenKey);
@@ -95,23 +118,16 @@ class FechamentoFolhaManager {
                 throw new Error('Token expirado');
             }
 
-            try {
-                this.userData = JSON.parse(userData) || this.decodeJWT(token);
-                if (!this.userData?.id) {
-                    throw new Error('Dados do usuário inválidos');
-                }
-            } catch (e) {
-                throw new Error('Token inválido');
-            }
+            this.userData = this.parseUserData(token, userData);
 
-            if (!this.userData.permissoes?.aprovar_fechamentos && this.userData.nivel !== 'ADMIN') {
+            if (!this.hasPermission()) {
                 this.showError('Acesso restrito - Você não tem permissão para aprovar fechamentos');
                 return;
             }
 
             await this.carregarFechamentos();
 
-        } catch(error) {
+        } catch (error) {
             console.error('Falha na verificação de autenticação:', error);
             if (!error.message.includes('Acesso restrito')) {
                 this.showError('Sessão expirada. Redirecionando...');
@@ -120,7 +136,24 @@ class FechamentoFolhaManager {
         }
     }
 
+    parseUserData(token, userData) {
+        try {
+            const parsedData = JSON.parse(userData) || this.decodeJWT(token);
+            if (!parsedData?.id) {
+                throw new Error('Dados do usuário inválidos');
+            }
+            return parsedData;
+        } catch (e) {
+            throw new Error('Token inválido');
+        }
+    }
+
+    hasPermission() {
+        return this.userData.permissoes?.aprovar_fechamentos || this.userData.nivel === 'ADMIN';
+    }
+
     isTokenExpired(token) {
+        if (!token) return true;
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             return payload.exp * 1000 < Date.now();
@@ -165,6 +198,13 @@ class FechamentoFolhaManager {
 
             const response = await fetch(`${this.API_BASE_URL}${url}`, options);
 
+            // Verificar se a resposta é JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(text || 'Resposta não-JSON recebida');
+            }
+
             if (response.status === 401) {
                 this.redirectToLogin();
                 throw new Error('Não autorizado');
@@ -172,7 +212,7 @@ class FechamentoFolhaManager {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || 'Erro na requisição');
+                throw new Error(error.message || `Erro HTTP ${response.status}`);
             }
 
             return await response.json();
@@ -183,9 +223,9 @@ class FechamentoFolhaManager {
         }
     }
 
-    mostrarLoading(mostrar) {
-        if (this.elements.loading) {
-            this.elements.loading.style.display = mostrar ? 'block' : 'none';
+    mostrarLoading(mostrar = true) {
+        if (this.loadingOverlay) {
+            this.loadingOverlay.style.display = mostrar ? 'flex' : 'none';
         }
     }
 
@@ -230,19 +270,31 @@ class FechamentoFolhaManager {
     async carregarFechamentos() {
         this.mostrarLoading(true);
         try {
+            const userData = JSON.parse(localStorage.getItem(this.userDataKey));
+            const idEmpresa = userData?.id_empresa || userData?.empresa_id;
+
+            if (!idEmpresa) {
+                throw new Error('Empresa não identificada para o usuário');
+            }
+
             const params = new URLSearchParams({
-                nomeEmpresa: this.elements.filtroNome?.value || '',
-                mes: this.elements.filtroMes?.value || '',
-                ano: this.elements.filtroAno?.value || new Date().getFullYear(),
+                idEmpresa: idEmpresa,
+                nome: this.elements.filtroNome?.value || '',
+                mes: this.elements.filtroMes?.value || this.currentMonth,
+                ano: this.elements.filtroAno?.value || this.currentYear,
+                status: this.elements.filtroStatus?.value || '',
                 page: this.currentPage,
                 limit: this.itemsPerPage
             });
 
-            const data = await this.fazerRequisicao(`/fechamentos/aprovar_fechamento/pendentes?${params.toString()}`);
-
-            if (data && data.success) {
-                this.fechamentos = Array.isArray(data.data) ? data.data : [];
-                this.totalItems = data.total || 0;
+            const data = await this.fazerRequisicao(
+                `/fechamentos/pendentes?${params.toString()}&ordenacao=${encodeURIComponent(this.elements.filtroOrdenacao?.value || 'data_fechamento DESC')}`
+            );
+            console.log(data, `aaaaaaaaaaaaaaaaaaaaaaa`)
+            if (data?.success) {
+                this.fechamentos = Array.isArray(data.data) ? data.data :
+                    (data.data ? [data.data] : []);
+                this.totalItems = data.total || this.fechamentos.length;
                 this.renderizarTabela();
                 this.renderizarPaginacao();
                 return data;
@@ -278,37 +330,29 @@ class FechamentoFolhaManager {
         });
     }
 
+
     criarLinhaFechamento(f) {
         const linha = document.createElement('tr');
-        
+
         linha.innerHTML = `
-            <td>${f.id}</td>
-            <td>${f.funcionario_nome}</td>
-            <td>${f.funcao}</td>
-            <td>${f.empresa_nome}</td>
-            <td>${this.formatarMesReferencia(f.mes_referencia, f.ano_referencia)}</td>
-            <td>${this.criarBadgeStatus(f.status.toLowerCase())}</td>
-            <td>
-                <button data-id="${f.id}" class="btn btn-success btn-sm aprovar-btn">
-                    <i class="fas fa-check"></i> Aprovar
-                </button>
-                <button data-id="${f.id}" class="btn btn-info btn-sm detalhes-btn ms-2">
-                    <i class="fas fa-eye"></i> Detalhes
-                </button>
-            </td>
-        `;
-        
-        // Adicionar evento para o botão de detalhes
-        const detalhesBtn = linha.querySelector('.detalhes-btn');
-        if (detalhesBtn) {
-            detalhesBtn.addEventListener('click', () => {
-                this.mostrarDetalhes(f.id);
-            });
-        }
-        
+        <td>${f.funcionario_nome}</td>
+        <td>${this.formatarMesReferencia(f.mes_referencia, f.ano_referencia)}</td>
+        <td>${f.horas_normais || '0'}h</td>
+        <td>${f.horas_extras || '0'}h</td>
+        <td>${f.faltas || '0'}</td>
+        <td>${this.criarBadgeStatus(f.status.toLowerCase())}</td>
+        <td>
+            <button data-id="${f.id}" class="btn btn-success btn-sm aprovar-btn">
+                <i class="fas fa-check"></i> Aprovar
+            </button>
+            <button data-id="${f.id}" class="btn btn-info btn-sm detalhes-btn ms-2">
+                <i class="fas fa-eye"></i> Detalhes
+            </button>
+        </td>
+    `;
+
         return linha;
     }
-
     formatarMesReferencia(mes, ano) {
         const meses = [
             'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -324,7 +368,7 @@ class FechamentoFolhaManager {
             'rejeitado': 'bg-danger',
             'cancelado': 'bg-secondary'
         };
-        
+
         return `<span class="badge ${classes[status] || 'bg-secondary'}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
     }
 
@@ -416,10 +460,12 @@ class FechamentoFolhaManager {
     async mostrarDetalhes(idFechamento) {
         this.mostrarLoading(true);
         try {
-            const data = await this.fazerRequisicao(`/fechamentos/aprovar_fechamento/${idFechamento}/detalhes`);
-            
-            if (data.success) {
+            const data = await this.fazerRequisicao(`/fechamentos/${idFechamento}/detalhes`);
+
+            if (data?.success) {
                 this.exibirModalDetalhes(data.data);
+            } else {
+                throw new Error(data?.message || 'Erro ao carregar detalhes');
             }
         } catch (error) {
             console.error('Erro ao carregar detalhes:', error);
@@ -429,154 +475,163 @@ class FechamentoFolhaManager {
         }
     }
 
-    exibirModalDetalhes(detalhes) { 
-        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            const modalElement = document.getElementById('modalDetalhes');
-            if (!modalElement) {
-                console.error('Modal não encontrado');
-                return;
-            }
-    
-            // Fechar qualquer modal aberto antes de abrir um novo
-            const modaisAbertos = document.querySelectorAll('.modal.show');
-            modaisAbertos.forEach(modal => {
-                bootstrap.Modal.getInstance(modal)?.hide();
+exibirModalDetalhes(detalhes) {
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modalElement = document.getElementById('modalDetalhes');
+        if (!modalElement) {
+            console.error('Modal não encontrado');
+            return;
+        }
+
+        // Fechar qualquer modal existente primeiro
+        if (this.modalInstance) {
+            this.modalInstance.hide();
+            this.modalInstance.dispose();
+        }
+
+        // Preencher os dados do modal
+        const modalBody = document.getElementById('modalDetalhesBody');
+        modalBody.innerHTML = this.gerarConteudoModalDetalhes(detalhes);
+
+        // Criar nova instância do modal
+        this.modalInstance = new bootstrap.Modal(modalElement, {
+            backdrop: true,  // Permite fechar clicando fora
+            keyboard: true,  // Permite fechar com ESC
+            focus: true      // Foca no modal quando aberto
+        });
+
+        // Configurar eventos de fechamento
+        modalElement.addEventListener('hidden.bs.modal', () => {
+            modalBody.innerHTML = ''; // Limpa o conteúdo ao fechar
+        });
+
+        // Mostrar o modal
+        this.modalInstance.show();
+
+        // Adicionar event listener manual para o botão de fechar
+        const closeButton = modalElement.querySelector('.btn-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                this.modalInstance.hide();
             });
-    
-            // Preencher os dados do modal
-            const modalBody = document.getElementById('modalDetalhesBody');
-            modalBody.innerHTML = `
-                <div class="container-fluid">
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <h6>Funcionário</h6>
-                            <p>${detalhes.funcionario_nome || 'N/A'}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <h6>Empresa</h6>
-                            <p>${detalhes.empresa_nome || 'N/A'}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <h6>Período</h6>
-                            <p>${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}</p>
-                        </div>
+        }
+
+        // Adicionar event listener para o botão de fechar no footer
+        const footerCloseButton = modalElement.querySelector('.modal-footer .btn-secondary');
+        if (footerCloseButton) {
+            footerCloseButton.addEventListener('click', () => {
+                this.modalInstance.hide();
+            });
+        }
+    } else {
+        // Fallback simples
+        console.log('Detalhes do fechamento:', detalhes);
+        alert(`Detalhes do fechamento:\nFuncionário: ${detalhes.funcionario_nome}\nEmpresa: ${detalhes.empresa_nome}\nPeríodo: ${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}`);
+    }
+}
+
+    gerarConteudoModalDetalhes(detalhes) {
+        return `
+            <div class="container-fluid">
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <h6>Funcionário</h6>
+                        <p>${detalhes.funcionario_nome || 'N/A'}</p>
                     </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <h6>Status</h6>
-                            <p>${this.criarBadgeStatus(detalhes.status?.toLowerCase() || 'indefinido')}</p>
-                        </div>
-                        <div class="col-md-3">
-                            <h6>Registro Emp.</h6>
-                            <p>${detalhes.registro_emp || 'N/A'}</p>
-                        </div>
-                        <div class="col-md-3">
-                            <h6>Função</h6>
-                            <p>${detalhes.funcao || 'N/A'}</p>
-                        </div>
-                        <div class="col-md-3">
-                            <h6>Data Fechamento</h6>
-                            <p>${detalhes.data_fechamento ? new Date(detalhes.data_fechamento).toLocaleDateString() : 'N/A'}</p>
-                        </div>
+                    <div class="col-md-4">
+                        <h6>Empresa</h6>
+                        <p>${detalhes.empresa_nome || 'N/A'}</p>
                     </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h6>Data Aprovação</h6>
-                            <p>${detalhes.data_aprovacao ? new Date(detalhes.data_aprovacao).toLocaleDateString() : 'N/A'}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Aprovador</h6>
-                            <p>${detalhes.admin_responsavel_nome || 'N/A'}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h5>Horas Trabalhadas</h5>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Horas Normais</th>
-                                        <th>Horas Extras</th>
-                                        <th>Observações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${detalhes.horas_trabalhadas ? detalhes.horas_trabalhadas.map(ht => `
-                                        <tr>
-                                            <td>${ht.data ? new Date(ht.data).toLocaleDateString() : 'N/A'}</td>
-                                            <td>${ht.horas_trabalhadas || '0'}</td>
-                                            <td>${ht.horas_extras || '0'}</td>
-                                            <td>${ht.observacoes || '-'}</td>
-                                        </tr>
-                                    `).join('') : '<tr><td colspan="4">Nenhum registro encontrado</td></tr>'}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h5>Ocorrências</h5>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Tipo</th>
-                                        <th>Descrição</th>
-                                        <th>Observações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${detalhes.ocorrencias ? detalhes.ocorrencias.map(o => `
-                                        <tr>
-                                            <td>${o.data_ocorrencia ? new Date(o.data_ocorrencia).toLocaleDateString() : 'N/A'}</td>
-                                            <td>${o.tipo || '-'}</td>
-                                            <td>${o.descricao || '-'}</td>
-                                            <td>${o.observacoes || '-'}</td>
-                                        </tr>
-                                    `).join('') : '<tr><td colspan="4">Nenhuma ocorrência registrada</td></tr>'}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="col-md-4">
+                        <h6>Período</h6>
+                        <p>${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}</p>
                     </div>
                 </div>
-            `;
-    
-            // Configurar o modal
-            const modal = new bootstrap.Modal(modalElement, {
-                backdrop: true,
-                keyboard: true,
-                focus: true
-            });
-    
-            modalElement.addEventListener('hidden.bs.modal', () => {
-                // Se quiser limpar o conteúdo ou resetar algo
-            });
-    
-            modalElement.addEventListener('shown.bs.modal', () => {
-                // Se quiser focar em algo no modal
-            });
-    
-            modal.show();
-    
-            // Garantir a ordem correta de exibição
-            modalElement.style.zIndex = '1060';
-            const backdrop = document.querySelector('.modal-backdrop');
-            if (backdrop) {
-                backdrop.style.zIndex = '1050';
-            }
-        } else {
-            // Fallback simples
-            console.log('Detalhes do fechamento:', detalhes);
-            alert(`Detalhes do fechamento:\nFuncionário: ${detalhes.funcionario_nome}\nEmpresa: ${detalhes.empresa_nome}\nPeríodo: ${this.formatarMesReferencia(detalhes.mes_referencia, detalhes.ano_referencia)}`);
-        }
+                
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <h6>Status</h6>
+                        <p>${this.criarBadgeStatus(detalhes.status?.toLowerCase() || 'indefinido')}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Registro Emp.</h6>
+                        <p>${detalhes.registro_emp || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Função</h6>
+                        <p>${detalhes.funcao || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Data Fechamento</h6>
+                        <p>${detalhes.data_fechamento ? new Date(detalhes.data_fechamento).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Data Aprovação</h6>
+                        <p>${detalhes.data_aprovacao ? new Date(detalhes.data_aprovacao).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Aprovador</h6>
+                        <p>${detalhes.admin_responsavel_nome || 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Horas Trabalhadas</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Horas Normais</th>
+                                    <th>Horas Extras</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${detalhes.horas_trabalhadas ? detalhes.horas_trabalhadas.map(ht => `
+                                    <tr>
+                                        <td>${ht.data ? new Date(ht.data).toLocaleDateString() : 'N/A'}</td>
+                                        <td>${ht.horas_trabalhadas || '0'}</td>
+                                        <td>${ht.horas_extras || '0'}</td>
+                                        <td>${ht.observacoes || '-'}</td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="4">Nenhum registro encontrado</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Ocorrências</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Descrição</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${detalhes.ocorrencias ? detalhes.ocorrencias.map(o => `
+                                    <tr>
+                                        <td>${o.data_ocorrencia ? new Date(o.data_ocorrencia).toLocaleDateString() : 'N/A'}</td>
+                                        <td>${o.tipo || '-'}</td>
+                                        <td>${o.descricao || '-'}</td>
+                                        <td>${o.observacoes || '-'}</td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="4">Nenhuma ocorrência registrada</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
     }
-    
-    
 
     confirmarAprovacao(idFechamento) {
         if (typeof Swal !== 'undefined') {
@@ -617,21 +672,20 @@ class FechamentoFolhaManager {
     async aprovarFechamento(idFechamento, justificativa = null) {
         this.mostrarLoading(true);
         try {
+            console.log(idFechamento)
             const resultado = await this.fazerRequisicao(
-                `/fechamento/aprovar_fechamento/${idFechamento}`,
+                `/fechamento/aprovar/${idFechamento}`,
                 'POST',
-                {
-                    justificativa: justificativa
-                }
+                { justificativa }
             );
 
-            if (resultado.success) {
+            if (resultado?.success) {
                 this.showSuccess('Fechamento aprovado com sucesso!', () => {
                     this.carregarFechamentos();
                 });
                 return resultado;
             }
-            throw new Error(resultado.message || 'Erro ao aprovar fechamento');
+            throw new Error(resultado?.message || 'Erro ao aprovar fechamento');
         } catch (error) {
             console.error('Erro ao aprovar fechamento:', error);
             this.handleProcessarFormularioError(error);

@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="cadastrar_funcionarios.html"><i class="fas fa-users"></i><span>Funcionários</span></a>
                 <a href="gerenciar_pontos.html"><i class="fa fa-hourglass" aria-hidden="true"></i><span>Registros de Ponto</span></a>
                 <a href="fechamento_coletivo.html"><i class="fas fa-clipboard-check"></i><span>Fechamentos de Ponto</span></a>
-                <a href="fechamento_de_folha.html"><i class="fas fa-file-invoice-dollar fa-lg mr-2"></i><span>Fechamento de Folha</span></a>
                 <a href="fechamento_aprovacao.html"><i class="fas fa-check-circle"></i><span>Aprovar Fechamentos</span></a>
                 <a href="solicitacoes-alteracao-ponto.html"><i class="fas fa-calendar"></i><span>Alterações de Ponto</span></a>
                 <a href="gerenciar_funcionarios.html"><i class="fas fa-users-cog fa-lg mr-2"></i><span>Gerenciar Funcionários</span></a>

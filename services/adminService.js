@@ -714,29 +714,87 @@ class AdminService {
    * @param {Number} idAdmin - ID do admin
    * @returns {Promise<Array>} - Lista de solicitações
    */
-  static async listarSolicitacoesPendentes(idAdmin) {
-    const [solicitacoes] = await db.query(
-      `SELECT 
-            sa.id,
-            sa.id_registro,
-            sa.motivo,
-            sa.data_solicitacao,
-            u.nome as nome_funcionario,
-            f.departamento,
-            rp.tipo as tipo_ponto,
-            rp.data_hora,
-            rp.status as status_ponto
-         FROM SOLICITACAO_ALTERACAO sa
-         JOIN REGISTRO_PONTO rp ON sa.id_registro = rp.id
-         JOIN FUNCIONARIO f ON sa.id_funcionario = f.id
-         JOIN USUARIO u ON f.id_usuario = u.id
-         WHERE sa.id_admin_responsavel = ? AND sa.status = 'Pendente'
-         ORDER BY sa.data_solicitacao DESC`,
-      [idAdmin]
-    );
+static async listarFechamentosPendentes(filtros = {}) {
+  const { idEmpresa, nome, mes, ano, status, page = 1, limit = 10 } = filtros;
+  const parsedLimit = parseInt(limit);
+  const parsedPage = parseInt(page);
+  const offset = (parsedPage - 1) * parsedLimit;
 
-    return solicitacoes;
+  // Verificação adicional para garantir que idEmpresa existe
+  if (!idEmpresa) {
+    throw new AppError('ID da empresa não fornecido', 400);
   }
+  console.log(filtros)
+
+  let query = `
+    SELECT 
+      ff.id,
+      ff.id_funcionario,
+      ff.mes_referencia,
+      ff.ano_referencia,
+      ff.status,
+      ff.data_fechamento,
+      e.nome AS empresa_nome,
+      u.nome AS funcionario_nome,
+      f.funcao,
+      ff.total_horas_trabalhadas AS horas_normais,
+      ff.total_horas_extras AS horas_extras,
+      ff.total_horas_faltas AS faltas,
+      COUNT(*) OVER() AS total_count
+    FROM FECHAMENTO_FOLHA ff
+    JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
+    JOIN USUARIO u ON f.id_usuario = u.id
+    JOIN EMPRESA e ON f.id_empresa = e.id
+    WHERE 1=1
+    AND f.id_empresa = ?
+  `;
+
+  const params = [idEmpresa];
+
+  // Filtro por status (modificado para incluir padrão 'Pendente')
+  const statusFiltro = status || 'Pendente';
+  query += ` AND ff.status = ?`;
+  params.push(statusFiltro);
+
+  if (nome) {
+    query += ` AND u.nome LIKE ?`;
+    params.push(`%${nome}%`);
+  }
+
+  if (mes) {
+    query += ` AND ff.mes_referencia = ?`;
+    params.push(mes);
+  }
+
+  if (ano) {
+    query += ` AND ff.ano_referencia = ?`;
+    params.push(ano);
+  }
+
+  query += `
+    ORDER BY ff.data_fechamento DESC
+    LIMIT ? OFFSET ?
+  `;
+  params.push(parsedLimit, offset);
+
+  try {
+    const [rows] = await db.query(query, params);
+    console.log(rows,'Service')
+    // Verificação segura para rows[0]?.total_count
+    const total = rows.length > 0 ? (rows[0].total_count || 0) : 0;
+    
+    return {
+      data: data,
+      total: total,
+      page: parsedPage,
+      limit: parsedLimit,
+      totalPages: Math.ceil(total / parsedLimit)
+    };
+  } catch (error) {
+    console.error('Erro ao listar fechamentos pendentes:', error);
+    throw new AppError('Erro ao carregar fechamentos pendentes', 500);
+  }
+}
 
   /**
    * Obtém detalhes de uma solicitação específica
@@ -1539,7 +1597,7 @@ static async obterDetalhesFechamento(idFechamento) {
 }
 
 static async listarFechamentosPendentes(filtros = {}) {
-  const { nomeEmpresa, mes, ano, page = 1, limit = 10 } = filtros;
+  const { idEmpresa, nome, mes, ano, page = 1, limit = 10 } = filtros;
   const parsedLimit = parseInt(limit);
   const parsedPage = parseInt(page);
   const offset = (parsedPage - 1) * parsedLimit;
@@ -1555,19 +1613,23 @@ static async listarFechamentosPendentes(filtros = {}) {
       e.nome AS empresa_nome,
       u.nome AS funcionario_nome,
       f.funcao,
+      ff.total_horas_trabalhadas AS horas_normais,
+      ff.total_horas_extras AS horas_extras,
+      ff.total_horas_faltas AS faltas,
       COUNT(*) OVER() AS total_count
     FROM FECHAMENTO_FOLHA ff
     JOIN FUNCIONARIO f ON ff.id_funcionario = f.id
     JOIN USUARIO u ON f.id_usuario = u.id
     JOIN EMPRESA e ON f.id_empresa = e.id
     WHERE ff.status = 'Pendente'
+    AND f.id_empresa = ?
   `;
 
-  const params = [];
+  const params = [idEmpresa];
 
-  if (nomeEmpresa) {
-    query += ` AND e.nome LIKE ?`;
-    params.push(`%${nomeEmpresa}%`);
+  if (nome) {
+    query += ` AND u.nome LIKE ?`;
+    params.push(`%${nome}%`);
   }
 
   if (mes) {
@@ -1587,6 +1649,7 @@ static async listarFechamentosPendentes(filtros = {}) {
   params.push(parsedLimit, offset);
 
   const [rows] = await db.query(query, params);
+  
   return {
     data: rows,
     total: rows[0]?.total_count || 0,
@@ -1595,9 +1658,6 @@ static async listarFechamentosPendentes(filtros = {}) {
     totalPages: Math.ceil((rows[0]?.total_count || 0) / parsedLimit)
   };
 }
-
-
-
 
 
 

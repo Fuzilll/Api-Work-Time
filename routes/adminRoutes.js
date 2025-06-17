@@ -116,6 +116,7 @@ router.get('/fechamentos/:idFechamento/detalhes',
 );
 
 router.get('/fechamentos/pendentes',
+
   adminController.carregarFechamentos
 );
 
