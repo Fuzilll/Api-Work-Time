@@ -588,6 +588,312 @@ body.dark-mode .help-btn {
     color: var(--escuro-primaria);
 }
 
+/* ========== MODO ESCURO PARA COMPONENTES DE CHAMADOS ========== */
+
+body.dark-mode .topbar {
+    background-color: var(--escuro-bg);
+    border-bottom: 1px solid var(--escuro-borda);
+    box-shadow: var(--sombra);
+}
+
+body.dark-mode .help-btn {
+    background-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+    border: none;
+}
+
+body.dark-mode .help-btn:hover {
+    background-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
+
+body.dark-mode .card.shadow-sm {
+    background-color: var(--escuro-card-bg);
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--escuro-borda);
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .card-title {
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode label {
+    color: var(--escuro-texto);
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+    border: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .form-text,
+body.dark-mode small {
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .form-control[type="file"]::file-selector-button {
+    background-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-left: 2px;
+    cursor: pointer;
+}
+
+body.dark-mode .form-control[type="file"]::file-selector-button:hover {
+    background-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+}
+
+/* Botões principais */
+body.dark-mode .btn-primary {
+    background-color: var(--escuro-secundaria);
+    border-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .btn-primary:hover {
+    background-color: var(--escuro-primaria);
+    border-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
+
+body.dark-mode .btn-outline-primary {
+    border-color: var(--escuro-primaria);
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .btn-outline-primary:hover {
+    background-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
+
+body.dark-mode .btn-outline-secondary {
+    border-color: var(--escuro-secundaria);
+    color: var(--escuro-secundaria);
+}
+
+body.dark-mode .btn-outline-secondary:hover {
+    background-color: var(--escuro-secundaria);
+    color: var(--escuro-bg);
+}
+
+/* Modal */
+body.dark-mode .modalDetalhes {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+    border: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .modal-header {
+    background-color: var(--escuro-card-header);
+    color: var(--branco);
+    border-bottom: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .modal-footer {
+    border-top: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .card.bg-light {
+    background-color: var(--escuro-bg);
+    border: 1px solid var(--escuro-borda);
+    color: var(--escuro-texto);
+}
+
+/* Extras */
+body.dark-mode h5,
+body.dark-mode h2,
+body.dark-mode p strong {
+    color: var(--escuro-primaria);
+}
+
+/* ========== MODO ESCURO: TABELA DE CHAMADOS ========== */
+body.dark-mode table.table {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+    border-color: var(--escuro-borda);
+}
+
+body.dark-mode table.table thead {
+    background-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode table.table th {
+    color: var(--escuro-primaria);
+    border-color: var(--escuro-borda);
+}
+
+body.dark-mode table.table td {
+    color: var(--escuro-texto);
+    border-color: var(--escuro-borda);
+}
+
+body.dark-mode table.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--escuro-bg);
+}
+
+body.dark-mode table.table-striped tbody tr:nth-of-type(even) {
+    background-color: var(--escuro-card-bg);
+}
+
+/* ========== MODO ESCURO: MODAL DE DETALHES ========== */
+body.dark-mode .modal-content {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+    border: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .modal-header {
+    background-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+    border-bottom: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .modal-title {
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .btn-close-white {
+    filter: invert(1);
+    /* Para manter visível em fundo escuro */
+}
+
+body.dark-mode .modal-footer {
+    background-color: var(--escuro-bg);
+    border-top: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .card.bg-light {
+    background-color: var(--escuro-bg);
+    border: 1px solid var(--escuro-borda);
+    color: var(--escuro-texto);
+}
+
+body.dark-mode #modalFotoContainer {
+    background-color: var(--escuro-card-bg);
+    padding: 10px;
+    border: 1px solid var(--escuro-borda);
+    border-radius: 6px;
+}
+
+body.dark-mode #modalAnexoLink {
+    color: var(--escuro-primaria);
+}
+
+/* ========== MODO ESCURO: BOTÕES MODAL ========== */
+body.dark-mode .modal-footer .btn-primary {
+    background-color: var(--escuro-secundaria);
+    border-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .modal-footer .btn-primary:hover {
+    background-color: var(--escuro-primaria);
+    border-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
+
+body.dark-mode .modal-footer .btn-secondary {
+    background-color: var(--escuro-borda);
+    border-color: var(--escuro-borda);
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .modal-footer .btn-secondary:hover {
+    background-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
+
+/* ========== MODO ESCURO: OVERLAY DE CARREGAMENTO ========== */
+body.dark-mode #loading-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+body.dark-mode .spinner {
+    border: 4px solid var(--escuro-borda);
+    border-top: 4px solid var(--escuro-primaria);
+}
+
+/* ========== MODO ESCURO: ALERTA DE ERRO ========== */
+body.dark-mode #error-message.alert-danger {
+    background-color: var(--escuro-card-bg);
+    border: 1px solid var(--escuro-borda);
+    color: var(--escuro-erro);
+}
+
+body.dark-mode .alert.alert-info {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+    border: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .table-responsive {
+    background-color: var(--escuro-card-bg);
+    border: 1px solid var(--escuro-borda);
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+body.dark-mode .table-hover {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .table-hover tbody tr:hover {
+    background-color: var(--escuro-secundaria);
+}
+
+body.dark-mode .table thead.table-light {
+    background-color: var(--escuro-secundaria);
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .table td,
+body.dark-mode .table th {
+    border-color: var(--escuro-borda);
+    color: var(--escuro-texto);
+    background-color: #242629;
+}
+
+body.dark-mode .btn-outline-primary.btn-detalhes {
+    color: var(--escuro-primaria);
+    border-color: var(--escuro-primaria);
+    background-color: transparent;
+}
+
+body.dark-mode .btn-outline-primary.btn-detalhes:hover {
+    background-color: var(--escuro-primaria);
+    color: var(--escuro-bg);
+}
+
+body.dark-mode .badge {
+    color: var(--escuro-texto);
+    background-color: var(--escuro-secundaria);
+}
+
+body.dark-mode .badge.bg-warning {
+    background-color: #ccaa00;
+    color: #fff;
+}
+
+body.dark-mode .badge.bg-success {
+    background-color: #198754;
+    color: #fff;
+}
+
+body.dark-mode .badge.bg-danger {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+
 /* ========== MEDIA QUERIES ========== */
 @media (max-width: 992px) {
     .mobile-menu {

@@ -928,6 +928,82 @@ body.dark-mode .card.highlight .card-header {
     color: var(--branco);
 }
 
+
+/* ========== MODO ESCURO PARA OS COMPONENTES ========== */
+body.dark-mode .row.g-5.mt-4 .coluna {
+    background-color: var(--escuro-card-bg);
+    color: var(--escuro-texto);
+    border: 1px solid var(--escuro-borda);
+    box-shadow: var(--sombra);
+}
+
+body.dark-mode .row.g-5.mt-4 h2,
+body.dark-mode .row.g-5.mt-4 .subtitulo {
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .row.g-5.mt-4 .data {
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .row.g-5.mt-4 .scrollable {
+    border-top: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .row.g-5.mt-4 .item {
+    border-bottom: 1px solid var(--escuro-borda);
+}
+
+body.dark-mode .row.g-5.mt-4 .item:hover {
+    background-color: rgba(127, 90, 240, 0.1);
+}
+
+body.dark-mode .row.g-5.mt-4 .hora {
+    color: var(--escuro-secundaria);
+}
+
+body.dark-mode .row.g-5.mt-4 .texto {
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .row.g-5.mt-4 .cinza {
+    color: var(--escuro-texto);
+}
+
+body.dark-mode .row.g-5.mt-4 .vermelho {
+    color: var(--vermelho);
+}
+
+body.dark-mode .row.g-5.mt-4 .roxo {
+    color: var(--escuro-primaria);
+}
+
+body.dark-mode .row.g-5.mt-4 .verde {
+    color: var(--verde);
+}
+
+body.dark-mode .row.g-5.mt-4 .botao-pequeno {
+    color: var(--escuro-primaria);
+    border-color: var(--escuro-primaria);
+}
+
+body.dark-mode .row.g-5.mt-4 .botao-pequeno:hover {
+    background-color: var(--escuro-primaria);
+    color: var(--branco);
+}
+
+body.dark-mode .row.g-5.mt-4 .status-container .item:hover {
+    background-color: rgba(44, 182, 125, 0.1);
+}
+
+body.dark-mode .row.g-5.mt-4 .notificacao:hover {
+    background-color: rgba(127, 90, 240, 0.1);
+}
+
+body.dark-mode .row.g-5.mt-4 .tempo {
+    color: var(--escuro-secundaria);
+}
+
 /* ========== MEDIA QUERIES ========== */
 @media (max-width: 992px) {
     .mobile-menu {
